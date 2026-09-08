@@ -1,0 +1,574 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cinzel:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-kanit: 'Kanit', sans-serif;
+    --font-sarabun: 'Sarabun', serif;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-amber-500/30 selection:text-amber-200;
+  }
+}
+
+/* Custom Reader Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+/* Smooth Reader Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ========================================================= */
+/*                   LIGHT THEME OVERRIDES                   */
+/* ========================================================= */
+
+/* NomadKit Light — warm cream (#FFFDF7) ground, Sand primary, Ocean links */
+html.theme-light, html.theme-light body {
+  background-color: #fffdf7 !important;
+  color: #3b2a18 !important;
+}
+
+/* Navbar & Bottom Nav in Light */
+html.theme-light:not(.reader-active) header,
+html.theme-light:not(.reader-active) nav {
+  background-color: rgba(255, 253, 247, 0.96) !important;
+  border-color: #ebd3b3 !important;
+  box-shadow: 0 -2px 10px rgba(84, 58, 30, 0.06) !important;
+}
+
+/* Modal Backdrop Blur in Light Mode */
+html.theme-light .modal-backdrop {
+  background-color: rgba(255, 253, 247, 0.65) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Hero Banner in Light Mode */
+html.theme-light .hero-banner {
+  background: linear-gradient(135deg, #fffdf7 0%, #ffffff 50%, #f4e7d5 100%) !important;
+  border-color: #ebd3b3 !important;
+  box-shadow: 0 10px 25px -5px rgba(212, 163, 115, 0.16), 0 8px 10px -6px rgba(212, 163, 115, 0.06) !important;
+}
+
+html.theme-light .hero-badge {
+  background-color: #f4e7d5 !important;
+  color: #6f4530 !important;
+  border-color: #ebd3b3 !important;
+}
+
+html.theme-light .hero-badge svg,
+html.theme-light .hero-badge span {
+  color: #6f4530 !important;
+}
+
+html.theme-light [class*="bg-gradient-"]:not([class*="from-amber-"]):not([class*="from-rose-"]):not([class*="from-emerald-"]):not([class*="read-now-btn"]) {
+  background-image: linear-gradient(135deg, #fffdf7 0%, #ffffff 50%, #f4e7d5 100%) !important;
+}
+
+html.theme-light .hero-title {
+  color: #3b2a18 !important;
+}
+
+/* Ocean accent for the AI highlight (secondary color) */
+html.theme-light .hero-gemini-gradient {
+  background: none !important;
+  -webkit-text-fill-color: #0a7495 !important;
+  color: #0a7495 !important;
+  font-weight: 800 !important;
+}
+
+html.theme-light .hero-desc {
+  color: #6f5a45 !important;
+}
+
+html.theme-light .hero-search {
+  background-color: #ffffff !important;
+  color: #3b2a18 !important;
+  border-color: #e0bd8e !important;
+}
+
+html.theme-light .hero-search::placeholder {
+  color: #a79f92 !important;
+}
+
+/* Modals, Drawers & Cards in Light Mode */
+html.theme-light .bg-slate-900,
+html.theme-light .bg-slate-900\/95,
+html.theme-light .bg-slate-900\/90,
+html.theme-light .bg-slate-900\/80,
+html.theme-light .bg-slate-900\/60,
+html.theme-light .bg-slate-900\/40,
+html.theme-light .group.relative.flex.flex-col {
+  background-color: #ffffff !important;
+  border-color: #ebd3b3 !important;
+  color: #3b2a18 !important;
+  box-shadow: 0 4px 6px -1px rgba(84, 58, 30, 0.08), 0 2px 4px -2px rgba(84, 58, 30, 0.05) !important;
+}
+
+/* Inputs, Textareas, Selects & Dark Insets in Light Mode */
+html.theme-light .bg-slate-950,
+html.theme-light .bg-slate-950\/50,
+html.theme-light .bg-slate-950\/80,
+html.theme-light input,
+html.theme-light textarea,
+html.theme-light select {
+  background-color: #faf5ee !important;
+  border-color: #e0bd8e !important;
+  color: #3b2a18 !important;
+}
+
+html.theme-light input::placeholder,
+html.theme-light textarea::placeholder {
+  color: #a79f92 !important;
+}
+
+/* Buttons & Chips in Light Mode */
+html.theme-light .bg-slate-800,
+html.theme-light .bg-slate-800\/50,
+html.theme-light .bg-slate-800\/20,
+html.theme-light button.bg-slate-950,
+html.theme-light button.bg-slate-900,
+html.theme-light a.bg-slate-900 {
+  background-color: #f4e7d5 !important;
+  border-color: #ebd3b3 !important;
+  color: #5b3a2a !important;
+}
+
+html.theme-light .bg-slate-800:hover,
+html.theme-light button.bg-slate-950:hover,
+html.theme-light button.bg-slate-900:hover {
+  background-color: #ebd3b3 !important;
+  color: #3b2a18 !important;
+}
+
+html.theme-light:not(.reader-active) h1,
+html.theme-light:not(.reader-active) h2,
+html.theme-light:not(.reader-active) h3,
+html.theme-light:not(.reader-active) h4 {
+  color: #3b2a18 !important;
+}
+
+html.theme-light:not(.reader-active) p,
+html.theme-light:not(.reader-active) .text-slate-400,
+html.theme-light:not(.reader-active) .text-slate-500 {
+  color: #837b6e !important;
+}
+
+html.theme-light:not(.reader-active) .text-slate-100,
+html.theme-light:not(.reader-active) .text-slate-200,
+html.theme-light:not(.reader-active) .text-slate-300 {
+  color: #3b2a18 !important;
+}
+
+html.theme-light .border-slate-800,
+html.theme-light .border-slate-800\/80,
+html.theme-light .border-slate-800\/60,
+html.theme-light .border-slate-800\/40 {
+  border-color: #ebd3b3 !important;
+}
+
+/* Card Elements in Light Mode */
+html.theme-light .novel-cover-box {
+  background-color: #f4e7d5 !important;
+}
+
+html.theme-light .novel-placeholder {
+  background: linear-gradient(135deg, #f4e7d5 0%, #ebd3b3 100%) !important;
+}
+
+html.theme-light .novel-placeholder p {
+  color: #5b3a2a !important;
+}
+
+html.theme-light .novel-placeholder svg {
+  color: #b06f3d !important;
+}
+
+html.theme-light .novel-chapter-badge {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #8f5734 !important;
+  border-color: #ebd3b3 !important;
+}
+
+html.theme-light .novel-delete-btn {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #dc2626 !important;
+  border-color: #fee2e2 !important;
+}
+
+html.theme-light .read-now-btn,
+html.theme-light .read-now-btn span,
+html.theme-light .read-now-btn svg {
+  background-color: #d4a373 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+}
+
+html.theme-light .read-now-btn {
+  border-color: #b06f3d !important;
+  box-shadow: 0 2px 6px rgba(212, 163, 115, 0.4) !important;
+}
+
+html.theme-light .read-now-btn:hover {
+  background-color: #c5884f !important;
+  color: #ffffff !important;
+}
+
+/* ========================================================= */
+/*       SEPIA (EYE CARE / PARCHMENT) THEME OVERRIDES        */
+/* ========================================================= */
+
+html.theme-sepia, html.theme-sepia body {
+  background-color: #e8dec8 !important;
+  color: #2e2013 !important;
+}
+
+/* Navbar & Bottom Nav in Sepia */
+html.theme-sepia:not(.reader-active) header,
+html.theme-sepia:not(.reader-active) nav {
+  background-color: rgba(230, 218, 196, 0.97) !important;
+  border-color: #ccb997 !important;
+  box-shadow: 0 -2px 10px rgba(60, 40, 15, 0.08) !important;
+}
+
+/* Modal Backdrop Blur in Sepia Mode */
+html.theme-sepia .modal-backdrop {
+  background-color: rgba(232, 222, 200, 0.7) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Hero Banner in Sepia */
+html.theme-sepia .hero-banner {
+  background: linear-gradient(135deg, #f7f0e1 0%, #f0e6ce 50%, #e5d5b3 100%) !important;
+  border-color: #ccb895 !important;
+  box-shadow: 0 8px 20px -4px rgba(60, 40, 15, 0.12) !important;
+}
+
+html.theme-sepia .hero-badge {
+  background-color: #dfcdab !important;
+  color: #632b05 !important;
+  border-color: #beaa83 !important;
+}
+
+html.theme-sepia .hero-badge svg,
+html.theme-sepia .hero-badge span {
+  color: #632b05 !important;
+}
+
+html.theme-sepia [class*="bg-gradient-"]:not([class*="from-amber-"]):not([class*="from-rose-"]):not([class*="from-emerald-"]):not([class*="read-now-btn"]) {
+  background-image: linear-gradient(135deg, #f7f0e1 0%, #f0e6ce 50%, #e5d5b3 100%) !important;
+}
+
+html.theme-sepia .hero-title {
+  color: #26190c !important;
+}
+
+html.theme-sepia .hero-gemini-gradient {
+  background: none !important;
+  -webkit-text-fill-color: #0f5c78 !important;
+  color: #0f5c78 !important;
+  font-weight: 800 !important;
+}
+
+html.theme-sepia .hero-desc {
+  color: #59432d !important;
+}
+
+html.theme-sepia .hero-search {
+  background-color: #fcf8ee !important;
+  color: #26190c !important;
+  border-color: #c9b590 !important;
+}
+
+html.theme-sepia .hero-search::placeholder {
+  color: #8a7359 !important;
+}
+
+/* Modals, Drawers & Cards in Sepia Mode */
+html.theme-sepia .bg-slate-900,
+html.theme-sepia .bg-slate-900\/95,
+html.theme-sepia .bg-slate-900\/90,
+html.theme-sepia .bg-slate-900\/80,
+html.theme-sepia .bg-slate-900\/60,
+html.theme-sepia .bg-slate-900\/40,
+html.theme-sepia .group.relative.flex.flex-col {
+  background-color: #faf5ea !important;
+  border-color: #cfbd99 !important;
+  color: #26190c !important;
+  box-shadow: 0 4px 10px -2px rgba(60, 40, 15, 0.1) !important;
+}
+
+/* Inputs, Textareas, Selects & Dark Insets in Sepia Mode */
+html.theme-sepia .bg-slate-950,
+html.theme-sepia .bg-slate-950\/50,
+html.theme-sepia .bg-slate-950\/80,
+html.theme-sepia input,
+html.theme-sepia textarea,
+html.theme-sepia select {
+  background-color: #f7f0e1 !important;
+  border-color: #c9b590 !important;
+  color: #26190c !important;
+}
+
+html.theme-sepia input::placeholder,
+html.theme-sepia textarea::placeholder {
+  color: #8a7359 !important;
+}
+
+/* Buttons & Chips in Sepia Mode */
+html.theme-sepia .bg-slate-800,
+html.theme-sepia .bg-slate-800\/50,
+html.theme-sepia .bg-slate-800\/20,
+html.theme-sepia button.bg-slate-950,
+html.theme-sepia button.bg-slate-900,
+html.theme-sepia a.bg-slate-900 {
+  background-color: #ede2c8 !important;
+  border-color: #cfbd99 !important;
+  color: #433422 !important;
+}
+
+html.theme-sepia .bg-slate-800:hover,
+html.theme-sepia button.bg-slate-950:hover,
+html.theme-sepia button.bg-slate-900:hover {
+  background-color: #e4d7ba !important;
+  color: #26190c !important;
+}
+
+html.theme-sepia:not(.reader-active) h1,
+html.theme-sepia:not(.reader-active) h2,
+html.theme-sepia:not(.reader-active) h3,
+html.theme-sepia:not(.reader-active) h4 {
+  color: #26190c !important;
+}
+
+html.theme-sepia:not(.reader-active) p,
+html.theme-sepia:not(.reader-active) .text-slate-400,
+html.theme-sepia:not(.reader-active) .text-slate-500 {
+  color: #694f36 !important;
+}
+
+html.theme-sepia:not(.reader-active) .text-slate-100,
+html.theme-sepia:not(.reader-active) .text-slate-200,
+html.theme-sepia:not(.reader-active) .text-slate-300 {
+  color: #26190c !important;
+}
+
+html.theme-sepia .border-slate-800,
+html.theme-sepia .border-slate-800\/80,
+html.theme-sepia .border-slate-800\/60,
+html.theme-sepia .border-slate-800\/40 {
+  border-color: #cfbd99 !important;
+}
+
+/* Card Elements in Sepia Mode */
+html.theme-sepia .novel-cover-box {
+  background-color: #dfceab !important;
+}
+
+html.theme-sepia .novel-placeholder {
+  background: linear-gradient(135deg, #eee1c4 0%, #ddcaa2 100%) !important;
+  border-bottom: 1px solid #cfbd99 !important;
+}
+
+html.theme-sepia .novel-placeholder p {
+  color: #3b2512 !important;
+}
+
+html.theme-sepia .novel-placeholder svg {
+  color: #7d5226 !important;
+}
+
+html.theme-sepia .novel-chapter-badge {
+  background-color: rgba(250, 245, 234, 0.96) !important;
+  color: #6e330a !important;
+  border-color: #c4b08a !important;
+}
+
+html.theme-sepia .novel-delete-btn {
+  background-color: rgba(250, 245, 234, 0.96) !important;
+  color: #b91c1c !important;
+  border-color: #e5baba !important;
+}
+
+html.theme-sepia .read-now-btn,
+html.theme-sepia .read-now-btn span,
+html.theme-sepia .read-now-btn svg {
+  background-color: #8b4513 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+}
+
+html.theme-sepia .read-now-btn {
+  border-color: #6e350c !important;
+  box-shadow: 0 2px 8px rgba(110, 50, 15, 0.35) !important;
+}
+
+html.theme-sepia .read-now-btn:hover {
+  background-color: #6e350c !important;
+  color: #ffffff !important;
+}
+
+/* ========================================================= */
+/*                    DARK THEME (DEFAULT)                   */
+/* ========================================================= */
+
+html.theme-dark, html.theme-dark body {
+  background-color: #17130f !important;
+  color: #faf9f7 !important;
+}
+
+html.theme-dark .read-now-btn,
+html.theme-dark .read-now-btn span,
+html.theme-dark .read-now-btn svg {
+  background-color: #d4a373 !important;
+  color: #17130f !important;
+  -webkit-text-fill-color: #17130f !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+/* Base / Dark Hero Banner Styles */
+.hero-banner {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+.hero-badge {
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+.hero-badge svg,
+.hero-badge span {
+  color: #fbbf24;
+}
+.hero-title {
+  color: #f8fafc;
+}
+.hero-desc {
+  color: #94a3b8;
+}
+
+/* ========================================================= */
+/*               READER VIEW DEDICATED STYLING               */
+/* ========================================================= */
+
+.reader-view.reader-theme-dark,
+.reader-theme-dark {
+  background-color: #0b0f19 !important;
+  color: #f1f5f9 !important;
+}
+
+.reader-theme-dark h1,
+.reader-theme-dark h2,
+.reader-theme-dark .reader-title {
+  color: #f8fafc !important;
+}
+
+.reader-theme-dark p,
+.reader-theme-dark .reader-paragraph {
+  color: #e2e8f0 !important;
+}
+
+.reader-theme-dark .reader-author {
+  color: #94a3b8 !important;
+}
+
+.reader-theme-dark header,
+.reader-theme-dark .reader-header {
+  background-color: rgba(2, 6, 23, 0.92) !important;
+  border-color: rgba(30, 41, 59, 0.8) !important;
+  color: #f8fafc !important;
+}
+
+.reader-theme-dark .reader-header h2,
+.reader-theme-dark .reader-header p {
+  color: #f8fafc !important;
+}
+
+.reader-theme-sepia {
+  background-color: #f4ecd8 !important;
+  color: #433422 !important;
+}
+
+.reader-theme-sepia h1,
+.reader-theme-sepia h2,
+.reader-theme-sepia .reader-title {
+  color: #2e2013 !important;
+}
+
+.reader-theme-sepia p,
+.reader-theme-sepia .reader-paragraph {
+  color: #3d2e1e !important;
+}
+
+.reader-theme-sepia .reader-author {
+  color: #7a644c !important;
+}
+
+.reader-theme-sepia header,
+.reader-theme-sepia .reader-header {
+  background-color: rgba(237, 226, 200, 0.95) !important;
+  border-color: #dacdb0 !important;
+  color: #433422 !important;
+}
+
+.reader-theme-light {
+  background-color: #fbf9f5 !important;
+  color: #1c1917 !important;
+}
+
+.reader-theme-light h1,
+.reader-theme-light h2,
+.reader-theme-light .reader-title {
+  color: #1c1917 !important;
+}
+
+.reader-theme-light p,
+.reader-theme-light .reader-paragraph {
+  color: #292524 !important;
+}
+
+.reader-theme-light .reader-author {
+  color: #78716c !important;
+}
+
+.reader-theme-light header,
+.reader-theme-light .reader-header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e7e5e4 !important;
+  color: #1c1917 !important;
+}
+

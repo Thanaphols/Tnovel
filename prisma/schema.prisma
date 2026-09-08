@@ -1,0 +1,160 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  name              String?
+  password          String?
+  googleId          String?           @unique
+  avatar            String?
+  role              String            @default("USER")
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  submittedNovels   Novel[]           @relation("SubmittedBy")
+  readingProgresses ReadingProgress[]
+  reports           Report[]
+  likes             NovelLike[]
+  bookshelves       Bookshelf[]
+  chapterBookmarks  ChapterBookmark[]
+}
+
+model Author {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  bio       String?
+  avatar    String?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  novels    Novel[]
+}
+
+model Novel {
+  id                String            @id @default(uuid())
+  titleEn           String
+  titleTh           String
+  description       String?
+  coverUrl          String?
+  sourceUrl         String
+  totalChapters     Int               @default(0)
+  translationStatus String            @default("COMPLETED")
+  viewCount         Int               @default(0)
+  likeCount         Int               @default(0)
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  authorId    String?
+  author      Author?   @relation(fields: [authorId], references: [id])
+
+  createdById String?
+  createdBy   User?     @relation("SubmittedBy", fields: [createdById], references: [id])
+
+  chapters    Chapter[]
+  reports     Report[]
+  likes       NovelLike[]
+  bookshelves Bookshelf[]
+}
+
+model Chapter {
+  id            String            @id @default(uuid())
+  chapterNumber Int               @default(1)
+  titleEn       String
+  titleTh       String
+  contentEn     String
+  contentTh     String
+  originalUrl   String
+  deletedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  novelId       String
+  novel         Novel             @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  readingProgresses ReadingProgress[]
+  reports           Report[]
+  chapterBookmarks  ChapterBookmark[]
+}
+
+model ReadingProgress {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  chapterId     String
+  chapter       Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  scrollPercent Float    @default(0)
+  lastReadAt    DateTime @default(now())
+
+  @@unique([userId, chapterId])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  reason      String
+  description String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  novelId     String?
+  novel       Novel?   @relation(fields: [novelId], references: [id], onDelete: SetNull)
+
+  chapterId   String?
+  chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model NovelLike {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId   String
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, novelId])
+}
+
+model Bookshelf {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId   String
+  novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, novelId])
+}
+
+model ChapterBookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, chapterId])
+}
+
+model WhitelistedEmail {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
