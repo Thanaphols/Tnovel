@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AlertCircle, X, CheckCircle2, Loader2, Send, ChevronDown } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -11,16 +12,18 @@ interface ReportModalProps {
   title?: string;
 }
 
-const REPORT_REASONS = [
-  'เนื้อหาแปลผิดพลาด / อ่านไม่รู้เรื่อง',
-  'มีข้อความภาษาอังกฤษปน / แปลไม่ครบ',
-  'ตอนไม่สมบูรณ์ / ขาดหาย',
-  'ลิงก์ต้นฉบับเสีย / เข้าไม่ได้',
-  'ปัญหาอื่นๆ',
-];
-
 export default function ReportModal({ isOpen, onClose, novelId, chapterId, title }: ReportModalProps) {
-  const [selectedReason, setSelectedReason] = useState(REPORT_REASONS[0]);
+  const { t } = useLanguage();
+
+  const reportReasons = useMemo(() => [
+    t('reportReason1'),
+    t('reportReason2'),
+    t('reportReason3'),
+    t('reportReason4'),
+    t('reportReason5'),
+  ], [t]);
+
+  const [selectedReason, setSelectedReason] = useState(reportReasons[0]);
   const [isReasonOpen, setIsReasonOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,10 +58,10 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
           onClose();
         }, 1800);
       } else {
-        setError(data.error || 'เกิดข้อผิดพลาดในการส่งรายงาน');
+        setError(data.error || t('reportErrorDefault'));
       }
     } catch (err: any) {
-      setError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      setError(t('networkError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -91,16 +94,16 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
             <AlertCircle className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-100">แจ้งปัญหานิยาย</h3>
-            <p className="text-xs text-slate-400 line-clamp-1">{title || 'รายงานข้อผิดพลาดให้ Admin ทราบ'}</p>
+            <h3 className="text-base font-bold text-slate-100">{t('reportModalTitle')}</h3>
+            <p className="text-xs text-slate-400 line-clamp-1">{title || t('reportModalSub')}</p>
           </div>
         </div>
 
         {isSuccess ? (
           <div className="py-8 text-center space-y-2">
             <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto animate-bounce" />
-            <h4 className="text-sm font-bold text-slate-100">ส่งรายงานปัญหาเรียบร้อยแล้ว</h4>
-            <p className="text-xs text-slate-400">ขอบคุณสำหรับการแจ้ง ทีมงานจะรีบตรวจสอบให้ครับ</p>
+            <h4 className="text-sm font-bold text-slate-100">{t('reportSuccessTitle')}</h4>
+            <p className="text-xs text-slate-400">{t('reportSuccessDesc')}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 pt-1">
@@ -112,13 +115,13 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
 
             {/* Reasons Custom Dropdown (No native OS select overflow) */}
             <div className="space-y-1.5 relative">
-              <label className="text-xs font-semibold text-slate-300">สาเหตุที่พบปัญหา</label>
+              <label className="text-xs font-semibold text-slate-300">{t('reportReasonLabel')}</label>
               <button
                 type="button"
                 onClick={() => setIsReasonOpen((prev) => !prev)}
                 className="w-full px-3.5 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-100 flex items-center justify-between focus:outline-none focus:border-amber-500/60 transition-all text-left"
               >
-                <span className="truncate pr-2">{selectedReason}</span>
+                <span className="truncate pr-2">{selectedReason || reportReasons[0]}</span>
                 <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isReasonOpen ? 'rotate-180 text-amber-400' : ''}`} />
               </button>
 
@@ -126,7 +129,7 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsReasonOpen(false)} />
                   <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-1.5 space-y-1 animate-fade-in max-h-52 overflow-y-auto">
-                    {REPORT_REASONS.map((r) => (
+                    {reportReasons.map((r) => (
                       <button
                         key={r}
                         type="button"
@@ -135,13 +138,13 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
                           setIsReasonOpen(false);
                         }}
                         className={`w-full text-left px-3 py-2 text-xs rounded-xl transition-all flex items-center justify-between ${
-                          selectedReason === r
+                          (selectedReason || reportReasons[0]) === r
                             ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
                             : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
                         }`}
                       >
                         <span className="truncate">{r}</span>
-                        {selectedReason === r && <span className="text-[10px] text-amber-400 shrink-0 ml-1">✓</span>}
+                        {(selectedReason || reportReasons[0]) === r && <span className="text-[10px] text-amber-400 shrink-0 ml-1">✓</span>}
                       </button>
                     ))}
                   </div>
@@ -151,12 +154,12 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
 
             {/* Description Textarea */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">รายละเอียดเพิ่มเติม (ไม่บังคับ)</label>
+              <label className="text-xs font-semibold text-slate-300">{t('reportDescLabel')}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                placeholder="ระบุข้อความหรือจุดที่แปลผิดพลาด..."
+                placeholder={t('reportDescPlaceholder')}
                 className="w-full p-3 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500/60 resize-none"
               />
             </div>
@@ -168,7 +171,7 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
                 onClick={onClose}
                 className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all"
               >
-                ยกเลิก
+                {t('cancel')}
               </button>
               <button
                 type="submit"
@@ -178,12 +181,12 @@ export default function ReportModal({ isOpen, onClose, novelId, chapterId, title
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>กำลังส่ง...</span>
+                    <span>{t('reportSending')}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-3.5 h-3.5" />
-                    <span>ส่งรายงาน</span>
+                    <span>{t('reportSubmit')}</span>
                   </>
                 )}
               </button>

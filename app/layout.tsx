@@ -5,10 +5,11 @@ import BackgroundProgressWidget from '@/components/BackgroundProgressWidget';
 import { LanguageProvider } from '@/lib/languageContext';
 import { ThemeProvider } from '@/lib/themeContext';
 import Script from 'next/script';
+import { languages } from '@/lib/languages';
 
 export const metadata: Metadata = {
-  title: 'NovelTrans Reader - แอพอ่านนิยายแปลไทยด้วย AI',
-  description: 'ดึงเนื้อหานิยายจากเว็บแปลเป็นภาษาไทยเชิงวรรณกรรมด้วย Gemini AI อ่านลื่นไหล สะดวกบนมือถือ',
+  title: `${languages.th.appTitle} - ${languages.th.appDesc}`,
+  description: `${languages.th.appTitle} - ${languages.th.heroDesc}`,
   manifest: '/manifest.json',
   other: {
     'mobile-web-app-capable': 'yes',

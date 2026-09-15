@@ -71,9 +71,9 @@ html.theme-light .modal-backdrop {
 
 /* Hero Banner in Light Mode */
 html.theme-light .hero-banner {
-  background: linear-gradient(135deg, #fffdf7 0%, #ffffff 50%, #f4e7d5 100%) !important;
+  background-color: #ffffff !important;
   border-color: #ebd3b3 !important;
-  box-shadow: 0 10px 25px -5px rgba(212, 163, 115, 0.16), 0 8px 10px -6px rgba(212, 163, 115, 0.06) !important;
+  box-shadow: 0 4px 12px rgba(212, 163, 115, 0.1) !important;
 }
 
 html.theme-light .hero-badge {
@@ -87,16 +87,12 @@ html.theme-light .hero-badge span {
   color: #6f4530 !important;
 }
 
-html.theme-light [class*="bg-gradient-"]:not([class*="from-amber-"]):not([class*="from-rose-"]):not([class*="from-emerald-"]):not([class*="read-now-btn"]) {
-  background-image: linear-gradient(135deg, #fffdf7 0%, #ffffff 50%, #f4e7d5 100%) !important;
-}
-
 html.theme-light .hero-title {
   color: #3b2a18 !important;
 }
 
 /* Ocean accent for the AI highlight (secondary color) */
-html.theme-light .hero-gemini-gradient {
+html.theme-light .hero-ai-accent {
   background: none !important;
   -webkit-text-fill-color: #0a7495 !important;
   color: #0a7495 !important;
@@ -199,7 +195,7 @@ html.theme-light .novel-cover-box {
 }
 
 html.theme-light .novel-placeholder {
-  background: linear-gradient(135deg, #f4e7d5 0%, #ebd3b3 100%) !important;
+  background-color: #f4e7d5 !important;
 }
 
 html.theme-light .novel-placeholder p {
@@ -269,9 +265,9 @@ html.theme-sepia .modal-backdrop {
 
 /* Hero Banner in Sepia */
 html.theme-sepia .hero-banner {
-  background: linear-gradient(135deg, #f7f0e1 0%, #f0e6ce 50%, #e5d5b3 100%) !important;
+  background-color: #f7f0e1 !important;
   border-color: #ccb895 !important;
-  box-shadow: 0 8px 20px -4px rgba(60, 40, 15, 0.12) !important;
+  box-shadow: 0 4px 12px rgba(60, 40, 15, 0.08) !important;
 }
 
 html.theme-sepia .hero-badge {
@@ -285,15 +281,11 @@ html.theme-sepia .hero-badge span {
   color: #632b05 !important;
 }
 
-html.theme-sepia [class*="bg-gradient-"]:not([class*="from-amber-"]):not([class*="from-rose-"]):not([class*="from-emerald-"]):not([class*="read-now-btn"]) {
-  background-image: linear-gradient(135deg, #f7f0e1 0%, #f0e6ce 50%, #e5d5b3 100%) !important;
-}
-
 html.theme-sepia .hero-title {
   color: #26190c !important;
 }
 
-html.theme-sepia .hero-gemini-gradient {
+html.theme-sepia .hero-ai-accent {
   background: none !important;
   -webkit-text-fill-color: #0f5c78 !important;
   color: #0f5c78 !important;
@@ -396,7 +388,7 @@ html.theme-sepia .novel-cover-box {
 }
 
 html.theme-sepia .novel-placeholder {
-  background: linear-gradient(135deg, #eee1c4 0%, #ddcaa2 100%) !important;
+  background-color: #eee1c4 !important;
   border-bottom: 1px solid #cfbd99 !important;
 }
 
@@ -462,7 +454,7 @@ html.theme-dark .read-now-btn svg {
 
 /* Base / Dark Hero Banner Styles */
 .hero-banner {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.95) 100%);
+  background-color: #0f172a;
   border-color: rgba(51, 65, 85, 0.8);
 }
 .hero-badge {

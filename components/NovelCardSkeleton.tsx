@@ -4,13 +4,13 @@ import React from 'react';
 
 export default function NovelCardSkeleton() {
   return (
-    <div className="relative flex flex-col bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden shadow-md animate-pulse">
+    <div className="relative flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm animate-pulse">
       {/* Cover Skeleton with Badge Placeholder */}
-      <div className="relative aspect-[3/4] w-full bg-slate-950/90 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/20 via-slate-800/20 to-slate-900/60" />
+      <div className="relative aspect-[4/4.5] w-full bg-slate-950 overflow-hidden">
+        <div className="absolute inset-0 bg-slate-900/40" />
         
         {/* Top-left chapter count badge placeholder */}
-        <div className="absolute top-2 left-2 w-14 h-4 bg-slate-800/80 rounded-lg" />
+        <div className="absolute top-2 left-2 w-14 h-4 bg-slate-800 rounded-lg" />
       </div>
 
       {/* Content Info Skeletons */}

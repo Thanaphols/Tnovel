@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Loader2, X, CheckCircle2, ChevronRight, Pause, Play } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
+import { useLanguage } from '@/lib/languageContext';
 
 export default function BackgroundProgressWidget() {
+  const { t } = useLanguage();
   const [active, setActive] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -30,7 +32,7 @@ export default function BackgroundProgressWidget() {
         if (isMounted && data.success && data.active && data.job) {
           setActive(true);
           setCompleted(false);
-          setNovelTitle(data.job.novelTitle || 'นิยายเรื่องใหม่');
+          setNovelTitle(data.job.novelTitle || '');
           setChapterTitle(data.job.chapterTitle || '');
           setCurrentChapter(data.job.currentChapter || 1);
           setTotalChapters(data.job.totalChapters || 1);
@@ -39,8 +41,8 @@ export default function BackgroundProgressWidget() {
           setIsPaused(Boolean(data.job.isPaused));
           setStatus(
             data.job.currentChapter > 0
-              ? `กำลังแอบแปลเบื้องหลังตอนที่ ${data.job.currentChapter}/${data.job.totalChapters}`
-              : 'กำลังเตรียมการแปล...'
+              ? `${t('translating')} ${t('chapterPrefix')} ${data.job.currentChapter}/${data.job.totalChapters}`
+              : t('translating')
           );
         }
       } catch (err) {
@@ -53,7 +55,7 @@ export default function BackgroundProgressWidget() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!socket) return;
@@ -62,19 +64,19 @@ export default function BackgroundProgressWidget() {
       if (data.status === 'batch_progress') {
         setActive(true);
         setCompleted(false);
-        setNovelTitle(data.novelTitle || 'นิยายเรื่องใหม่');
+        setNovelTitle(data.novelTitle || '');
         setChapterTitle(data.chapterTitle || '');
         setCurrentChapter(data.currentChapter || 1);
         setTotalChapters(data.totalChapters || 1);
         if (typeof data.chapterCount === 'number') setSavedCount(data.chapterCount);
         setPercent(data.percent || Math.round(((data.currentChapter || 1) / (data.totalChapters || 1)) * 100));
         setIsPaused(Boolean(data.isPaused));
-        setStatus(`กำลังแอบแปลเบื้องหลังตอนที่ ${data.currentChapter}/${data.totalChapters}`);
+        setStatus(`${t('translating')} ${t('chapterPrefix')} ${data.currentChapter}/${data.totalChapters}`);
       } else if (data.status === 'batch_completed') {
         setCompleted(true);
         setIsPaused(false);
         setPercent(100);
-        setStatus(data.message || 'แปลครบทั้งเรื่องเรียบร้อยแล้ว!');
+        setStatus(data.message || t('widgetCompleted'));
         setTimeout(() => {
           setActive(false);
           setCompleted(false);
@@ -99,7 +101,7 @@ export default function BackgroundProgressWidget() {
       socket.off('translation:progress', handleProgress);
       socket.off('translation:state', handleState);
     };
-  }, [socket]);
+  }, [socket, t]);
 
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -143,7 +145,7 @@ export default function BackgroundProgressWidget() {
                 )}
               </div>
               <span className="text-xs font-semibold text-slate-200">
-                {isPaused ? 'พักการแปล' : `${percent}% (${currentChapter}/${totalChapters})`}
+                {isPaused ? t('widgetPaused') : `${percent}% (${currentChapter}/${totalChapters})`}
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
@@ -151,7 +153,7 @@ export default function BackgroundProgressWidget() {
             <button
               onClick={togglePause}
               className="p-1.5 text-slate-300 hover:text-amber-400 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors"
-              title={isPaused ? 'แปลต่อ' : 'พักการแปล'}
+              title={isPaused ? t('widgetResume') : t('widgetPause')}
             >
               {isPaused ? <Play className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> : <Pause className="w-3.5 h-3.5" />}
             </button>
@@ -174,9 +176,9 @@ export default function BackgroundProgressWidget() {
                   <p className="text-xs font-bold text-slate-100 line-clamp-1">{novelTitle}</p>
                   <p className="text-[11px] font-medium transition-colors">
                     {completed ? (
-                      <span className="text-emerald-400">แปลครบเรียบร้อยแล้ว!</span>
+                      <span className="text-emerald-400">{t('widgetCompleted')}</span>
                     ) : isPaused ? (
-                      <span className="text-amber-400 font-semibold">⏸️ พักการแปลชั่วคราว</span>
+                      <span className="text-amber-400 font-semibold">{t('widgetPausedBadge')}</span>
                     ) : (
                       <span className="text-amber-400">{status}</span>
                     )}
@@ -188,7 +190,7 @@ export default function BackgroundProgressWidget() {
                 {!completed && (
                   <button
                     onClick={togglePause}
-                    title={isPaused ? 'กดเพื่อแปลต่อ' : 'กดเพื่อหยุดชั่วคราว'}
+                    title={isPaused ? t('widgetClickToResume') : t('widgetClickToPause')}
                     className={`p-1.5 rounded-lg border transition-all flex items-center justify-center ${
                       isPaused
                         ? 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400'
@@ -201,14 +203,14 @@ export default function BackgroundProgressWidget() {
 
                 <button
                   onClick={() => setMinimized(true)}
-                  title="ย่อขนาด"
+                  title={t('widgetMinimize')}
                   className="p-1.5 text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 rounded-lg text-[10px] transition-colors"
                 >
-                  ย่อ
+                  {t('widgetMinimize')}
                 </button>
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  title="ยกเลิกการแปล"
+                  title={t('widgetCancel')}
                   className="p-1.5 text-slate-400 hover:text-rose-400 bg-slate-800/60 hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -231,14 +233,14 @@ export default function BackgroundProgressWidget() {
                       ? 'bg-emerald-400'
                       : isPaused
                       ? 'bg-amber-500'
-                      : 'bg-gradient-to-r from-amber-500 to-amber-300'
+                      : 'bg-amber-400'
                   }`}
                   style={{ width: `${percent}%` }}
                 />
               </div>
               <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                <span className="text-emerald-400/90">บันทึกแล้ว {savedCount} ตอน</span>
-                <span>สแกน {currentChapter}/{totalChapters}</span>
+                <span className="text-emerald-400/90">{t('widgetSavedCount')}{savedCount} {t('chaptersCount')}</span>
+                <span>{t('widgetScanCount')}{currentChapter}/{totalChapters}</span>
               </div>
             </div>
           </div>
@@ -260,12 +262,12 @@ export default function BackgroundProgressWidget() {
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-slate-100">ยืนยันยกเลิกการแปล?</h3>
+              <h3 className="text-base font-bold text-slate-100">{t('widgetCancelConfirmTitle')}</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                คุณต้องการยกเลิกการแปลเรื่อง <span className="font-semibold text-slate-200">"{novelTitle}"</span> ใช่หรือไม่?
+                {t('widgetCancelConfirmMsg')} <span className="font-semibold text-slate-200">"{novelTitle}"</span>?
               </p>
               <p className="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 p-2 rounded-xl mt-2">
-                💡 ตอนที่แปลเสร็จแล้ว ({currentChapter} ตอน) จะยังคงอยู่ และสามารถกลับมากดแปลต่อได้ตลอดเวลาในหน้า <strong>"ประวัติการแปล"</strong>
+                {t('widgetCancelTip')}
               </p>
             </div>
 
@@ -274,13 +276,13 @@ export default function BackgroundProgressWidget() {
                 onClick={handleConfirmCancel}
                 className="w-full py-2.5 px-4 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 active:scale-[0.99] rounded-xl shadow-lg shadow-rose-600/20 transition-all"
               >
-                ยืนยันยกเลิกการแปล
+                {t('widgetConfirmCancelBtn')}
               </button>
               <button
                 onClick={() => setShowCancelConfirm(false)}
                 className="w-full py-2.5 px-4 text-xs font-semibold text-slate-300 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all"
               >
-                แปลต่อ / ย้อนกลับ
+                {t('widgetResumeBackBtn')}
               </button>
             </div>
           </div>

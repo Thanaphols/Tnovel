@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer-core';
 
 export interface ScrapedNovelData {
   title: string;
+  novelTitle?: string;
   authorName: string;
   paragraphs: string[];
   sourceUrl: string;
@@ -67,6 +68,13 @@ export const NOVEL_SITE_CONFIGS: NovelSiteConfig[] = [
     authorSelector: ['.author-name'],
     contentSelectors: ['#chp_raw p', '.chp_raw p'],
     tocSelectors: ['.toc_a', '.chapter-link'],
+  },
+  {
+    domain: 'fanmtl.com',
+    titleSelector: ['.titles h2', 'h2.chapter-title', 'h1', 'h2'],
+    authorSelector: ['span[itemprop="author"]', '[itemprop="author"]', '.author-name', '.author'],
+    contentSelectors: ['.chapter-content p', '.chapter-content'],
+    tocSelectors: ['ul.chapter-list li a', '.chapter-list a'],
   },
 ];
 
@@ -274,11 +282,6 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
     minCount: 3,
   });
   const $ = cheerio.load(html);
-
-  $(
-    'script, style, iframe, nav, header, footer, noscript, .ads, .ad, .social-share, .comments, .sidebar, #sidebar, .nav-links, .j_report_btn, .btn-report, #challenge-stage, #challenge-error-text'
-  ).remove();
-
   const hostname = new URL(url).hostname.toLowerCase();
   const matchedConfig = NOVEL_SITE_CONFIGS.find((cfg) => hostname.includes(cfg.domain));
 
@@ -301,7 +304,21 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
     }
   }
 
+  let novelTitle: string | undefined = undefined;
+  if (hostname.includes('fanmtl.com')) {
+    const rawNovelTitle = $('.titles h1 a').text().trim() || $('.titles h1').text().trim();
+    if (rawNovelTitle) {
+      novelTitle = rawNovelTitle.replace(/[-|•]?\s*Webnovel.*$/i, '').trim();
+    }
+  }
+
+  $(
+    'script, style, iframe, nav, noscript, .ads, .ad, .social-share, .comments, .sidebar, #sidebar, .nav-links, .j_report_btn, .btn-report, #challenge-stage, #challenge-error-text'
+  ).remove();
+
   const authorSelectors = matchedConfig?.authorSelector || [
+    'span[itemprop="author"]',
+    '[itemprop="author"]',
     '.author-name',
     'meta[name="author"]',
     '.author',
@@ -345,20 +362,48 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
       t
     );
 
+  const isValidParagraph = (text: string) =>
+    text.length > 0 &&
+    !/^next chapter$/i.test(text) &&
+    !/^previous chapter$/i.test(text) &&
+    !/webnovel/i.test(text) &&
+    !/download app/i.test(text) &&
+    !/^advertisement$/i.test(text) &&
+    !isBotText(text);
+
   let foundBySelector = false;
   for (const selector of contentSelectors) {
     const els = $(selector);
     if (els.length > 0) {
       els.each((_: number, element: any) => {
-        const text = $(element).text().trim();
-        if (
-          text.length > 3 &&
-          !/^next chapter$/i.test(text) &&
-          !/^previous chapter$/i.test(text) &&
-          !/webnovel/i.test(text) &&
-          !/download app/i.test(text) &&
-          !isBotText(text)
-        ) {
+        const $el = $(element);
+
+        // If this element itself is a container with multiple <p> tags inside
+        if ($el.find('p').length > 1) {
+          $el.find('p').each((_: number, p: any) => {
+            const pText = $(p).text().trim();
+            if (isValidParagraph(pText)) {
+              paragraphs.push(pText);
+            }
+          });
+          return;
+        }
+
+        // If element is a container with <br> tags instead of <p> tags
+        if ($el.find('br').length > 0) {
+          $el.find('br').replaceWith('\n');
+          const lines = $el.text().split('\n');
+          for (const line of lines) {
+            const text = line.trim();
+            if (isValidParagraph(text)) {
+              paragraphs.push(text);
+            }
+          }
+          return;
+        }
+
+        const text = $el.text().trim();
+        if (isValidParagraph(text) && text.length > 3) {
           paragraphs.push(text);
         }
       });
@@ -372,21 +417,14 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
   if (!foundBySelector || paragraphs.length === 0) {
     $('p').each((_: number, element: any) => {
       const text = $(element).text().trim();
-      if (
-        text.length > 3 &&
-        !/^next chapter$/i.test(text) &&
-        !/^previous chapter$/i.test(text) &&
-        !/webnovel/i.test(text) &&
-        !/download app/i.test(text) &&
-        !isBotText(text)
-      ) {
+      if (isValidParagraph(text) && text.length > 3) {
         paragraphs.push(text);
       }
     });
   }
 
   title = title.replace(/\s+/g, ' ').replace(/(Read|Online|Free|Webnovel|Royal Road)/gi, '').trim();
-  const chapterMatch = title.match(/chapter\s*(\d+)/i) || url.match(/chapter-?(\d+)/i);
+  const chapterMatch = title.match(/chapter\s*(\d+)/i) || url.match(/chapter-?(\d+)/i) || url.match(/_(\d+)\.html/i);
   const chapterNumber = chapterMatch ? parseInt(chapterMatch[1], 10) : 1;
 
   if (!title || isBotText(title) || title.includes('webnovel.com')) {
@@ -399,6 +437,7 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
 
   return {
     title,
+    novelTitle,
     authorName,
     paragraphs: cleanParagraphs,
     sourceUrl: url,
@@ -417,6 +456,8 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
     } else if (!url.includes('/catalog')) {
       targetIndexUrl = url.endsWith('/') ? `${url}catalog` : `${url}/catalog`;
     }
+  } else if (hostname.includes('fanmtl.com')) {
+    targetIndexUrl = targetIndexUrl.replace(/_\d+\.html$/i, '.html');
   }
 
   const indexConfig = NOVEL_SITE_CONFIGS.find((cfg) => hostname.includes(cfg.domain));
@@ -440,6 +481,7 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
     .trim();
 
   let authorName =
+    $('span[itemprop="author"]').text().trim() ||
     $('.author-name').text().trim() ||
     $('meta[name="author"]').attr('content')?.trim() ||
     $('.author').text().trim() ||
@@ -455,6 +497,10 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
   }
 
   let coverUrl =
+    $('img[alt="' + title + '"]').attr('data-src') ||
+    $('.figure img').attr('data-src') ||
+    $('.novel-cover img').attr('data-src') ||
+    $('img.lazy[data-src*="cover"]').attr('data-src') ||
     $('meta[property="og:image"]').attr('content') ||
     $('.novel-cover img').attr('src') ||
     $('.cover-art img').attr('src') ||
@@ -471,8 +517,8 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
   }
 
   const description =
+    $('.summary').text().replace(/^Summary\s*/i, '').trim() ||
     $('.description').text().trim() ||
-    $('.summary').text().trim() ||
     $('meta[name="description"]').attr('content')?.trim();
 
   const chapters: ChapterLinkItem[] = [];
@@ -542,6 +588,7 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
     let chapTitle = rawText
       .replace(/\s+/g, ' ')
       .replace(/\b\d+\s+(month|day|year|hour|min|sec)s?(\s+ago|\.{2,})?/gi, '')
+      .replace(/^\d+\s+/, '')
       .replace(/\b(READ|Read now)\b/gi, '')
       .trim();
 
@@ -554,6 +601,81 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
       url: href,
     });
   });
+
+  // Handle FanMTL pagination (EmpireCMS AJAX pagination: /e/extend/fy.php?page=...&wjm=...)
+  if (hostname.includes('fanmtl.com')) {
+    let maxPage = 0;
+    let wjm = '';
+    $('.pagination a').each((_: number, el: any) => {
+      const href = $(el).attr('href') || '';
+      const m = href.match(/page=(\d+)&wjm=([^&"']+)/);
+      if (m) {
+        const pNum = parseInt(m[1], 10);
+        if (pNum > maxPage) maxPage = pNum;
+        if (!wjm) wjm = m[2];
+      }
+    });
+
+    if (maxPage >= 1 && wjm) {
+      const batchSize = 10;
+      for (let p = 1; p <= maxPage; p += batchSize) {
+        const pagePromises: Promise<string | null>[] = [];
+        for (let i = p; i < p + batchSize && i <= maxPage; i++) {
+          const pageUrl = `${parsedOrigin}/e/extend/fy.php?page=${i}&wjm=${wjm}`;
+          pagePromises.push(
+            axios
+              .get(pageUrl, {
+                headers: {
+                  'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                },
+                timeout: 15000,
+              })
+              .then((r) => r.data)
+              .catch((err) => {
+                console.warn(`[FanMTL Scraper] Failed to fetch page ${i}:`, err.message);
+                return null;
+              })
+          );
+        }
+        const pageResults = await Promise.all(pagePromises);
+        for (const pageHtml of pageResults) {
+          if (!pageHtml) continue;
+          const $page = cheerio.load(pageHtml);
+          $page('ul.chapter-list li a').each((_: number, el: any) => {
+            let href = $page(el).attr('href');
+            if (!href) return;
+            if (!href.startsWith('http')) {
+              try {
+                href = new URL(href, parsedOrigin).toString();
+              } catch {
+                return;
+              }
+            }
+            if (seenUrls.has(href)) return;
+            seenUrls.add(href);
+
+            let chapTitle = $page(el)
+              .text()
+              .trim()
+              .replace(/\s+/g, ' ')
+              .replace(/\b\d+\s+(month|day|year|hour|min|sec)s?(\s+ago|\.{2,})?/gi, '')
+              .replace(/^\d+\s+/, '')
+              .replace(/\b(READ|Read now)\b/gi, '')
+              .trim();
+
+            if (!chapTitle) chapTitle = `Chapter ${chapters.length + 1}`;
+
+            chapters.push({
+              chapterNumber: chapters.length + 1,
+              title: chapTitle,
+              url: href,
+            });
+          });
+        }
+      }
+    }
+  }
 
   return {
     title,

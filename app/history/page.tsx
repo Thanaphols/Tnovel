@@ -21,6 +21,7 @@ import {
 import { useSocket } from '@/lib/socket';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import UrlScrapeDrawer from '@/components/UrlScrapeDrawer';
+import { useLanguage } from '@/lib/languageContext';
 
 interface HistoryNovel {
   id: string;
@@ -57,6 +58,7 @@ export default function HistoryPage() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
   const { socket } = useSocket();
+  const { t, lang } = useLanguage();
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -167,14 +169,14 @@ export default function HistoryPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'เกิดข้อผิดพลาดในการเริ่มแปลต่อ');
+        alert(data.error || t('resumeError'));
       } else {
         setActiveJobId(novel.id);
         fetchHistory();
       }
     } catch (err: any) {
       console.error(err);
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      alert(t('networkError'));
     } finally {
       setResumingId(null);
     }
@@ -221,22 +223,22 @@ export default function HistoryPage() {
             <div className="space-y-1">
               <div className="hero-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold">
                 <History className="w-3.5 h-3.5" />
-                <span>ประวัติการแปลนิยาย</span>
+                <span>{t('historyTitle')}</span>
               </div>
               <h1 className="hero-title text-xl sm:text-2xl font-black tracking-tight">
-                รายการนิยายที่นำเข้าและแปลด้วย AI
+                {t('historySubTitle')}
               </h1>
               <p className="hero-desc text-xs sm:text-sm">
-                จัดการนิยายที่นำเข้า ตรวจสอบสถานะการแปล และกดแปลบทที่เหลือต่อได้ทันที
+                {t('historyDesc')}
               </p>
             </div>
 
             <button
               onClick={() => setIsScrapeOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all self-start sm:self-auto"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow-md active:scale-95 transition-all self-start sm:self-auto"
             >
               <Sparkles className="w-4 h-4" />
-              <span>แปลเรื่องใหม่</span>
+              <span>{t('btnTranslateNew')}</span>
             </button>
           </div>
 
@@ -252,7 +254,7 @@ export default function HistoryPage() {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <span>ทั้งหมด</span>
+                <span>{t('filterAll')}</span>
                 <span className={`px-1.5 py-0.2 text-[10px] rounded-md ${filter === 'all' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
                   {counts.all}
                 </span>
@@ -267,7 +269,7 @@ export default function HistoryPage() {
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span>กำลังแปล / พักไว้</span>
+                <span>{t('filterTranslating')}</span>
                 <span className={`px-1.5 py-0.2 text-[10px] rounded-md ${filter === 'translating' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-amber-400'}`}>
                   {counts.translating}
                 </span>
@@ -282,7 +284,7 @@ export default function HistoryPage() {
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>แปลเสร็จแล้ว</span>
+                <span>{t('filterCompleted')}</span>
                 <span className={`px-1.5 py-0.2 text-[10px] rounded-md ${filter === 'completed' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-emerald-400'}`}>
                   {counts.completed}
                 </span>
@@ -296,7 +298,7 @@ export default function HistoryPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ค้นหาชื่อเรื่อง / ผู้แต่ง..."
+                placeholder={t('historySearchPlaceholder')}
                 className="hero-search w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-500/60"
               />
             </div>
@@ -309,7 +311,7 @@ export default function HistoryPage() {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
             <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
-            <p className="text-xs">กำลังโหลดประวัติการแปลนิยาย...</p>
+            <p className="text-xs">{t('historyLoading')}</p>
           </div>
         ) : novels.length === 0 ? (
           <div className="py-20 text-center space-y-4 max-w-sm mx-auto">
@@ -317,13 +319,13 @@ export default function HistoryPage() {
               <History className="w-8 h-8 opacity-60" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-200">ไม่พบประวัติการแปลนิยาย</h3>
+              <h3 className="text-base font-bold text-slate-200">{t('historyEmpty')}</h3>
               <p className="text-xs text-slate-500">
                 {filter === 'translating'
-                  ? 'ไม่มีนิยายที่กำลังแปลหรือพักค้างไว้'
+                  ? t('historyEmptyTranslating')
                   : filter === 'completed'
-                  ? 'ยังไม่มีนิยายที่แปลครบสมบูรณ์'
-                  : 'คุณยังไม่ได้นำเข้านิยายเรื่องใดมาแปล'}
+                  ? t('historyEmptyCompleted')
+                  : t('historyEmptyAll')}
               </p>
             </div>
             <button
@@ -331,7 +333,7 @@ export default function HistoryPage() {
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all"
             >
               <Sparkles className="w-4 h-4" />
-              <span>เริ่มแปลนิยายเรื่องแรก</span>
+              <span>{t('btnStartFirstNovel')}</span>
             </button>
           </div>
         ) : (
@@ -359,7 +361,7 @@ export default function HistoryPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-amber-950/40 text-amber-500/60">
+                        <div className="w-full h-full flex items-center justify-center bg-slate-950 text-amber-500/60">
                           <BookOpen className="w-6 h-6" />
                         </div>
                       )}
@@ -378,20 +380,20 @@ export default function HistoryPage() {
                         {/* Status Badge */}
                         {isCompleted ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                            <CheckCircle2 className="w-3 h-3" /> แปลสมบูรณ์แล้ว
+                            <CheckCircle2 className="w-3 h-3" /> {t('statusCompleted')}
                           </span>
                         ) : isCurrentlyTranslating ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400">
-                            <Loader2 className="w-3 h-3 animate-spin" /> กำลังแปล...
+                            <Loader2 className="w-3 h-3 animate-spin" /> {t('translating')}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">
-                            <Clock className="w-3 h-3" /> พักไว้ / รอแปลต่อ
+                            <Clock className="w-3 h-3" /> {t('statusPaused')}
                           </span>
                         )}
 
                         <span className="text-[11px] text-slate-500">
-                          {new Date(novel.updatedAt).toLocaleDateString('th-TH', {
+                          {new Date(novel.updatedAt).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -404,14 +406,14 @@ export default function HistoryPage() {
                       </h3>
 
                       <p className="text-xs text-slate-400 line-clamp-1">
-                        {novel.titleEn} {novel.author ? `• ผู้แต่ง: ${novel.author.name}` : ''}
+                        {novel.titleEn} {novel.author ? `• ${t('authorTitle')}${novel.author.name}` : ''}
                       </p>
 
                       {/* Progress Bar & Chapter Counts */}
                       <div className="pt-1 space-y-1 max-w-md">
                         <div className="flex justify-between text-[11px] font-mono">
                           <span className="text-slate-400">
-                            แปลเสร็จ: <strong className="text-amber-400">{novel.chapterCount}</strong> / {novel.totalChapters} ตอน
+                            {t('translatedCountLabel')}<strong className="text-amber-400">{novel.chapterCount}</strong> / {novel.totalChapters} {t('chaptersCount')}
                           </span>
                           <span className={isCompleted ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
                             {novel.percent}%
@@ -422,7 +424,7 @@ export default function HistoryPage() {
                             className={`h-full rounded-full transition-all duration-500 ${
                               isCompleted
                                 ? 'bg-emerald-400'
-                                : 'bg-gradient-to-r from-amber-500 to-amber-300'
+                                : 'bg-amber-400'
                             }`}
                             style={{ width: `${novel.percent}%` }}
                           />
@@ -438,15 +440,15 @@ export default function HistoryPage() {
                       <button
                         onClick={() => handleResume(novel)}
                         disabled={resumingId === novel.id || Boolean(activeJobId)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 active:scale-95 transition-all"
-                        title="เริ่มดึงและแปลบทที่เหลือต่อ"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl shadow-sm active:scale-95 transition-all"
+                        title={t('resumeTranslateTooltip')}
                       >
                         {resumingId === novel.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <Play className="w-3.5 h-3.5 fill-current" />
                         )}
-                        <span>แปลต่อ</span>
+                        <span>{t('btnResume')}</span>
                       </button>
                     )}
 
@@ -457,7 +459,7 @@ export default function HistoryPage() {
                         className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs rounded-xl border border-slate-700 transition-colors"
                       >
                         <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                        <span>อ่านนิยาย</span>
+                        <span>{t('btnReadNovel')}</span>
                       </Link>
                     )}
 
@@ -468,7 +470,7 @@ export default function HistoryPage() {
                         target="_blank"
                         rel="noreferrer"
                         className="p-2 text-slate-400 hover:text-slate-200 bg-slate-950/80 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors"
-                        title="เปิดเว็บต้นฉบับ"
+                        title={t('openOriginalWebTooltip')}
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
@@ -478,7 +480,7 @@ export default function HistoryPage() {
                     <button
                       onClick={() => setDeleteTarget(novel)}
                       className="p-2 text-slate-400 hover:text-rose-400 bg-slate-950/80 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/30 rounded-xl transition-colors"
-                      title="ย้ายลงถังขยะ"
+                      title={t('moveToBin')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -493,8 +495,8 @@ export default function HistoryPage() {
       {/* Confirmation Modal for Delete */}
       <ConfirmDeleteModal
         isOpen={Boolean(deleteTarget)}
-        title={`ย้ายนิยาย "${deleteTarget?.titleTh || deleteTarget?.titleEn}" ลงถังขยะ`}
-        message="คุณต้องการย้ายนิยายเรื่องนี้และบทนิยายทั้งหมดลงถังขยะใช่หรือไม่? (สามารถกู้คืนกลับมาได้ในหน้าถังขยะ)"
+        title={`${t('confirmMoveToBinTitle')} "${deleteTarget?.titleTh || deleteTarget?.titleEn}"`}
+        message={t('confirmMoveToBinMsg')}
         isLoading={isDeleting}
         onConfirm={handleDeleteConfirm}
         onClose={() => setDeleteTarget(null)}

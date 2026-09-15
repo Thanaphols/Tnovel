@@ -11,6 +11,7 @@ import { useSocket } from '@/lib/socket';
 import { ReaderSettingsState, saveReaderSettings, getReaderSettings, saveChapterOffline, getChapterOffline } from '@/lib/db';
 import { toggleChapterBookmark, recordGuestReadingHistory } from '@/lib/bookshelf';
 import { useAppTheme } from '@/lib/themeContext';
+import { useLanguage } from '@/lib/languageContext';
 
 interface ReaderViewProps {
   chapter: {
@@ -44,6 +45,7 @@ interface LoadedChapter {
 
 export default function ReaderView({ chapter }: ReaderViewProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const { socket } = useSocket();
   const { theme: appTheme, setTheme: setAppTheme } = useAppTheme();
 
@@ -268,7 +270,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         body: JSON.stringify({ engine }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || `แปลใหม่ไม่สำเร็จ (${res.status})`);
+      if (!res.ok || !data.success) throw new Error(data.error || `${t('retranslateFailed')} (${res.status})`);
 
       setLoadedChapters((prev) =>
         prev.map((c) => (c.id === target.id ? { ...c, titleTh: data.titleTh, contentTh: data.contentTh } : c))
@@ -286,10 +288,10 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       });
       setRetranslateToast({
         ok: true,
-        message: engine === 'gemini' ? 'แปลใหม่ด้วย Gemini เรียบร้อย' : 'แปลใหม่ด้วย Google Translate เรียบร้อย',
+        message: engine === 'gemini' ? t('retranslatedGeminiSuccess') : t('retranslatedGoogleSuccess'),
       });
     } catch (err: any) {
-      setRetranslateToast({ ok: false, message: err.message || 'แปลใหม่ไม่สำเร็จ' });
+      setRetranslateToast({ ok: false, message: err.message || t('retranslateFailed') });
     } finally {
       setIsRetranslating(false);
       setTimeout(() => setRetranslateToast(null), 6000);
@@ -309,7 +311,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
             {
               id: data.chapterId,
               chapterNumber: data.chapterNumber || prev.length + 1,
-              titleTh: data.chapterTitle || `ตอนที่ ${prev.length + 1}`,
+              titleTh: data.chapterTitle || `${t('chapterPrefix')} ${prev.length + 1}`,
             },
           ];
           return updated.sort((a, b) => a.chapterNumber - b.chapterNumber);
@@ -461,7 +463,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       langBtn: 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20',
       reportBtn: 'text-slate-400 hover:text-rose-400 hover:bg-slate-800/50',
       progressTrack: 'bg-slate-800/40',
-      progressBar: 'bg-gradient-to-r from-amber-500 to-amber-400',
+      progressBar: 'bg-amber-400',
       divider: 'border-slate-800/80',
       prevBtn: 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 shadow-md',
       nextBtn: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20',
@@ -486,7 +488,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       langBtn: 'bg-[#c88d46]/15 border-[#c88d46]/40 text-[#8c571e] hover:bg-[#c88d46]/25',
       reportBtn: 'text-[#8c7860] hover:text-rose-700 hover:bg-[#dfd3b9]/60',
       progressTrack: 'bg-[#dfd3b9]/50',
-      progressBar: 'bg-gradient-to-r from-[#c88d46] to-[#dfa65f]',
+      progressBar: 'bg-[#c88d46]',
       divider: 'border-[#dfd3b9]',
       prevBtn: 'bg-[#ede2c8] hover:bg-[#e4d7ba] text-[#433422] border border-[#dacdb0] shadow-sm',
       nextBtn: 'bg-[#c88d46] hover:bg-[#b87d36] text-[#fbf9f5] font-bold shadow-md shadow-[#c88d46]/20',
@@ -511,7 +513,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       langBtn: 'bg-amber-500/10 border-amber-500/30 text-amber-700 hover:bg-amber-500/20',
       reportBtn: 'text-stone-400 hover:text-rose-600 hover:bg-stone-100',
       progressTrack: 'bg-stone-200/60',
-      progressBar: 'bg-gradient-to-r from-amber-500 to-amber-400',
+      progressBar: 'bg-amber-500',
       divider: 'border-stone-200',
       prevBtn: 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-200 shadow-sm',
       nextBtn: 'bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold shadow-md shadow-amber-500/20',
@@ -601,20 +603,20 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
     if (diffX > 0) {
       if (prevChapter) {
         setSwipeOffset(Math.min(90, diffX * 0.35));
-        setSwipeHint(`← ตอนก่อนหน้า`);
+        setSwipeHint(`← ${t('prevChapter')}`);
       } else {
         setSwipeOffset(Math.min(15, diffX * 0.08));
-        setSwipeHint('ไม่มีตอนก่อนหน้า');
+        setSwipeHint(t('noPrevChapter'));
       }
     }
     // Swiping Left (diffX < 0) -> Next Chapter
     else if (diffX < 0) {
       if (nextChapter) {
         setSwipeOffset(Math.max(-90, diffX * 0.35));
-        setSwipeHint(`ตอนถัดไป →`);
+        setSwipeHint(`${t('nextChapter')} →`);
       } else {
         setSwipeOffset(Math.max(-15, diffX * 0.08));
-        setSwipeHint('ไม่มีตอนถัดไป');
+        setSwipeHint(t('noNextChapter'));
       }
     }
   };
@@ -690,7 +692,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
           <div className="truncate">
             <h2 className={`text-xs font-bold truncate ${activeTheme.headerTitle}`}>{activeChapter.novelTitle}</h2>
             <p className={`text-[11px] opacity-90 truncate ${activeTheme.headerSubtitle}`}>
-              ตอนที่ {activeChapter.chapterNumber} • {activeChapter.titleTh || activeChapter.titleEn}
+              {t('chapterPrefix')} {activeChapter.chapterNumber} • {activeChapter.titleTh || activeChapter.titleEn}
             </p>
           </div>
         </div>
@@ -700,10 +702,10 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
           <button
             onClick={() => setIsTOCDrawerOpen(true)}
             className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${activeTheme.headerBtn}`}
-            title="สารบัญบทนิยาย"
+            title={t('tocTitle')}
           >
             <BookOpen className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">สารบัญ ({allChapters.length})</span>
+            <span className="hidden sm:inline">{t('tableOfContents')} ({allChapters.length})</span>
           </button>
 
           {/* Toggle Language Quick Button */}
@@ -723,7 +725,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
           <button
             onClick={() => setIsSettingsOpen(true)}
             className={`p-2 rounded-xl transition-colors ${activeTheme.headerBtn}`}
-            title="ตั้งค่าและเครื่องมือบทนิยาย"
+            title={t('readerSettingsTitle')}
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -746,24 +748,24 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
               {chapIndex === 0 ? (
                 <div className={`border-b pb-6 space-y-2 text-center ${activeTheme.divider}`}>
                   <span className={`text-xs font-bold uppercase tracking-widest ${activeTheme.titleBadge}`}>
-                    ตอนที่ {chap.chapterNumber}
+                    {t('chapterPrefix')} {chap.chapterNumber}
                   </span>
                   <h1 className={`reader-title text-xl sm:text-2xl font-bold leading-tight ${activeTheme.titleText}`}>
                     {settings.displayMode === 'en' ? chap.titleEn : chap.titleTh || chap.titleEn}
                   </h1>
-                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>ผู้แต่ง: {chap.authorName}</p>
+                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>{t('authorTitle')}{chap.authorName}</p>
                 </div>
               ) : (
                 <div className={`pt-12 pb-6 border-t-2 border-dashed ${activeTheme.divider} text-center space-y-2`}>
                   <div className="flex items-center justify-center">
                     <span className={`px-3 py-1 text-xs font-bold rounded-full border ${activeTheme.titleBadge} bg-amber-500/10 border-amber-500/30`}>
-                      ตอนต่อไป • ตอนที่ {chap.chapterNumber}
+                      {t('nextChapter')} • {t('chapterPrefix')} {chap.chapterNumber}
                     </span>
                   </div>
                   <h2 className={`reader-title text-xl sm:text-2xl font-bold leading-tight ${activeTheme.titleText}`}>
                     {settings.displayMode === 'en' ? chap.titleEn : chap.titleTh || chap.titleEn}
                   </h2>
-                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>ผู้แต่ง: {chap.authorName}</p>
+                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>{t('authorTitle')}{chap.authorName}</p>
                 </div>
               )}
 
@@ -810,7 +812,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         {isLoadingNext && (
           <div className="py-8 flex flex-col items-center justify-center gap-2.5 text-amber-400">
             <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
-            <span className="text-xs font-semibold animate-pulse">กำลังโหลดตอนถัดไปให้อัตโนมัติ...</span>
+            <span className="text-xs font-semibold animate-pulse">{t('autoLoadingNextChapter')}</span>
           </div>
         )}
 
@@ -820,7 +822,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         {/* End of Chapters Footer */}
         {!hasMoreChapters && (
           <div className={`pt-10 pb-14 border-t ${activeTheme.divider} space-y-4 text-center`}>
-            <p className="text-xs font-semibold text-slate-400">คุณอ่านถึงตอนล่าสุดที่มีในระบบแล้ว</p>
+            <p className="text-xs font-semibold text-slate-400">{t('reachedLatestChapter')}</p>
             <div className="flex justify-center">
               <button
                 onClick={handleCheckNextChapter}
@@ -828,14 +830,14 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                 className={`flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold rounded-2xl transition-all ${
                   isCheckingNext ? 'opacity-70' : ''
                 } bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 shadow-lg shadow-amber-500/10`}
-                title="กดเพื่อตรวจเช็คตอนที่แปลเสร็จใหม่ล่าสุด"
+                title={t('checkNewChapterTooltip')}
               >
                 {isCheckingNext ? (
                   <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                 ) : (
                   <Sparkles className="w-4 h-4 text-amber-400" />
                 )}
-                <span>ตรวจเช็คตอนใหม่ล่าสุด</span>
+                <span>{t('checkNewChapter')}</span>
               </button>
             </div>
           </div>
@@ -862,7 +864,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
             {/* Header inside Menu: Chapter info & Actions (Bookmark & Close) */}
             <div className="flex items-center justify-between text-xs px-1">
               <div className="flex items-center gap-2 truncate max-w-[75%]">
-                <span className="font-bold text-amber-500 shrink-0">ตอนที่ {activeChapter.chapterNumber}</span>
+                <span className="font-bold text-amber-500 shrink-0">{t('chapterPrefix')} {activeChapter.chapterNumber}</span>
                 <span className="opacity-75 truncate">{activeChapter.titleTh || activeChapter.titleEn}</span>
               </div>
               <div className="flex items-center gap-1">
@@ -873,14 +875,14 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                       ? 'text-amber-400 bg-amber-500/20'
                       : 'opacity-60 hover:opacity-100 hover:bg-slate-800/40 text-slate-300'
                   }`}
-                  title={isCurrentChapterBookmarked ? 'ยกเลิกคั่นหน้านี้' : 'คั่นหน้านี้ (บุ๊กมาร์ก)'}
+                  title={isCurrentChapterBookmarked ? t('bookmarkedCurrentChapter') : t('bookmarkCurrentChapter')}
                 >
                   <Bookmark className={`w-4 h-4 ${isCurrentChapterBookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
                 </button>
                 <button
                   onClick={() => setIsMenuOpen(false)}
                   className="p-1 rounded-lg opacity-60 hover:opacity-100 hover:bg-slate-800/40 transition-all shrink-0"
-                  title="ปิดเมนู"
+                  title={t('closeMenu')}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -897,7 +899,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                   className={`flex items-center justify-center gap-1.5 py-2.5 px-2 text-xs font-semibold rounded-2xl transition-all ${activeTheme.prevBtn}`}
                 >
                   <ChevronLeft className="w-4 h-4 shrink-0" />
-                  <span className="truncate">ตอนก่อนหน้า</span>
+                  <span className="truncate">{t('prevChapter')}</span>
                 </Link>
               ) : (
                 <button
@@ -905,21 +907,21 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                   className={`flex items-center justify-center gap-1.5 py-2.5 px-2 text-xs font-semibold rounded-2xl transition-all ${activeTheme.disabledBtn}`}
                 >
                   <ChevronLeft className="w-4 h-4 shrink-0" />
-                  <span className="truncate">ตอนก่อนหน้า</span>
+                  <span className="truncate">{t('prevChapter')}</span>
                 </button>
               )}
 
-              {/* Table of Contents (สารบัญ) */}
+              {/* Table of Contents */}
               <button
                 onClick={() => {
                   setIsTOCDrawerOpen(true);
                   setIsMenuOpen(false);
                 }}
                 className={`flex items-center justify-center gap-1.5 py-2.5 px-2 text-xs font-semibold rounded-2xl transition-all ${activeTheme.tocBtn}`}
-                title="เลือกตอนจากสารบัญ"
+                title={t('selectChapterFromTocTooltip')}
               >
                 <BookOpen className="w-4 h-4 text-amber-500 shrink-0" />
-                <span className="truncate font-bold">สารบัญ ({allChapters.length || activeChapter.chapterNumber})</span>
+                <span className="truncate font-bold">{t('tableOfContents')} ({allChapters.length || activeChapter.chapterNumber})</span>
               </button>
 
               {/* Next Chapter */}
@@ -929,7 +931,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                   onClick={() => setIsMenuOpen(false)}
                   className={`flex items-center justify-center gap-1.5 py-2.5 px-2 text-xs font-bold rounded-2xl transition-all ${activeTheme.nextBtn}`}
                 >
-                  <span className="truncate">ตอนต่อไป</span>
+                  <span className="truncate">{t('nextChapter')}</span>
                   <ChevronRight className="w-4 h-4 shrink-0" />
                 </Link>
               ) : (
@@ -939,14 +941,14 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                   }}
                   disabled={isCheckingNext}
                   className={`flex items-center justify-center gap-1.5 py-2.5 px-2 text-xs font-bold rounded-2xl transition-all bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 shadow-sm`}
-                  title="ตรวจเช็คตอนใหม่ล่าสุด"
+                  title={t('checkNewChapterTooltip')}
                 >
                   {isCheckingNext ? (
                     <Loader2 className="w-4 h-4 animate-spin shrink-0 text-amber-400" />
                   ) : (
                     <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
                   )}
-                  <span className="truncate">เช็คตอนใหม่</span>
+                  <span className="truncate">{t('checkNewChapter')}</span>
                 </button>
               )}
             </div>
@@ -987,15 +989,15 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-100">ตอนที่ {newChapterToast.chapterNumber} แปลเสร็จแล้ว!</p>
-            <p className="text-[11px] text-slate-400">พร้อมให้อ่านต่อได้ทันที</p>
+            <p className="text-xs font-bold text-slate-100">{t('chapterPrefix')} {newChapterToast.chapterNumber} {t('newChapterToastDone')}</p>
+            <p className="text-[11px] text-slate-400">{t('newChapterToastReady')}</p>
           </div>
           <Link
             href={`/reader/${newChapterToast.id}`}
             onClick={() => setNewChapterToast(null)}
             className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-all"
           >
-            อ่านเลย
+            {t('readNow')}
           </Link>
         </div>
       )}
@@ -1019,7 +1021,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         onClose={() => setIsReportOpen(false)}
         novelId={chapter.novelId}
         chapterId={activeChapter.id}
-        title={`${activeChapter.novelTitle} - ตอนที่ ${activeChapter.chapterNumber}`}
+        title={`${activeChapter.novelTitle} - ${t('chapterPrefix')} ${activeChapter.chapterNumber}`}
       />
     </div>
   );

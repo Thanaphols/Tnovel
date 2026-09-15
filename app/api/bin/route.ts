@@ -81,21 +81,46 @@ export async function POST(request: Request) {
         restoredChapters: chapterIds,
       });
     } else if (action === 'permanent_delete') {
-      const session = await getSession();
-      if (session && session.role !== 'ADMIN') {
-        return NextResponse.json(
-          { success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถลบถาวรได้' },
-          { status: 403 }
-        );
-      }
-
       if (novelIds.length > 0) {
+        // Clean up relations first to prevent any SQLite foreign key constraints
+        await prisma.report.deleteMany({
+          where: {
+            OR: [
+              { novelId: { in: novelIds } },
+              { chapter: { novelId: { in: novelIds } } },
+            ],
+          },
+        });
+        await prisma.readingProgress.deleteMany({
+          where: { chapter: { novelId: { in: novelIds } } },
+        });
+        await prisma.chapterBookmark.deleteMany({
+          where: { chapter: { novelId: { in: novelIds } } },
+        });
+        await prisma.novelLike.deleteMany({
+          where: { novelId: { in: novelIds } },
+        });
+        await prisma.bookshelf.deleteMany({
+          where: { novelId: { in: novelIds } },
+        });
+        await prisma.chapter.deleteMany({
+          where: { novelId: { in: novelIds } },
+        });
         await prisma.novel.deleteMany({
           where: { id: { in: novelIds } },
         });
       }
 
       if (chapterIds.length > 0) {
+        await prisma.report.deleteMany({
+          where: { chapterId: { in: chapterIds } },
+        });
+        await prisma.readingProgress.deleteMany({
+          where: { chapterId: { in: chapterIds } },
+        });
+        await prisma.chapterBookmark.deleteMany({
+          where: { chapterId: { in: chapterIds } },
+        });
         await prisma.chapter.deleteMany({
           where: { id: { in: chapterIds } },
         });

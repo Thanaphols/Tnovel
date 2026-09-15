@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
+import { useLanguage } from '@/lib/languageContext';
 
 interface UrlScrapeDrawerProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface UrlScrapeDrawerProps {
 }
 
 export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProps) {
+  const { t } = useLanguage();
   const [url, setUrl] = useState('');
   const [mode, setMode] = useState<'auto' | 'single' | 'full_novel'>('auto');
   const [loading, setLoading] = useState(false);
@@ -32,26 +34,26 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
 
     function handleProgress(data: any) {
       if (data.status === 'indexing') {
-        setStatusMessage('กำลังกวาดสายตาดึงรายชื่อบทนิยายทั้งหมดจากหน้าหลัก...');
+        setStatusMessage(t('scrapeStatusCrawling'));
         setProgressPercent(10);
       } else if (data.status === 'scraping') {
-        setStatusMessage('กำลังดึงเนื้อหาจากเว็บนิยายต้นฉบับ...');
+        setStatusMessage(t('scrapeStatusFetching'));
         setProgressPercent(20);
       } else if (data.status === 'translating') {
-        setStatusMessage('กำลังวิเคราะห์และแปลบทนิยายด้วย Gemini AI...');
+        setStatusMessage(t('scrapeStatusTranslating'));
         setProgressPercent(40);
       } else if (data.status === 'translating_batch') {
-        setStatusMessage(`กำลังแปลย่อหน้าชุดที่ ${data.currentBatch}/${data.totalBatches}...`);
+        setStatusMessage(`${t('scrapeStatusTranslatingBatchesPrefix')}${data.currentBatch}/${data.totalBatches}...`);
         setProgressPercent(40 + Math.round((data.percent || 0) * 0.5));
       } else if (data.status === 'batch_progress') {
         setBatchInfo({ current: data.currentChapter, total: data.totalChapters, title: data.chapterTitle });
-        setStatusMessage(`กำลังแอบแปลเบื้องหลังตอนที่ ${data.currentChapter}/${data.totalChapters}: "${data.chapterTitle || ''}"`);
+        setStatusMessage(`${t('scrapeStatusTranslatingBgPrefix')}${data.currentChapter}/${data.totalChapters}: "${data.chapterTitle || ''}"`);
         setProgressPercent(data.percent || Math.round((data.currentChapter / data.totalChapters) * 100));
       } else if (data.status === 'batch_completed') {
-        setStatusMessage(data.message || 'แปลนิยายครบทั้งเรื่องเรียบร้อยแล้ว!');
+        setStatusMessage(data.message || t('scrapeStatusComplete'));
         setProgressPercent(100);
       } else if (data.status === 'completed') {
-        setStatusMessage('แปลเรียบร้อยแล้ว! กำลังนำคุณไปยังหน้าอ่าน...');
+        setStatusMessage(t('scrapeStatusRedirecting'));
         setProgressPercent(100);
       }
     }
@@ -60,7 +62,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
     return () => {
       socket.off('translation:progress', handleProgress);
     };
-  }, [socket]);
+  }, [socket, t]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -102,7 +104,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
 
     setError(null);
     setLoading(true);
-    setStatusMessage('กำลังเริ่มต้นระบบดึงข้อมูล...');
+    setStatusMessage(t('scrapeStatusInit'));
     setProgressPercent(5);
     setBatchInfo(null);
 
@@ -117,11 +119,11 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       try {
         data = await res.json();
       } catch (jsonErr) {
-        throw new Error('เกิดข้อผิดพลาดในการรับข้อมูลจากเซิร์ฟเวอร์ กรุณาตรวจสอบฐานข้อมูล');
+        throw new Error(t('scrapeErrorServerDb'));
       }
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || `เกิดข้อผิดพลาดรหัส ${res.status}`);
+        throw new Error(data.error || `${t('scrapeErrorStatusCode')}${res.status}`);
       }
 
       // Dispatch event to refresh novels on homepage immediately
@@ -138,7 +140,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
           router.push('/');
         }, 1200);
       } else {
-        setStatusMessage('เรียบร้อย! กำลังนำคุณไปยังหน้าอ่านนิยาย...');
+        setStatusMessage(t('scrapeSuccessRedirecting'));
         setProgressPercent(100);
         setTimeout(() => {
           setLoading(false);
@@ -148,7 +150,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'เกิดข้อผิดพลาดในการดึงเนื้อหา');
+      setError(err.message || t('scrapeErrorFetch'));
       setLoading(false);
     }
   }
@@ -159,7 +161,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
 
     setError(null);
     setLoading(true);
-    setStatusMessage('กำลังแปลเนื้อหาที่วางไว้...');
+    setStatusMessage(t('scrapeStatusPasting'));
     setProgressPercent(30);
     setBatchInfo(null);
 
@@ -178,18 +180,18 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       try {
         data = await res.json();
       } catch {
-        throw new Error('เกิดข้อผิดพลาดในการรับข้อมูลจากเซิร์ฟเวอร์');
+        throw new Error(t('scrapeErrorServer'));
       }
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || `เกิดข้อผิดพลาดรหัส ${res.status}`);
+        throw new Error(data.error || `${t('scrapeErrorStatusCode')}${res.status}`);
       }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('novels:refresh'));
       }
 
-      setStatusMessage(`แปลเสร็จ ${data.paragraphCount} ย่อหน้า กำลังเปิดหน้าอ่าน...`);
+      setStatusMessage(`${t('scrapeSuccessPasted')}${data.paragraphCount}${t('scrapeSuccessPastedTail')}`);
       setProgressPercent(100);
       setTimeout(() => {
         setLoading(false);
@@ -200,14 +202,14 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       }, 600);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'เกิดข้อผิดพลาดในการเพิ่มตอน');
+      setError(err.message || t('scrapeErrorAddChapter'));
       setLoading(false);
     }
   }
 
   const SAMPLE_URLS = [
-    { title: 'หน้าหลัก RoyalRoad (ดึงทั้งเรื่อง)', mode: 'full_novel', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning' },
-    { title: 'ตอนเฉพาะ (Single Chapter)', mode: 'single', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning/chapter/301778/1-good-morning-brother' },
+    { title: t('sampleFullTitle'), mode: 'full_novel', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning' },
+    { title: t('sampleSingleTitle'), mode: 'single', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning/chapter/301778/1-good-morning-brother' },
   ];
 
   return (
@@ -236,9 +238,9 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
             <Sparkles className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-100">เพิ่มนิยายแปลไทย</h3>
+            <h3 className="text-lg font-bold text-slate-100">{t('drawerAddNovel')}</h3>
             <p className="text-xs text-slate-400">
-              {tab === 'url' ? 'ดึงจาก URL เว็บนิยายแล้วแปลอัตโนมัติ' : 'วางเนื้อหาตอนที่คัดลอกมาเองเพื่อแปล'}
+              {tab === 'url' ? t('drawerTabUrlSub') : t('drawerTabPasteSub')}
             </p>
           </div>
         </div>
@@ -254,7 +256,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                   : 'text-slate-400 bg-slate-950 border-slate-800'
               }`}
             >
-              <Globe className="w-3.5 h-3.5" /> จาก URL
+              <Globe className="w-3.5 h-3.5" /> {t('tabFromUrl')}
             </button>
             <button
               type="button"
@@ -265,7 +267,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                   : 'text-slate-400 bg-slate-950 border-slate-800'
               }`}
             >
-              <ClipboardPaste className="w-3.5 h-3.5" /> แปะเนื้อหาเอง
+              <ClipboardPaste className="w-3.5 h-3.5" /> {t('tabPasteSelf')}
             </button>
           </div>
         )}
@@ -286,23 +288,23 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
               <p className="text-sm font-semibold text-slate-200">{statusMessage}</p>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all duration-300 rounded-full"
+                  className="h-full bg-amber-400 transition-all duration-300 rounded-full"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
-              <p className="text-[11px] text-slate-400">{progressPercent}% เสร็จสิ้น</p>
+              <p className="text-[11px] text-slate-400">{progressPercent}% {t('statusDone')}</p>
             </div>
           </div>
         ) : tab === 'paste' ? (
           <form onSubmit={handlePasteSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-300">ชื่อเรื่อง</label>
+              <label className="text-xs font-medium text-slate-300">{t('pasteNovelTitleLabel')}</label>
               <input
                 type="text"
                 value={pasteNovelTitle}
                 onChange={(e) => setPasteNovelTitle(e.target.value)}
                 list="paste-novel-titles"
-                placeholder="เลือกเรื่องเดิม หรือพิมพ์ชื่อเรื่องใหม่"
+                placeholder={t('pasteNovelTitlePlaceholder')}
                 required
                 className="w-full px-4 py-3 text-sm text-slate-100 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500/60 placeholder:text-slate-500 transition-all"
               />
@@ -311,49 +313,49 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                   <option key={n.id} value={n.titleTh || n.titleEn} />
                 ))}
               </datalist>
-              <p className="text-[11px] text-slate-500">ชื่อตรงกับเรื่องที่มีอยู่ = เพิ่มเป็นตอนถัดไปของเรื่องนั้น</p>
+              <p className="text-[11px] text-slate-500">{t('pasteNovelTitleHint')}</p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-300">ชื่อตอน (ไม่ใส่ก็ได้)</label>
+              <label className="text-xs font-medium text-slate-300">{t('pasteChapterTitleLabel')}</label>
               <input
                 type="text"
                 value={pasteChapterTitle}
                 onChange={(e) => setPasteChapterTitle(e.target.value)}
-                placeholder="Chapter 1: ..."
+                placeholder={t('pasteChapterTitlePlaceholder')}
                 className="w-full px-4 py-3 text-sm text-slate-100 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500/60 placeholder:text-slate-500 transition-all"
               />
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                <ClipboardPaste className="w-4 h-4 text-amber-400" /> เนื้อหาต้นฉบับ (ภาษาอังกฤษ)
+                <ClipboardPaste className="w-4 h-4 text-amber-400" /> {t('pasteContentLabel')}
               </label>
               <textarea
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
                 rows={10}
-                placeholder="วางเนื้อหาตอนที่นี่ เว้นบรรทัดว่างระหว่างย่อหน้า"
+                placeholder={t('pasteContentPlaceholder')}
                 required
                 className="w-full px-4 py-3 text-sm text-slate-100 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500/60 placeholder:text-slate-500 transition-all resize-y"
               />
               <p className="text-[11px] text-slate-500">
-                {pasteText.trim() ? `${pasteText.trim().length.toLocaleString()} ตัวอักษร` : 'ยังไม่มีเนื้อหา'}
+                {pasteText.trim() ? `${pasteText.trim().length.toLocaleString()} ${t('charCount')}` : t('noContentYet')}
               </p>
             </div>
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-[0.99] rounded-xl shadow-lg shadow-amber-500/20 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.99] rounded-xl shadow-md transition-all"
             >
-              <Sparkles className="w-4 h-4" /> แปลและบันทึกเป็นตอนใหม่
+              <Sparkles className="w-4 h-4" /> {t('btnTranslateAndSave')}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">โหมดการดึงนิยาย</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('scrapeModeLabel')}</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -364,7 +366,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                       : 'text-slate-400 bg-slate-950 border-slate-800'
                   }`}
                 >
-                  <Layers className="w-3.5 h-3.5" /> ดึงทั้งเรื่องจากหน้าหลัก
+                  <Layers className="w-3.5 h-3.5" /> {t('scrapeFullNovel')}
                 </button>
 
                 <button
@@ -376,20 +378,20 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                       : 'text-slate-400 bg-slate-950 border-slate-800'
                   }`}
                 >
-                  <BookOpen className="w-3.5 h-3.5" /> ดึงเฉพาะตอนนี้
+                  <BookOpen className="w-3.5 h-3.5" /> {t('scrapeSingleChapter')}
                 </button>
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-amber-400" /> URL หน้าหลักนิยาย หรือ URL บทนิยาย
+                <Globe className="w-4 h-4 text-amber-400" /> {t('scrapeUrlInputLabel')}
               </label>
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://www.royalroad.com/fiction/..."
+                placeholder={t('urlPlaceholder')}
                 required
                 className="w-full px-4 py-3 text-sm text-slate-100 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60 placeholder:text-slate-500 transition-all"
               />
@@ -397,14 +399,14 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-[0.99] rounded-xl shadow-lg shadow-amber-500/20 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.99] rounded-xl shadow-md transition-all"
             >
-              <Sparkles className="w-4 h-4" /> เริ่มต้นดึงและแปลด้วย AI
+              <Sparkles className="w-4 h-4" /> {t('btnStartScrapeAndTranslate')}
               <ArrowRight className="w-4 h-4" />
             </button>
 
             <div className="pt-2 border-t border-slate-800/80">
-              <p className="text-[11px] text-slate-400 mb-2">ตัวอย่างลิงก์นิยายสำหรับทดลอง:</p>
+              <p className="text-[11px] text-slate-400 mb-2">{t('sampleUrlsLabel')}</p>
               <div className="flex flex-wrap gap-2">
                 {SAMPLE_URLS.map((sample, idx) => (
                   <button

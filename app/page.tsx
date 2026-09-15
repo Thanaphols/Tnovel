@@ -77,7 +77,7 @@ export default function HomePage() {
               updatedChapters.push({
                 id: data.chapterId,
                 chapterNumber: data.chapterNumber || updatedChapters.length + 1,
-                titleTh: data.chapterTitle || `ตอนที่ ${updatedChapters.length + 1}`,
+                titleTh: data.chapterTitle || `${t('chapterPrefix')} ${updatedChapters.length + 1}`,
               });
             }
             return {
@@ -207,14 +207,13 @@ export default function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header Banner */}
-      <div className="hero-banner relative p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/40 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-3">
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl" />
-        <div className="hero-badge inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full">
+      <div className="hero-banner relative p-6 sm:p-8 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-md space-y-3">
+        <div className="hero-badge inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg">
           <Sparkles className="w-3.5 h-3.5" /> {t('heroBadge')}
         </div>
         <h1 className="hero-title text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
           {t('heroTitle')}{' '}
-          <span className="hero-gemini-gradient text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">
+          <span className="hero-ai-accent text-amber-400 font-extrabold">
             Gemini AI
           </span>
         </h1>
@@ -230,7 +229,7 @@ export default function HomePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="hero-search w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-950/80 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500/50 text-slate-100 placeholder:text-slate-500 transition-all"
+            className="hero-search w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500 text-slate-100 placeholder:text-slate-500 transition-all"
           />
         </div>
       </div>
@@ -247,12 +246,10 @@ export default function HomePage() {
 
         {loading ? (
           /* Centered Circular Loading Screen */
-          <div className="min-h-[380px] flex flex-col items-center justify-center p-8 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4 shadow-xl">
+          <div className="min-h-[380px] flex flex-col items-center justify-center p-8 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
             <div className="relative flex items-center justify-center">
-              {/* Glowing Aura */}
-              <div className="absolute w-24 h-24 bg-amber-500/20 rounded-full blur-2xl animate-pulse" />
               {/* Outer Spin Ring */}
-              <div className="w-16 h-16 border-4 border-slate-800 border-t-amber-400 border-r-amber-400/50 rounded-full animate-spin" />
+              <div className="w-16 h-16 border-4 border-slate-800 border-t-amber-400 rounded-full animate-spin" />
               {/* Inner Center Icon */}
               <div className="absolute inset-0 flex items-center justify-center text-amber-400">
                 <BookOpen className="w-6 h-6 animate-pulse" />
@@ -314,7 +311,7 @@ export default function HomePage() {
           {loadingMore && (
             <span className="inline-flex items-center gap-2 text-xs text-amber-400">
               <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-              กำลังโหลดนิยายเพิ่มเติม...
+              {t('loadingMore')}
             </span>
           )}
         </div>

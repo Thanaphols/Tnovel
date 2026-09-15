@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -15,13 +16,19 @@ interface ConfirmDeleteModalProps {
 
 export default function ConfirmDeleteModal({
   isOpen,
-  title = 'ยืนยันการย้ายไปยังถังขยะ',
-  message = 'คุณต้องการย้ายรายการนี้ไปยังถังขยะใช่หรือไม่? คุณสามารถกู้คืนรายการนี้ได้ตลอดเวลาในหน้าถังขยะ (Recycle Bin)',
-  confirmLabel = 'ย้ายลงถังขยะ',
+  title,
+  message,
+  confirmLabel,
   isLoading = false,
   onConfirm,
   onClose,
 }: ConfirmDeleteModalProps) {
+  const { t } = useLanguage();
+
+  const finalTitle = title || t('confirmModalSoftDeleteTitle');
+  const finalMessage = message || t('confirmModalSoftDeleteMsg');
+  const finalConfirmLabel = confirmLabel || t('moveToBin');
+
   if (!isOpen) return null;
 
   return (
@@ -50,13 +57,13 @@ export default function ConfirmDeleteModal({
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
-            <p className="text-xs text-slate-400">การลบนี้เป็น Soft Delete สามารถกู้คืนได้</p>
+            <h3 className="text-lg font-semibold text-slate-100">{finalTitle}</h3>
+            <p className="text-xs text-slate-400">{t('confirmModalSoftDeleteNote')}</p>
           </div>
         </div>
 
         <p className="text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-3.5 rounded-xl border border-slate-800/80">
-          {message}
+          {finalMessage}
         </p>
 
         <div className="flex items-center justify-end gap-2.5 pt-2">
@@ -66,7 +73,7 @@ export default function ConfirmDeleteModal({
             disabled={isLoading}
             className="px-4 py-2.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all"
           >
-            ยกเลิก
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -79,7 +86,7 @@ export default function ConfirmDeleteModal({
             ) : (
               <Trash2 className="w-4 h-4" />
             )}
-            {confirmLabel}
+            {finalConfirmLabel}
           </button>
         </div>
       </div>

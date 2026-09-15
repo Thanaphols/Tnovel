@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { X, BookOpen, Search, Check, Sparkles } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 interface ChapterItem {
   id: string;
@@ -28,6 +29,7 @@ export default function ChapterListDrawer({
   chapters = [],
   theme = 'dark',
 }: ChapterListDrawerProps) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
 
   if (!isOpen) return null;
@@ -86,9 +88,9 @@ export default function ChapterListDrawer({
           <div className="space-y-1 truncate">
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <h3 className="text-sm sm:text-base font-bold truncate">สารบัญบทนิยาย</h3>
+              <h3 className="text-sm sm:text-base font-bold truncate">{t('tocTitle')}</h3>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${themeClasses.counter}`}>
-                {chapters.length} ตอน
+                {chapters.length} {t('chaptersCount')}
               </span>
             </div>
             <p className="text-xs opacity-75 truncate">{novelTitle}</p>
@@ -110,7 +112,7 @@ export default function ChapterListDrawer({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="ค้นหาตามเลขตอน หรือชื่อบท..."
+              placeholder={t('searchChapterPlaceholder')}
               className={`w-full pl-9 pr-4 py-2 text-xs rounded-xl border focus:outline-none transition-all ${themeClasses.search}`}
             />
           </div>
@@ -120,7 +122,7 @@ export default function ChapterListDrawer({
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1">
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-xs opacity-60">
-              {search ? 'ไม่พบบทนิยายที่ค้นหา' : 'ยังไม่มีบทนิยายในระบบ'}
+              {search ? t('chapterNotFound') : t('noChaptersInSystem')}
             </div>
           ) : (
             filtered.map((chap) => {
@@ -141,13 +143,13 @@ export default function ChapterListDrawer({
                     <span className="font-mono text-[11px] opacity-70 flex-shrink-0">
                       #{chap.chapterNumber}
                     </span>
-                    <span className="truncate">{chap.titleTh || `ตอนที่ ${chap.chapterNumber}`}</span>
+                    <span className="truncate">{chap.titleTh || `${t('chapterPrefix')} ${chap.chapterNumber}`}</span>
                   </div>
 
                   {isCurrent && (
                     <div className="flex items-center gap-1 text-[11px] text-amber-400 font-semibold flex-shrink-0">
                       <Check className="w-3.5 h-3.5" />
-                      <span>กำลังอ่าน</span>
+                      <span>{t('currentlyReading')}</span>
                     </div>
                   )}
                 </Link>

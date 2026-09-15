@@ -7,6 +7,7 @@ import { BookOpen, User, Trash2, Eye, Heart, Loader2, Bookmark } from 'lucide-re
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { useSocket } from '@/lib/socket';
 import { toggleBookshelf, isNovelInGuestBookshelf } from '@/lib/bookshelf';
+import { useLanguage } from '@/lib/languageContext';
 
 interface NovelCardProps {
   id: string;
@@ -45,6 +46,7 @@ export default function NovelCard({
 }: NovelCardProps) {
   const router = useRouter();
   const { socket } = useSocket();
+  const { t } = useLanguage();
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -261,7 +263,7 @@ export default function NovelCard({
         className="group relative flex flex-col bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.99] cursor-pointer"
       >
         {/* Cover Aspect Ratio Container */}
-        <div className="novel-cover-box relative aspect-[3/4] w-full bg-slate-950 overflow-hidden">
+        <div className="novel-cover-box relative aspect-[4/4.5] w-full bg-slate-950 overflow-hidden">
           {coverUrl && !imgError ? (
             <img
               src={coverUrl}
@@ -271,7 +273,7 @@ export default function NovelCard({
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="novel-placeholder w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-950 to-amber-950/40 text-center">
+            <div className="novel-placeholder w-full h-full flex flex-col items-center justify-center p-4 bg-slate-950 text-center">
               <BookOpen className="w-10 h-10 text-amber-500/60 mb-2 group-hover:scale-110 transition-transform" />
               <p className="text-xs font-bold text-amber-200/90 line-clamp-2 px-1">
                 {titleTh || titleEn}
@@ -283,11 +285,11 @@ export default function NovelCard({
           {liveChapterCount === 0 ? (
             <div className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500 text-slate-950 rounded-lg backdrop-blur-md shadow-md flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-slate-950 rounded-full animate-ping" />
-              <span>กำลังแปล...</span>
+              <span>{t('translating')}</span>
             </div>
           ) : liveTotalChapters && liveChapterCount < liveTotalChapters ? (
             <div className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500/90 text-slate-950 rounded-lg backdrop-blur-md shadow-md flex items-center gap-1">
-              <span>{liveChapterCount}/{liveTotalChapters} ตอน</span>
+              <span>{liveChapterCount}/{liveTotalChapters} {t('chaptersCount')}</span>
             </div>
           ) : null}
 
@@ -299,7 +301,7 @@ export default function NovelCard({
               setShowConfirmDelete(true);
             }}
             className="novel-delete-btn absolute top-2 right-2 p-1.5 text-slate-400 hover:text-rose-400 bg-slate-950/80 hover:bg-rose-500/20 backdrop-blur-md border border-slate-800 hover:border-rose-500/40 rounded-xl transition-all z-10"
-            title="ย้ายลงถังขยะ"
+            title={t('moveToBin')}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -308,7 +310,7 @@ export default function NovelCard({
           {progress > 0 && (
             <div className="absolute bottom-0 inset-x-0 h-1 bg-slate-950">
               <div
-                className="h-full bg-gradient-to-r from-amber-500 to-amber-300"
+                className="h-full bg-amber-400"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -328,7 +330,7 @@ export default function NovelCard({
                   e.stopPropagation();
                 }}
                 className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-amber-400 transition-colors line-clamp-1"
-                title={`ผู้แต่ง: ${author.name}`}
+                title={`${t('authorTitle')}${author.name}`}
               >
                 <User className="w-3 h-3 flex-shrink-0 text-slate-500" />
                 <span className="truncate">{author.name}</span>
@@ -337,11 +339,11 @@ export default function NovelCard({
 
             <div
               className="flex items-center gap-1 text-[10.5px] text-slate-400 line-clamp-1"
-              title={`เพิ่มเรื่องโดย: ${createdBy?.name || createdBy?.email || 'ผู้เยี่ยมชม (Guest)'}`}
+              title={`${t('addedByTitle')}${createdBy?.name || createdBy?.email || t('guest')}`}
             >
-              <span className="text-[10px] text-slate-500 flex-shrink-0">เพิ่มโดย:</span>
+              <span className="text-[10px] text-slate-500 flex-shrink-0">{t('addedBy')}</span>
               <span className="text-amber-400/90 font-medium truncate">
-                {createdBy?.name || (createdBy?.email ? createdBy.email.split('@')[0] : 'ผู้เยี่ยมชม (Guest)')}
+                {createdBy?.name || (createdBy?.email ? createdBy.email.split('@')[0] : t('guest'))}
               </span>
             </div>
           </div>
@@ -351,13 +353,13 @@ export default function NovelCard({
             {/* Left: Views + Chapters */}
             <div className="flex items-center gap-2.5 text-slate-400">
               {/* Views (Eye icon) */}
-              <div className="flex items-center gap-1" title={`ยอดเปิดอ่าน ${viewCount} ครั้ง`}>
+              <div className="flex items-center gap-1" title={`${t('viewCountTitle')}${viewCount}${t('timesUnit')}`}>
                 <Eye className="w-3.5 h-3.5 text-slate-400" />
                 <span className="font-semibold text-slate-300">{viewCount}</span>
               </div>
 
               {/* Chapters count (Book icon) */}
-              <div className="flex items-center gap-1" title={`${liveChapterCount}${liveTotalChapters ? ` จาก ${liveTotalChapters}` : ''} ตอน`}>
+              <div className="flex items-center gap-1" title={`${liveChapterCount}${liveTotalChapters ? `${t('fromTotal')}${liveTotalChapters}` : ''} ${t('chaptersCount')}`}>
                 <BookOpen className="w-3.5 h-3.5 text-amber-400/90" />
                 <span className="font-semibold text-amber-400/90 font-mono">
                   {liveChapterCount}{liveTotalChapters && liveTotalChapters > 0 ? `/${liveTotalChapters}` : ''}
@@ -376,7 +378,7 @@ export default function NovelCard({
                     ? 'text-amber-400 hover:text-amber-500'
                     : 'text-slate-400 hover:text-amber-400'
                 }`}
-                title={isBookmarked ? 'อยู่ในชั้นหนังสือแล้ว (กดเพื่อนำออก)' : 'เพิ่มเข้าชั้นหนังสือ'}
+                title={isBookmarked ? t('inBookshelfTooltip') : t('addToBookshelfTooltip')}
               >
                 <Bookmark
                   className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
@@ -393,7 +395,7 @@ export default function NovelCard({
                     ? 'text-rose-500 hover:text-rose-600'
                     : 'text-slate-400 hover:text-rose-400'
                 }`}
-                title={isLiked ? 'ยกเลิกถูกใจ' : 'กดถูกใจ'}
+                title={isLiked ? t('likedTooltip') : t('likeTooltip')}
               >
                 <Heart
                   className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
@@ -412,8 +414,8 @@ export default function NovelCard({
       {/* Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={showConfirmDelete}
-        title={`ย้ายนิยาย "${titleTh || titleEn}" ลงถังขยะ`}
-        message="คุณต้องการย้ายนิยายเรื่องนี้และบทนิยายทั้งหมดลงถังขยะใช่หรือไม่? (สามารถกู้คืนกลับมาได้ทุกเมื่อในหน้าถังขยะ)"
+        title={`${t('confirmMoveToBinTitle')} "${titleTh || titleEn}"`}
+        message={t('confirmMoveToBinMsg')}
         isLoading={isDeleting}
         onConfirm={handleSoftDelete}
         onClose={() => setShowConfirmDelete(false)}

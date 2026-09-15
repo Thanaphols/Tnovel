@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn, Mail, Lock, BookOpen, ArrowRight } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +41,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'เข้าสู่ระบบไม่สำเร็จ');
+        throw new Error(data.error || t('networkError'));
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -62,8 +64,8 @@ export default function LoginPage() {
           <div className="inline-flex p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl mb-1">
             <BookOpen className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-100">เข้าสู่ระบบ NovelTrans</h1>
-          <p className="text-xs text-slate-400">อ่านและแปลนิยายภาษาอังกฤษเป็นภาษาไทยสไตล์วรรณกรรม</p>
+          <h1 className="text-2xl font-extrabold text-slate-100">{t('loginTitle')}</h1>
+          <p className="text-xs text-slate-400">{t('loginSubtitle')}</p>
         </div>
 
         {error && (
@@ -95,18 +97,18 @@ export default function LoginPage() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          <span>เข้าสู่ระบบด้วย Google</span>
+          <span>{t('loginWithGoogle')}</span>
         </a>
 
         {/* Divider */}
         <div className="relative flex items-center justify-center">
           <div className="border-t border-slate-800 w-full" />
-          <span className="bg-slate-900 px-3 text-[11px] text-slate-500 uppercase tracking-wider">หรือ</span>
+          <span className="bg-slate-900 px-3 text-[11px] text-slate-500 uppercase tracking-wider">{t('orDivider')}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">อีเมล</label>
+            <label className="text-xs font-semibold text-slate-300">{t('emailLabel')}</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
@@ -121,7 +123,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">รหัสผ่าน</label>
+            <label className="text-xs font-semibold text-slate-300">{t('passwordLabel')}</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
@@ -140,18 +142,18 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs sm:text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md shadow-amber-500/20 disabled:opacity-50"
           >
-            {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+            {loading ? t('loggingIn') : t('login')}
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
         <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/80">
-          ยังไม่มีบัญชีผู้ใช้?{' '}
+          {t('noAccountYet')}{' '}
           <Link
             href={callbackUrl !== '/' ? `/register?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/register'}
             className="font-semibold text-amber-400 hover:underline"
           >
-            ลงทะเบียนที่นี่
+            {t('registerHere')}
           </Link>
         </div>
       </div>

@@ -27,18 +27,23 @@ export async function POST(request: Request) {
 
     const io = (global as any).io;
 
-    const isNovelIndex = mode === 'full_novel' || (!url.includes('/chapter') && !url.includes('chapter-'));
+    const isFanmtlChapter = url.includes('fanmtl.com') && /_\d+\.html$/i.test(url);
+    const isNovelIndex =
+      mode === 'full_novel' ||
+      (mode !== 'single' && !url.includes('/chapter') && !url.includes('chapter-') && !isFanmtlChapter);
 
     if (isNovelIndex) {
+      const targetIndexUrl = url.includes('fanmtl.com') ? url.replace(/_\d+\.html$/i, '.html') : url;
+
       if (io) {
         io.emit('translation:progress', {
           status: 'indexing',
           message: 'กำลังกวาดสายตาดึงรายชื่อบทนิยายทั้งหมดจากหน้าหลัก...',
-          url,
+          url: targetIndexUrl,
         });
       }
 
-      const indexData = await scrapeNovelIndex(url);
+      const indexData = await scrapeNovelIndex(targetIndexUrl);
 
       if (!indexData.chapters || indexData.chapters.length === 0) {
         return processSingleChapter(url, session, io);
@@ -53,9 +58,10 @@ export async function POST(request: Request) {
         });
       }
 
-      const cleanUrl = url.trim().replace(/\/+$/, '');
+      const cleanUrl = targetIndexUrl.trim().replace(/\/+$/, '');
       const bookIdMatch = cleanUrl.match(/(?:book|fiction)\/(?:[^\/]+_)?(\d+)/i);
-      const bookIdentifier = bookIdMatch ? bookIdMatch[1] : cleanUrl;
+      const fanmtlMatch = cleanUrl.match(/fanmtl\.com\/novel\/([^.]+)\.html/i);
+      const bookIdentifier = bookIdMatch ? bookIdMatch[1] : (fanmtlMatch ? fanmtlMatch[1] : cleanUrl);
 
       let novel = await prisma.novel.findFirst({
         where: {
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
           OR: [
             { sourceUrl: cleanUrl },
             { sourceUrl: cleanUrl + '/' },
-            ...(bookIdMatch ? [{ sourceUrl: { contains: bookIdentifier } }] : []),
+            ...(bookIdMatch || fanmtlMatch ? [{ sourceUrl: { contains: bookIdentifier } }] : []),
             { titleEn: indexData.title },
           ],
         },
@@ -75,7 +81,7 @@ export async function POST(request: Request) {
           data: {
             titleEn: indexData.title,
             titleTh: translatedNovelTitle,
-            sourceUrl: url,
+            sourceUrl: targetIndexUrl,
             coverUrl: indexData.coverUrl || null,
             description: indexData.description || null,
             totalChapters: indexData.chapters.length,
@@ -185,10 +191,11 @@ async function processSingleChapter(url: string, session: any, io: any) {
     });
   }
 
-  const mainTitleEn = scrapedData.title.split('-')[0].split('|')[0].trim();
+  const novelSourceUrl = url.includes('fanmtl.com') ? url.replace(/_\d+\.html$/i, '.html') : url;
+  const mainTitleEn = scrapedData.novelTitle || scrapedData.title.split('-')[0].split('|')[0].trim();
   let novel = await prisma.novel.findFirst({
     where: {
-      OR: [{ sourceUrl: url }, { titleEn: mainTitleEn }],
+      OR: [{ sourceUrl: novelSourceUrl }, { sourceUrl: url }, { titleEn: mainTitleEn }],
       deletedAt: null,
     },
   });
@@ -201,7 +208,7 @@ async function processSingleChapter(url: string, session: any, io: any) {
       data: {
         titleEn: mainTitleEn,
         titleTh: translatedNovelTitle,
-        sourceUrl: url,
+        sourceUrl: novelSourceUrl,
         coverUrl: scrapedData.coverUrl || null,
         authorId: author.id,
         createdById: creatorId,

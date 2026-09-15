@@ -55,7 +55,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           {/* Logo & Brand */}
           <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div className="p-1.5 sm:p-2 bg-gradient-to-tr from-amber-500 to-amber-400 rounded-xl text-slate-950 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+            <div className="p-1.5 sm:p-2 bg-amber-400 rounded-xl text-slate-950 shadow-sm group-hover:scale-105 transition-transform">
               <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 font-bold" />
             </div>
             <div className="flex items-center gap-1.5">
@@ -86,7 +86,7 @@ export default function Navbar() {
             <button
               onClick={toggleTheme}
               className="flex items-center gap-1 p-2 text-slate-300 hover:text-amber-400 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
-              title={`ธีมปัจจุบัน: ${theme === 'dark' ? 'มืด (Dark)' : theme === 'light' ? 'สว่าง (Light)' : 'ถนอมสายตา (Sepia)'}`}
+              title={`${t('themeLabel')}${theme === 'dark' ? t('themeDark') : theme === 'light' ? t('themeLight') : t('themeSepia')}`}
             >
               {theme === 'dark' ? (
                 <Moon className="w-4 h-4 text-amber-400" />
@@ -101,7 +101,7 @@ export default function Navbar() {
             <button
               onClick={toggleLang}
               className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:text-amber-400 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
-              title={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'}
+              title={lang === 'th' ? t('switchToEn') : t('switchToTh')}
             >
               <Languages className="w-3.5 h-3.5 text-amber-400" />
               <span>{lang.toUpperCase()}</span>
@@ -124,7 +124,7 @@ export default function Navbar() {
                 className={`p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
                   isBookshelf ? 'text-amber-400 border-amber-500/40 bg-amber-500/10' : ''
                 }`}
-                title="ชั้นหนังสือของฉัน"
+                title={t('myBookshelf')}
               >
                 <Library className="w-4 h-4" />
               </Link>
@@ -135,7 +135,7 @@ export default function Navbar() {
                 className={`p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
                   isHistory ? 'text-amber-400 border-amber-500/40 bg-amber-500/10' : ''
                 }`}
-                title="ประวัติการแปลนิยาย"
+                title={t('history')}
               >
                 <History className="w-4 h-4" />
               </Link>
@@ -197,7 +197,7 @@ export default function Navbar() {
           className={`p-2 rounded-2xl transition-all ${
             isHome ? 'text-amber-400 bg-amber-500/15 scale-110 shadow-sm' : 'text-slate-400 hover:text-slate-200 active:scale-95'
           }`}
-          title="คลังนิยาย"
+          title={t('library')}
         >
           <Home className="w-5 h-5" />
         </Link>
@@ -208,7 +208,7 @@ export default function Navbar() {
           className={`p-2 rounded-2xl transition-all ${
             isBookshelf ? 'text-amber-400 bg-amber-500/15 scale-110 shadow-sm' : 'text-slate-400 hover:text-slate-200 active:scale-95'
           }`}
-          title="ชั้นหนังสือของฉัน"
+          title={t('myBookshelf')}
         >
           <Library className="w-5 h-5" />
         </Link>
@@ -216,7 +216,7 @@ export default function Navbar() {
         {/* Center Floating Action Button: + Translate */}
         <button
           onClick={() => setIsScrapeOpen(true)}
-          className="-mt-6 p-3.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 shadow-xl shadow-amber-500/30 active:scale-95 transition-transform flex items-center justify-center border-2 border-slate-950"
+          className="-mt-6 p-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-lg active:scale-95 transition-all flex items-center justify-center border-2 border-slate-950"
           title={t('translateNovel')}
         >
           <Plus className="w-6 h-6 stroke-[3]" />
@@ -239,7 +239,7 @@ export default function Navbar() {
           className={`p-2 rounded-2xl transition-all ${
             isProfile ? 'text-amber-400 bg-amber-500/15 scale-110 shadow-sm' : 'text-slate-400 hover:text-slate-200 active:scale-95'
           }`}
-          title={user ? 'โปรไฟล์' : 'เข้าสู่ระบบ'}
+          title={user ? t('profile') : t('login')}
         >
           {user ? <User className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
         </Link>

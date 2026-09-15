@@ -3,6 +3,7 @@
 import React from 'react';
 import { X, Type, Sun, Moon, Palette, AlignLeft, Languages, RefreshCw, AlertCircle, Loader2, Sparkles, Bookmark } from 'lucide-react';
 import { ReaderSettingsState } from '@/lib/db';
+import { useLanguage } from '@/lib/languageContext';
 
 interface ReaderSettingsProps {
   isOpen: boolean;
@@ -27,6 +28,8 @@ export default function ReaderSettings({
   onToggleBookmark,
   isBookmarked = false,
 }: ReaderSettingsProps) {
+  const { t } = useLanguage();
+
   if (!isOpen) return null;
 
   return (
@@ -51,19 +54,19 @@ export default function ReaderSettings({
 
         <div className="flex items-center gap-2">
           <Type className="w-5 h-5 text-amber-400" />
-          <h3 className="text-base font-bold text-slate-100">การตั้งค่าหน้าอ่านนิยาย</h3>
+          <h3 className="text-base font-bold text-slate-100">{t('readerSettingsTitle')}</h3>
         </div>
 
         {/* 1. Language Toggle */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <Languages className="w-3.5 h-3.5 text-amber-400" /> โหมดแสดงภาษา
+            <Languages className="w-3.5 h-3.5 text-amber-400" /> {t('displayModeLabel')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'th', label: 'แปลไทย (TH)' },
-              { id: 'en', label: 'อังกฤษ (EN)' },
-              { id: 'parallel', label: 'คู่สองภาษา' },
+              { id: 'th', label: t('modeThLabel') },
+              { id: 'en', label: t('modeEnLabel') },
+              { id: 'parallel', label: t('modeParallelLabel') },
             ].map((mode) => (
               <button
                 key={mode.id}
@@ -83,13 +86,13 @@ export default function ReaderSettings({
         {/* 2. Theme Selector */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <Palette className="w-3.5 h-3.5 text-amber-400" /> ธีมสีการอ่าน
+            <Palette className="w-3.5 h-3.5 text-amber-400" /> {t('themeColorLabel')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'light', label: 'สว่าง (White)', bg: 'bg-[#fbf9f5]', text: 'text-stone-900' },
-              { id: 'sepia', label: 'ซีเปีย (Sepia)', bg: 'bg-[#f4ecd8]', text: 'text-amber-950' },
-              { id: 'dark', label: 'มืด (OLED)', bg: 'bg-[#0b0f19]', text: 'text-slate-100' },
+              { id: 'light', label: t('themeLightLabel'), bg: 'bg-[#fbf9f5]', text: 'text-stone-900' },
+              { id: 'sepia', label: t('themeSepiaLabel'), bg: 'bg-[#f4ecd8]', text: 'text-amber-950' },
+              { id: 'dark', label: t('themeDarkLabel'), bg: 'bg-[#0b0f19]', text: 'text-slate-100' },
             ].map((theme) => (
               <button
                 key={theme.id}
@@ -112,14 +115,14 @@ export default function ReaderSettings({
         {/* 3. Font Size */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <Type className="w-3.5 h-3.5 text-amber-400" /> ขนาดฟอนต์
+            <Type className="w-3.5 h-3.5 text-amber-400" /> {t('fontSizeLabel')}
           </label>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { id: 'sm', label: 'เล็ก (14px)' },
-              { id: 'md', label: 'กลาง (16px)' },
-              { id: 'lg', label: 'ใหญ่ (18px)' },
-              { id: 'xl', label: 'ใหญ่พิเศษ' },
+              { id: 'sm', label: t('fontSm') },
+              { id: 'md', label: t('fontMd') },
+              { id: 'lg', label: t('fontLg') },
+              { id: 'xl', label: t('fontXl') },
             ].map((size) => (
               <button
                 key={size.id}
@@ -139,12 +142,12 @@ export default function ReaderSettings({
         {/* 4. Font Family */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <AlignLeft className="w-3.5 h-3.5 text-amber-400" /> แบบอักษร (Font Family)
+            <AlignLeft className="w-3.5 h-3.5 text-amber-400" /> {t('fontFamilyLabel')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { id: 'sans', label: 'ไม่มีหัว (Kanit / Sans)' },
-              { id: 'serif', label: 'มีหัว/วรรณกรรม (Sarabun)' },
+              { id: 'sans', label: t('fontSans') },
+              { id: 'serif', label: t('fontSerif') },
             ].map((font) => (
               <button
                 key={font.id}
@@ -164,7 +167,7 @@ export default function ReaderSettings({
         {/* 5. Chapter Tools: Re-translate & Report Issue */}
         <div className="pt-4 border-t border-slate-800 space-y-3">
           <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <RefreshCw className="w-3.5 h-3.5 text-amber-400" /> เครื่องมือบทนิยาย
+            <RefreshCw className="w-3.5 h-3.5 text-amber-400" /> {t('chapterToolsLabel')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -183,9 +186,9 @@ export default function ReaderSettings({
                 ) : (
                   <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
                 )}
-                <span>แปลใหม่ (Google)</span>
+                <span>{t('retranslateGoogle')}</span>
               </div>
-              <span className="text-[10px] text-slate-400 mt-0.5">เร็ว ไม่จำกัดครั้ง</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">{t('retranslateGoogleDesc')}</span>
             </button>
 
             <button
@@ -204,9 +207,9 @@ export default function ReaderSettings({
                 ) : (
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 )}
-                <span>แปลใหม่ (Gemini)</span>
+                <span>{t('retranslateGemini')}</span>
               </div>
-              <span className="text-[10px] text-slate-400 mt-0.5">สำนวนสละสลวย</span>
+              <span className="text-[10px] text-slate-400 mt-0.5">{t('retranslateGeminiDesc')}</span>
             </button>
           </div>
 
@@ -224,7 +227,7 @@ export default function ReaderSettings({
             }`}
           >
             <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-400 text-amber-400' : 'text-amber-400'}`} />
-            <span>{isBookmarked ? 'คั่นหน้านี้แล้ว (กดเพื่อยกเลิก)' : 'คั่นหน้านี้ (บันทึกบุ๊กมาร์ก)'}</span>
+            <span>{isBookmarked ? t('bookmarkedCurrentChapter') : t('bookmarkCurrentChapter')}</span>
           </button>
 
           {/* Report Issue Button */}
@@ -238,7 +241,7 @@ export default function ReaderSettings({
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold rounded-2xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all"
           >
             <AlertCircle className="w-4 h-4 text-rose-400" />
-            <span>แจ้งปัญหาบทนิยายนี้ (แปลผิด / เนื้อหาขาด)</span>
+            <span>{t('reportChapterIssue')}</span>
           </button>
         </div>
       </div>

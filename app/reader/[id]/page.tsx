@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation';
 import ReaderView from '@/components/ReaderView';
 import { getChapterOffline } from '@/lib/db';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 export default function ChapterReaderPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const id = params?.id as string;
 
@@ -32,7 +34,7 @@ export default function ChapterReaderPage() {
         setChapter(data.chapter);
         return;
       }
-      throw new Error(data.error || 'ไม่สามารถดึงข้อมูลบทนิยายได้');
+      throw new Error(data.error || t('loadChapterError'));
     } catch (err: any) {
       console.warn('Network fetch failed, attempting offline cache:', err);
       // 2. Offline fallback from IndexedDB
@@ -47,11 +49,11 @@ export default function ChapterReaderPage() {
           contentTh: cached.contentTh,
           originalUrl: cached.originalUrl,
           novelId: '',
-          novelTitle: cached.novelTitle || 'นิยายในเครื่อง (Offline)',
+          novelTitle: cached.novelTitle || t('offline'),
           authorName: 'Unknown',
         });
       } else {
-        setError(err.message || 'ไม่พบบทนิยายและไม่มีข้อมูลแคชแบบ ออฟไลน์');
+        setError(err.message || t('chapterNotFound'));
       }
     } finally {
       setLoading(false);
@@ -62,7 +64,7 @@ export default function ChapterReaderPage() {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center space-y-3">
         <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
-        <p className="text-sm font-medium text-slate-300">กำลังโหลดเนื้อหานิยาย...</p>
+        <p className="text-sm font-medium text-slate-300">{t('loadingNovelContent')}</p>
       </div>
     );
   }
@@ -73,13 +75,13 @@ export default function ChapterReaderPage() {
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-lg font-bold text-slate-100">เกิดข้อผิดพลาดในการโหลดบทนิยาย</h2>
+        <h2 className="text-lg font-bold text-slate-100">{t('loadChapterError')}</h2>
         <p className="text-xs text-slate-400 leading-relaxed">{error}</p>
         <button
           onClick={loadChapter}
           className="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all"
         >
-          ลองใหม่อีกครั้ง
+          {t('tryAgain')}
         </button>
       </div>
     );

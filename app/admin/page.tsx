@@ -26,8 +26,10 @@ import {
 } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import { useLanguage } from '@/lib/languageContext';
 
 export default function AdminDashboardPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'users' | 'novels' | 'reports' | 'whitelist'>('reports');
   const [users, setUsers] = useState<any[]>([]);
   const [novels, setNovels] = useState<any[]>([]);
@@ -142,15 +144,15 @@ export default function AdminDashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setWhitelistMsg({ type: 'success', text: data.message || 'เพิ่มอีเมลเข้าสู่ Whitelist เรียบร้อยแล้ว' });
+        setWhitelistMsg({ type: 'success', text: data.message || t('whitelistAddSuccess') });
         setNewEmail('');
         setNewNote('');
         await fetchWhitelist();
       } else {
-        setWhitelistMsg({ type: 'error', text: data.error || 'ไม่สามารถเพิ่มอีเมลได้' });
+        setWhitelistMsg({ type: 'error', text: data.error || t('whitelistAddError') });
       }
     } catch (err: any) {
-      setWhitelistMsg({ type: 'error', text: err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ' });
+      setWhitelistMsg({ type: 'error', text: err.message || t('networkError') });
     } finally {
       setAddingWhitelist(false);
     }
@@ -158,10 +160,10 @@ export default function AdminDashboardPage() {
 
   async function handleDeleteWhitelist(id: string, email: string) {
     if (email === 'cupteo254504@gmail.com') {
-      alert('ไม่สามารถลบอีเมลผู้ดูแลระบบหลักได้');
+      alert(t('cannotDeletePrimaryAdmin'));
       return;
     }
-    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบอีเมล "${email}" ออกจาก Whitelist? (ผู้ใช้นี้จะไม่สามารถเข้าสู่ระบบได้)`)) {
+    if (!confirm(`${t('confirmDeleteWhitelistMsg')} (${email})`)) {
       return;
     }
 
@@ -174,10 +176,10 @@ export default function AdminDashboardPage() {
       if (data.success) {
         setWhitelist((prev) => prev.filter((item) => item.id !== id));
       } else {
-        alert(data.error || 'เกิดข้อผิดพลาดในการลบอีเมล');
+        alert(data.error || t('deleteWhitelistError'));
       }
     } catch (err: any) {
-      alert(err.message || 'เกิดข้อผิดพลาดในการลบอีเมล');
+      alert(err.message || t('deleteWhitelistError'));
     } finally {
       setDeletingWhitelistId(null);
     }
@@ -298,7 +300,7 @@ export default function AdminDashboardPage() {
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       {/* Top Back Link */}
       <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> กลับคลังนิยาย
+        <ArrowLeft className="w-4 h-4" /> {t('backToLibrary')}
       </Link>
 
       {/* Header Banner */}
@@ -308,15 +310,15 @@ export default function AdminDashboardPage() {
             <Shield className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-100">ระบบผู้ดูแลระบบ (Admin Dashboard)</h1>
-            <p className="text-xs text-slate-400">จัดการผู้ใช้ คลังนิยายทั้งหมด และรายงานปัญหาจากผู้ใช้</p>
+            <h1 className="text-xl font-bold text-slate-100">{t('adminPageTitle')}</h1>
+            <p className="text-xs text-slate-400">{t('adminPageDesc')}</p>
           </div>
         </div>
 
         {/* Socket Status Badge */}
         <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl self-start sm:self-auto">
           <Activity className={`w-4 h-4 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-rose-400'}`} />
-          <span>Socket.io: {isConnected ? 'เชื่อมต่อแล้ว' : 'ไม่ได้เชื่อมต่อ'}</span>
+          <span>Socket.io: {isConnected ? t('socketConnected') : t('socketDisconnected')}</span>
         </div>
       </div>
 
@@ -331,7 +333,7 @@ export default function AdminDashboardPage() {
           }`}
         >
           <AlertCircle className="w-4 h-4" />
-          <span>รายงานปัญหา</span>
+          <span>{t('adminTabReports')}</span>
           {pendingReportsCount > 0 && (
             <span
               className={`px-1.5 py-0.5 text-[10px] font-extrabold rounded-full ${
@@ -352,7 +354,7 @@ export default function AdminDashboardPage() {
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>จัดการนิยาย ({novels.length})</span>
+          <span>{t('adminTabNovels')} ({novels.length})</span>
         </button>
 
         <button
@@ -364,7 +366,7 @@ export default function AdminDashboardPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>จัดการผู้ใช้งาน ({users.length})</span>
+          <span>{t('adminTabUsers')} ({users.length})</span>
         </button>
 
         <button
@@ -376,14 +378,14 @@ export default function AdminDashboardPage() {
           }`}
         >
           <MailCheck className="w-4 h-4" />
-          <span>อีเมลที่อนุญาต (Whitelist {whitelist.length})</span>
+          <span>{t('adminTabWhitelist')} ({whitelist.length})</span>
         </button>
       </div>
 
       {loading ? (
         <div className="py-16 text-center space-y-3">
           <Loader2 className="w-8 h-8 text-amber-400 animate-spin mx-auto" />
-          <p className="text-xs text-slate-400">กำลังโหลดข้อมูลระบบ Admin...</p>
+          <p className="text-xs text-slate-400">{t('adminLoading')}</p>
         </div>
       ) : (
         <>
@@ -394,7 +396,7 @@ export default function AdminDashboardPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl">
                 <div className="flex items-center gap-1.5">
                   <Filter className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-semibold text-slate-300">สถานะ:</span>
+                  <span className="text-xs font-semibold text-slate-300">{t('statusLabel')}</span>
                   {(['ALL', 'PENDING', 'RESOLVED', 'DISMISSED'] as const).map((st) => (
                     <button
                       key={st}
@@ -406,12 +408,12 @@ export default function AdminDashboardPage() {
                       }`}
                     >
                       {st === 'ALL'
-                        ? 'ทั้งหมด'
+                        ? t('filterAll')
                         : st === 'PENDING'
-                        ? `รอดำเนินการ (${pendingReportsCount})`
+                        ? `${t('filterPending')} (${pendingReportsCount})`
                         : st === 'RESOLVED'
-                        ? 'แก้ไขแล้ว'
-                        : 'ปฏิเสธ'}
+                        ? t('filterResolved')
+                        : t('filterDismissed')}
                     </button>
                   ))}
                 </div>
@@ -421,15 +423,15 @@ export default function AdminDashboardPage() {
                   className="flex items-center gap-1 px-3 py-1 text-xs text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800 rounded-lg transition-all"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>รีเฟรช</span>
+                  <span>{t('refresh')}</span>
                 </button>
               </div>
 
               {filteredReports.length === 0 ? (
                 <div className="p-12 text-center bg-slate-900/40 border border-slate-800/60 rounded-3xl space-y-2">
                   <CheckCircle2 className="w-10 h-10 text-emerald-500/60 mx-auto" />
-                  <h4 className="text-sm font-semibold text-slate-300">ไม่มีรายงานปัญหาในหมวดหมู่นี้</h4>
-                  <p className="text-xs text-slate-500">ระบบทำงานราบรื่น ยังไม่มีผู้ใช้แจ้งปัญหาเข้ามา</p>
+                  <h4 className="text-sm font-semibold text-slate-300">{t('noReportsTitle')}</h4>
+                  <p className="text-xs text-slate-500">{t('noReportsDesc')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -450,10 +452,10 @@ export default function AdminDashboardPage() {
                             }`}
                           >
                             {report.status === 'PENDING'
-                              ? 'รอดำเนินการ'
+                              ? t('filterPending')
                               : report.status === 'RESOLVED'
-                              ? 'แก้ไขแล้ว'
-                              : 'ปฏิเสธรายงาน'}
+                              ? t('filterResolved')
+                              : t('filterDismissed')}
                           </span>
                           <h4 className="text-xs font-bold text-slate-100">{report.reason}</h4>
                         </div>
@@ -466,13 +468,13 @@ export default function AdminDashboardPage() {
                       {/* Details & Target novel/chapter */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                         <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 space-y-1">
-                          <span className="text-[11px] font-semibold text-amber-400">ตำแหน่งที่เกิดปัญหา:</span>
+                          <span className="text-[11px] font-semibold text-amber-400">{t('reportLocationLabel')}</span>
                           <div className="text-slate-200 font-bold">
-                            {report.novel?.titleTh || report.novel?.titleEn || 'นิยายทั่วไป'}
+                            {report.novel?.titleTh || report.novel?.titleEn || t('generalNovel')}
                           </div>
                           {report.chapter && (
                             <div className="text-[11px] text-slate-400">
-                              ตอนที่ {report.chapter.chapterNumber}: {report.chapter.titleTh || report.chapter.titleEn}
+                              {t('chapterPrefix')} {report.chapter.chapterNumber}: {report.chapter.titleTh || report.chapter.titleEn}
                             </div>
                           )}
                           {report.chapter?.id && (
@@ -481,19 +483,19 @@ export default function AdminDashboardPage() {
                               target="_blank"
                               className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:underline pt-1"
                             >
-                              <span>เปิดดูบทนิยายนี้</span>
+                              <span>{t('viewThisChapter')}</span>
                               <ExternalLink className="w-3 h-3" />
                             </Link>
                           )}
                         </div>
 
                         <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/60 space-y-1">
-                          <span className="text-[11px] font-semibold text-slate-400">รายละเอียดจากผู้ใช้:</span>
+                          <span className="text-[11px] font-semibold text-slate-400">{t('reportUserDetailLabel')}</span>
                           <p className="text-slate-300 italic">
-                            {report.description ? `"${report.description}"` : 'ไม่ได้ระบุคำอธิบายเพิ่มเติม'}
+                            {report.description ? `"${report.description}"` : t('noDescriptionProvided')}
                           </p>
                           <div className="text-[11px] text-slate-500 pt-1">
-                            ผู้แจ้ง: {report.user ? `${report.user.name || 'User'} (${report.user.email})` : 'ผู้เยี่ยมชม (Guest)'}
+                            {t('reportedBy')}{report.user ? `${report.user.name || 'User'} (${report.user.email})` : t('guest')}
                           </div>
                         </div>
                       </div>
@@ -507,7 +509,7 @@ export default function AdminDashboardPage() {
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all disabled:opacity-50"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>ทำเครื่องหมายว่าแก้ไขแล้ว</span>
+                            <span>{t('markAsResolved')}</span>
                           </button>
                         )}
 
@@ -518,7 +520,7 @@ export default function AdminDashboardPage() {
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all disabled:opacity-50"
                           >
                             <XCircle className="w-3.5 h-3.5" />
-                            <span>ปฏิเสธ</span>
+                            <span>{t('dismissReport')}</span>
                           </button>
                         )}
 
@@ -526,7 +528,7 @@ export default function AdminDashboardPage() {
                           onClick={() => handleDeleteReport(report.id)}
                           disabled={updatingReport === report.id}
                           className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl transition-all disabled:opacity-50"
-                          title="ลบรายงานนี้"
+                          title={t('deleteReportTooltip')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -548,7 +550,7 @@ export default function AdminDashboardPage() {
                   type="text"
                   value={searchNovel}
                   onChange={(e) => setSearchNovel(e.target.value)}
-                  placeholder="ค้นหาชื่อนิยาย หรือผู้แต่ง..."
+                  placeholder={t('searchPlaceholder')}
                   className="w-full bg-transparent text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none"
                 />
               </div>
@@ -559,12 +561,12 @@ export default function AdminDashboardPage() {
                   <table className="w-full text-left text-xs">
                     <thead className="text-slate-400 uppercase bg-slate-950/60 border-b border-slate-800">
                       <tr>
-                        <th className="p-4">นิยาย</th>
-                        <th className="p-4">ผู้แต่ง</th>
-                        <th className="p-4">จำนวนตอน</th>
-                        <th className="p-4">รายงานปัญหา</th>
-                        <th className="p-4">สถานะ</th>
-                        <th className="p-4 text-right">การจัดการ</th>
+                        <th className="p-4">{t('thNovel')}</th>
+                        <th className="p-4">{t('thAuthor')}</th>
+                        <th className="p-4">{t('thChaptersCount')}</th>
+                        <th className="p-4">{t('thReports')}</th>
+                        <th className="p-4">{t('thStatus')}</th>
+                        <th className="p-4 text-right">{t('thAction')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 text-slate-300">
@@ -579,16 +581,16 @@ export default function AdminDashboardPage() {
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 text-[10px] text-amber-400/80 hover:underline pt-0.5"
                             >
-                              <span>เว็บต้นฉบับ</span>
+                              <span>{t('originalWebsite')}</span>
                               <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           </td>
-                          <td className="p-4 text-slate-300">{novel.author?.name || 'ไม่ระบุ'}</td>
-                          <td className="p-4 font-semibold text-amber-300">{novel._count?.chapters || 0} ตอน</td>
+                          <td className="p-4 text-slate-300">{novel.author?.name || t('unknownAuthor')}</td>
+                          <td className="p-4 font-semibold text-amber-300">{novel._count?.chapters || 0} {t('chaptersCount')}</td>
                           <td className="p-4">
                             {novel._count?.reports > 0 ? (
                               <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-md">
-                                {novel._count.reports} รายงาน
+                                {novel._count.reports} {t('reportsUnit')}
                               </span>
                             ) : (
                               <span className="text-[11px] text-slate-500">-</span>
@@ -597,11 +599,11 @@ export default function AdminDashboardPage() {
                           <td className="p-4">
                             {novel.deletedAt ? (
                               <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded-md">
-                                ในถังขยะ
+                                {t('statusInBin')}
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md">
-                                ใช้งานอยู่
+                                {t('statusActive')}
                               </span>
                             )}
                           </td>
@@ -611,16 +613,16 @@ export default function AdminDashboardPage() {
                                 <button
                                   onClick={() => handleNovelAction('restore', novel.id)}
                                   className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-all"
-                                  title="กู้คืน"
+                                  title={t('restore')}
                                 >
                                   <RotateCcw className="w-3 h-3" />
-                                  <span>กู้คืน</span>
+                                  <span>{t('restore')}</span>
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => handleNovelAction('delete_soft', novel.id)}
                                   className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
-                                  title="ย้ายไปถังขยะ"
+                                  title={t('moveToBinTooltip')}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -635,7 +637,7 @@ export default function AdminDashboardPage() {
                                   })
                                 }
                                 className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-all"
-                                title="ลบถาวร"
+                                title={t('permanentDelete')}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -655,7 +657,7 @@ export default function AdminDashboardPage() {
             <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-amber-400" /> รายชื่อผู้ใช้งานในระบบ ({users.length})
+                  <Users className="w-5 h-5 text-amber-400" /> {t('usersListTitle')} ({users.length})
                 </h2>
               </div>
 
@@ -663,18 +665,18 @@ export default function AdminDashboardPage() {
                 <table className="w-full text-left text-xs">
                   <thead className="text-slate-400 uppercase bg-slate-950/60 border-b border-slate-800">
                     <tr>
-                      <th className="p-3">ชื่อ / อีเมล</th>
-                      <th className="p-3">สิทธิ์ (Role)</th>
-                      <th className="p-3">แปลนิยายไปแล้ว</th>
-                      <th className="p-3">วันที่สมัคร</th>
-                      <th className="p-3 text-right">จัดการสิทธิ์</th>
+                      <th className="p-3">{t('userColNameEmail')}</th>
+                      <th className="p-3">{t('userColRole')}</th>
+                      <th className="p-3">{t('userColNovelsTranslated')}</th>
+                      <th className="p-3">{t('userColRegisteredDate')}</th>
+                      <th className="p-3 text-right">{t('userColManageRole')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-300">
                     {users.map((u) => (
                       <tr key={u.id} className="hover:bg-slate-800/30">
                         <td className="p-3 font-semibold text-slate-100">
-                          <div>{u.name || 'ไม่มีชื่อ'}</div>
+                          <div>{u.name || t('userNoName')}</div>
                           <div className="text-[11px] text-slate-400 font-normal">{u.email}</div>
                         </td>
                         <td className="p-3">
@@ -688,7 +690,7 @@ export default function AdminDashboardPage() {
                             {u.role}
                           </span>
                         </td>
-                        <td className="p-3">{u._count?.submittedNovels || 0} เรื่อง</td>
+                        <td className="p-3">{u._count?.submittedNovels || 0} {t('storiesUnit')}</td>
                         <td className="p-3">{new Date(u.createdAt).toLocaleDateString('th-TH')}</td>
                         <td className="p-3 text-right">
                           <button
@@ -697,10 +699,10 @@ export default function AdminDashboardPage() {
                             className="px-3 py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg transition-all disabled:opacity-50"
                           >
                             {updatingUser === u.id
-                              ? 'กำลังอัปเดต...'
+                              ? t('updating')
                               : u.role === 'ADMIN'
-                              ? 'ปรับเป็น USER'
-                              : 'โปรโมตเป็น ADMIN'}
+                              ? t('demoteToUser')
+                              : t('promoteToAdmin')}
                           </button>
                         </td>
                       </tr>
@@ -719,10 +721,10 @@ export default function AdminDashboardPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                      <MailCheck className="w-5 h-5 text-amber-400" /> เพิ่มอีเมลที่อนุญาต (Add to Whitelist)
+                      <MailCheck className="w-5 h-5 text-amber-400" /> {t('addWhitelistTitle')}
                     </h2>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      เฉพาะอีเมลที่อยู่ในรายชื่อนี้เท่านั้นจึงจะสามารถเข้าสู่ระบบหรือลงทะเบียนได้ (รวมถึง Google Login)
+                      {t('addWhitelistDesc')}
                     </p>
                   </div>
                 </div>
@@ -747,14 +749,14 @@ export default function AdminDashboardPage() {
 
                 <form onSubmit={handleAddWhitelist} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-6 space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">ที่อยู่อีเมล (Email)</label>
+                    <label className="text-xs font-semibold text-slate-300">{t('emailLabel')}</label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <input
                         type="email"
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder="user@example.com หรือ user@gmail.com"
+                        placeholder={t('emailWhitelistPlaceholder')}
                         required
                         className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
                       />
@@ -762,12 +764,12 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="sm:col-span-4 space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">หมายเหตุ (Optional)</label>
+                    <label className="text-xs font-semibold text-slate-300">{t('emailNoteLabel')}</label>
                     <input
                       type="text"
                       value={newNote}
                       onChange={(e) => setNewNote(e.target.value)}
-                      placeholder="เช่น บัญชีสำรอง, สมาชิกในทีม, เพื่อน"
+                      placeholder={t('emailNotePlaceholder')}
                       className="w-full px-4 py-2 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
                     />
                   </div>
@@ -783,7 +785,7 @@ export default function AdminDashboardPage() {
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          <span>เพิ่มอีเมล</span>
+                          <span>{t('addEmailBtn')}</span>
                         </>
                       )}
                     </button>
@@ -796,7 +798,7 @@ export default function AdminDashboardPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
                     <UserCheck className="w-5 h-5 text-amber-400" />
-                    รายชื่ออีเมลที่ได้รับอนุญาต ({whitelist.length})
+                    {t('whitelistListTitle')} ({whitelist.length})
                   </h3>
 
                   {/* Search Bar */}
@@ -806,7 +808,7 @@ export default function AdminDashboardPage() {
                       type="text"
                       value={searchWhitelist}
                       onChange={(e) => setSearchWhitelist(e.target.value)}
-                      placeholder="ค้นหาอีเมลหรือหมายเหตุ..."
+                      placeholder={t('searchWhitelistPlaceholder')}
                       className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
                     />
                   </div>
@@ -814,18 +816,18 @@ export default function AdminDashboardPage() {
 
                 {filteredWhitelist.length === 0 ? (
                   <div className="py-12 text-center text-slate-500 text-xs">
-                    {searchWhitelist ? 'ไม่พบอีเมลที่ตรงกับคำค้นหา' : 'ยังไม่มีอีเมลในระบบ Whitelist'}
+                    {searchWhitelist ? t('whitelistNotFound') : t('whitelistEmpty')}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead className="text-slate-400 uppercase bg-slate-950/60 border-b border-slate-800">
                         <tr>
-                          <th className="p-3">อีเมลที่อนุญาต</th>
-                          <th className="p-3">หมายเหตุ</th>
-                          <th className="p-3">สถานะบัญชีในระบบ</th>
-                          <th className="p-3">วันที่อนุญาต</th>
-                          <th className="p-3 text-right">จัดการ</th>
+                          <th className="p-3">{t('whitelistColEmail')}</th>
+                          <th className="p-3">{t('whitelistColNote')}</th>
+                          <th className="p-3">{t('whitelistColAccountStatus')}</th>
+                          <th className="p-3">{t('whitelistColDate')}</th>
+                          <th className="p-3 text-right">{t('whitelistColAction')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60 text-slate-300">
@@ -842,20 +844,20 @@ export default function AdminDashboardPage() {
                               </div>
                             </td>
                             <td className="p-3 text-slate-400">
-                              {item.note || <span className="italic text-slate-600">- ไม่มี -</span>}
+                              {item.note || <span className="italic text-slate-600">{t('noNote')}</span>}
                             </td>
                             <td className="p-3">
                               {item.user ? (
                                 <div className="flex items-center gap-2">
                                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
                                   <span className="text-slate-200 font-medium">
-                                    {item.user.name || 'มีบัญชีแล้ว'} ({item.user.role})
+                                    {item.user.name || t('hasAccount')} ({item.user.role})
                                   </span>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 text-slate-500">
                                   <span className="inline-block w-2 h-2 rounded-full bg-slate-600" />
-                                  <span>ยังไม่ได้เข้าสู่ระบบ</span>
+                                  <span>{t('notLoggedInYet')}</span>
                                 </div>
                               )}
                             </td>
@@ -870,13 +872,13 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="p-3 text-right">
                               {item.isPrimaryAdmin ? (
-                                <span className="text-[11px] text-slate-600 italic">ผู้ดูแลหลัก</span>
+                                <span className="text-[11px] text-slate-600 italic">{t('primaryAdmin')}</span>
                               ) : (
                                 <button
                                   onClick={() => handleDeleteWhitelist(item.id, item.email)}
                                   disabled={deletingWhitelistId === item.id}
                                   className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 rounded-lg transition-all disabled:opacity-50"
-                                  title="ลบออกจาก Whitelist (บล็อก)"
+                                  title={t('removeFromWhitelistTooltip')}
                                 >
                                   {deletingWhitelistId === item.id ? (
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -902,9 +904,9 @@ export default function AdminDashboardPage() {
       {deleteModalItem && (
         <ConfirmDeleteModal
           isOpen={true}
-          title={`ลบนิยายถาวร: "${deleteModalItem.title}"`}
-          message="คำเตือน: การลบนี้จะเป็นการลบนิยายและบทนิยายทั้งหมดออกจากระบบอย่างถาวร ไม่สามารถกู้คืนกลับมาได้อีก คุณแน่ใจหรือไม่?"
-          confirmLabel="ลบออกจากระบบถาวร"
+          title={`${t('confirmPermanentDeleteSingleTitle')}: "${deleteModalItem.title}"`}
+          message={t('confirmPermanentDeleteSingleMsg')}
+          confirmLabel={t('confirmDeleteButton')}
           isLoading={isDeleting}
           onConfirm={() => handleNovelAction('delete_permanent', deleteModalItem.id)}
           onClose={() => setDeleteModalItem(null)}

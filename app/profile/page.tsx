@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Shield, LogOut, BookOpen, Clock, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 export default function ProfilePage() {
+  const { t } = useLanguage();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -79,7 +81,7 @@ export default function ProfilePage() {
         >
           <div className="flex items-center gap-2.5">
             <Trash2 className="w-5 h-5 text-rose-400" />
-            <span className="text-xs font-semibold text-slate-200">ถังขยะ (Recycle Bin)</span>
+            <span className="text-xs font-semibold text-slate-200">{t('recycleBinTitle')}</span>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
         </Link>
@@ -91,7 +93,7 @@ export default function ProfilePage() {
           >
             <div className="flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-amber-400" />
-              <span className="text-xs font-semibold text-amber-300">แดชบอร์ด Admin</span>
+              <span className="text-xs font-semibold text-amber-300">{t('adminDashboard')}</span>
             </div>
             <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -102,7 +104,7 @@ export default function ProfilePage() {
       <div className="p-4 bg-slate-900/40 border border-slate-800/80 rounded-2xl flex items-center justify-between text-xs text-slate-400">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>สถานะแอป: Mobile PWA พร้อมใช้งาน Offline</span>
+          <span>{t('appStatusPwa')}</span>
         </div>
         <span className="text-[11px] text-amber-400 font-medium">v1.0.0</span>
       </div>
@@ -114,7 +116,7 @@ export default function ProfilePage() {
           className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 active:scale-[0.99] border border-rose-500/30 rounded-2xl transition-all shadow-md shadow-rose-500/5"
         >
           <LogOut className="w-4 h-4" />
-          <span>ออกจากระบบ</span>
+          <span>{t('logout')}</span>
         </button>
       </div>
     </div>

@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import { useLanguage } from '@/lib/languageContext';
 
 interface BinItemSelection {
   type: 'novel' | 'chapter';
@@ -59,7 +60,7 @@ function BinNovelCover({ coverUrl, title, isList = false }: { coverUrl?: string 
   }
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/30 text-center">
+    <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-slate-950 text-center">
       <BookOpen className="w-8 h-8 text-slate-600 mb-2" />
       <p className="text-[11px] font-bold text-slate-300 line-clamp-2 px-1">
         {title}
@@ -69,6 +70,7 @@ function BinNovelCover({ coverUrl, title, isList = false }: { coverUrl?: string 
 }
 
 export default function RecycleBinPage() {
+  const { t } = useLanguage();
   const [novels, setNovels] = useState<any[]>([]);
   const [chapters, setChapters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,9 +160,12 @@ export default function RecycleBinPage() {
           delete next[key];
           return next;
         });
+      } else {
+        alert(data.error || t('restoreError'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
     }
@@ -178,8 +183,13 @@ export default function RecycleBinPage() {
       });
       const data = await res.json();
       if (data.success) {
-        if (actionItem.type === 'novel') setNovels((prev) => prev.filter((n) => n.id !== actionItem.id));
-        if (actionItem.type === 'chapter') setChapters((prev) => prev.filter((c) => c.id !== actionItem.id));
+        if (actionItem.type === 'novel') {
+          setNovels((prev) => prev.filter((n) => n.id !== actionItem.id));
+          setChapters((prev) => prev.filter((c) => c.novelId !== actionItem.id));
+        }
+        if (actionItem.type === 'chapter') {
+          setChapters((prev) => prev.filter((c) => c.id !== actionItem.id));
+        }
 
         const key = `${actionItem.type}:${actionItem.id}`;
         setSelectedMap((prev) => {
@@ -187,9 +197,12 @@ export default function RecycleBinPage() {
           delete next[key];
           return next;
         });
+      } else {
+        alert(data.error || t('permanentDeleteError'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
       setActionItem(null);
@@ -216,9 +229,12 @@ export default function RecycleBinPage() {
         setNovels((prev) => prev.filter((n) => !restoredNovelIds.has(n.id)));
         setChapters((prev) => prev.filter((c) => !restoredChapterIds.has(c.id)));
         setSelectedMap({});
+      } else {
+        alert(data.error || t('restoreError'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
     }
@@ -241,11 +257,14 @@ export default function RecycleBinPage() {
         const deletedChapterIds = new Set(selectedList.filter((i) => i.type === 'chapter').map((i) => i.id));
 
         setNovels((prev) => prev.filter((n) => !deletedNovelIds.has(n.id)));
-        setChapters((prev) => prev.filter((c) => !deletedChapterIds.has(c.id)));
+        setChapters((prev) => prev.filter((c) => !deletedChapterIds.has(c.id) && !deletedNovelIds.has(c.novelId)));
         setSelectedMap({});
+      } else {
+        alert(data.error || t('permanentDeleteError'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
       setIsBatchDeletingModalOpen(false);
@@ -259,7 +278,7 @@ export default function RecycleBinPage() {
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> กลับคลังนิยาย
+          <ArrowLeft className="w-4 h-4" /> {t('backToLibrary')}
         </Link>
       </div>
 
@@ -270,8 +289,8 @@ export default function RecycleBinPage() {
             <Trash2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="hero-title text-xl font-bold">ถังขยะ (Recycle Bin)</h1>
-            <p className="hero-desc text-xs">รายการที่ถูกลบชั่วคราว สามารถกดกู้คืนกลับมาหรือลบถาวรได้ที่นี่</p>
+            <h1 className="hero-title text-xl font-bold">{t('recycleBinTitle')}</h1>
+            <p className="hero-desc text-xs">{t('recycleBinDesc')}</p>
           </div>
         </div>
 
@@ -285,10 +304,10 @@ export default function RecycleBinPage() {
                   ? 'bg-amber-500 text-slate-950 shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="แสดงแบบรายการ (List View)"
+              title={t('viewListTooltip')}
             >
               <ListIcon className="w-4 h-4" />
-              <span>รายการ</span>
+              <span>{t('viewList')}</span>
             </button>
             <button
               onClick={() => setViewMode('card')}
@@ -297,10 +316,10 @@ export default function RecycleBinPage() {
                   ? 'bg-amber-500 text-slate-950 shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="แสดงแบบการ์ด (Card View)"
+              title={t('viewCardTooltip')}
             >
               <LayoutGrid className="w-4 h-4" />
-              <span>การ์ด</span>
+              <span>{t('viewCard')}</span>
             </button>
           </div>
         )}
@@ -320,12 +339,12 @@ export default function RecycleBinPage() {
               ) : (
                 <Square className="w-4 h-4 text-slate-400" />
               )}
-              <span>{isAllSelected ? 'ยกเลิกเลือกทั้งหมด' : 'เลือกทั้งหมด'}</span>
+              <span>{isAllSelected ? t('deselectAll') : t('selectAll')}</span>
             </button>
 
             {selectedCount > 0 && (
               <span className="text-xs font-medium text-amber-300 bg-amber-500/10 px-2.5 py-1 border border-amber-500/20 rounded-lg">
-                เลือกอยู่ {selectedCount} รายการ
+                {t('selectedItemsCount')} {selectedCount} {t('itemsUnit')}
               </span>
             )}
           </div>
@@ -339,7 +358,7 @@ export default function RecycleBinPage() {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl transition-all disabled:opacity-50"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>กู้คืนที่เลือก ({selectedCount})</span>
+                <span>{t('restoreSelected')} ({selectedCount})</span>
               </button>
 
               <button
@@ -348,13 +367,13 @@ export default function RecycleBinPage() {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 rounded-xl transition-all disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>ลบถาวรที่เลือก ({selectedCount})</span>
+                <span>{t('permanentDeleteSelected')} ({selectedCount})</span>
               </button>
 
               <button
                 onClick={clearSelection}
                 className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-all"
-                title="ล้างการเลือก"
+                title={t('clearSelectionTooltip')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -367,15 +386,15 @@ export default function RecycleBinPage() {
       {loading ? (
         <div className="py-16 text-center space-y-3">
           <Loader2 className="w-8 h-8 text-amber-400 animate-spin mx-auto" />
-          <p className="text-xs text-slate-400">กำลังดึงรายการในถังขยะ...</p>
+          <p className="text-xs text-slate-400">{t('loadingBinItems')}</p>
         </div>
       ) : isEmpty ? (
         <div className="p-16 text-center bg-slate-900/40 border border-slate-800/60 rounded-3xl space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto text-slate-500">
             <Trash2 className="w-6 h-6" />
           </div>
-          <p className="text-sm font-semibold text-slate-300">ถังขยะว่างเปล่า</p>
-          <p className="text-xs text-slate-500">ไม่มีรายการนิยายหรือบทนิยายถูกย้ายมาที่นี่</p>
+          <p className="text-sm font-semibold text-slate-300">{t('emptyBin')}</p>
+          <p className="text-xs text-slate-500">{t('emptyBinDesc')}</p>
         </div>
       ) : (
         <div className="space-y-8">
@@ -385,7 +404,7 @@ export default function RecycleBinPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-amber-400" />
-                  <span>นิยายในถังขยะ ({novels.length})</span>
+                  <span>{t('novelsInBin')} ({novels.length})</span>
                 </h2>
               </div>
 
@@ -405,7 +424,7 @@ export default function RecycleBinPage() {
                         }`}
                       >
                         {/* Cover image container */}
-                        <div className="relative aspect-[3/4] w-full bg-slate-950 overflow-hidden">
+                        <div className="relative aspect-[4/4.5] w-full bg-slate-950 overflow-hidden">
                           <BinNovelCover coverUrl={novel.coverUrl} title={novel.titleTh || novel.titleEn} />
 
                           {/* Selection Checkbox on Card */}
@@ -429,20 +448,20 @@ export default function RecycleBinPage() {
                             <button
                               onClick={() => handleRestoreSingle('novel', novel.id)}
                               className="p-1.5 text-emerald-400 hover:text-emerald-300 bg-slate-950/80 hover:bg-emerald-500/20 backdrop-blur-md border border-slate-800 hover:border-emerald-500/40 rounded-xl transition-all"
-                              title="กู้คืน"
+                              title={t('restoreSingleTooltip')}
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() =>
                                 setActionItem({
-                                  type: 'novel',
-                                  id: novel.id,
-                                  title: novel.titleTh || novel.titleEn,
+                                 type: 'novel',
+                                 id: novel.id,
+                                 title: novel.titleTh || novel.titleEn,
                                 })
                               }
                               className="p-1.5 text-rose-400 hover:text-rose-300 bg-slate-950/80 hover:bg-rose-500/20 backdrop-blur-md border border-slate-800 hover:border-rose-500/40 rounded-xl transition-all"
-                              title="ลบถาวร"
+                              title={t('permanentDeleteSingleTooltip')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -455,7 +474,7 @@ export default function RecycleBinPage() {
                             {novel.titleTh || novel.titleEn}
                           </h4>
                           <p className="text-[10px] text-slate-400 truncate">
-                            {novel.author?.name ? `ผู้แต่ง: ${novel.author.name}` : 'ไม่ระบุผู้แต่ง'}
+                            {novel.author?.name ? `${t('author')}: ${novel.author.name}` : t('unknownAuthor')}
                           </p>
                         </div>
                       </div>
@@ -498,7 +517,7 @@ export default function RecycleBinPage() {
                               {novel.titleTh || novel.titleEn}
                             </h4>
                             <p className="text-xs text-slate-400 truncate">
-                              {novel.author?.name ? `ผู้แต่ง: ${novel.author.name}` : 'ไม่ระบุผู้แต่ง'}
+                              {novel.author?.name ? `${t('author')}: ${novel.author.name}` : t('unknownAuthor')}
                             </p>
                           </div>
                         </div>
@@ -513,7 +532,7 @@ export default function RecycleBinPage() {
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">กู้คืน</span>
+                            <span className="hidden sm:inline">{t('restore')}</span>
                           </button>
                           <button
                             onClick={() =>
@@ -524,7 +543,7 @@ export default function RecycleBinPage() {
                               })
                             }
                             className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl transition-all"
-                            title="ลบถาวร"
+                            title={t('permanentDeleteSingleTooltip')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -543,7 +562,7 @@ export default function RecycleBinPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <FileText className="w-4 h-4 text-rose-400" />
-                  <span>บทนิยายในถังขยะ ({chapters.length})</span>
+                  <span>{t('chaptersInBin')} ({chapters.length})</span>
                 </h2>
               </div>
 
@@ -579,7 +598,7 @@ export default function RecycleBinPage() {
                               {chap.titleTh || chap.titleEn}
                             </h4>
                             <p className="text-[11px] text-slate-400 truncate mt-1">
-                              เรื่อง: {chap.novel?.titleTh || chap.novel?.titleEn || '-'}
+                              {t('novelStoryPrefix')} {chap.novel?.titleTh || chap.novel?.titleEn || '-'}
                             </p>
                           </div>
                         </div>
@@ -593,7 +612,7 @@ export default function RecycleBinPage() {
                             className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
                           >
                             <RotateCcw className="w-3 h-3" />
-                            <span>กู้คืน</span>
+                            <span>{t('restore')}</span>
                           </button>
                           <button
                             onClick={() =>
@@ -604,7 +623,7 @@ export default function RecycleBinPage() {
                               })
                             }
                             className="p-1 text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl transition-all"
-                            title="ลบถาวร"
+                            title={t('permanentDeleteSingleTooltip')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -645,7 +664,7 @@ export default function RecycleBinPage() {
                               {chap.titleTh || chap.titleEn}
                             </h4>
                             <p className="text-xs text-slate-400 truncate">
-                              เรื่อง: {chap.novel?.titleTh || chap.novel?.titleEn || '-'}
+                              {t('novelStoryPrefix')} {chap.novel?.titleTh || chap.novel?.titleEn || '-'}
                             </p>
                           </div>
                         </div>
@@ -659,7 +678,7 @@ export default function RecycleBinPage() {
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">กู้คืน</span>
+                            <span className="hidden sm:inline">{t('restore')}</span>
                           </button>
                           <button
                             onClick={() =>
@@ -670,7 +689,7 @@ export default function RecycleBinPage() {
                               })
                             }
                             className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl transition-all"
-                            title="ลบถาวร"
+                            title={t('permanentDeleteSingleTooltip')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -689,9 +708,9 @@ export default function RecycleBinPage() {
       {actionItem && (
         <ConfirmDeleteModal
           isOpen={true}
-          title={`ลบถาวร: "${actionItem.title}"`}
-          message="คำเตือน: การลบนี้จะเป็นการลบออกจากระบบถาวร ไม่สามารถกู้คืนกลับมาได้อีก คุณแน่ใจหรือไม่?"
-          confirmLabel="ลบออกจากระบบถาวร"
+          title={`${t('confirmPermanentDeleteSingleTitle')}: "${actionItem.title}"`}
+          message={t('confirmPermanentDeleteSingleMsg')}
+          confirmLabel={t('confirmDeleteButton')}
           isLoading={isProcessingAction}
           onConfirm={handlePermanentDeleteSingle}
           onClose={() => setActionItem(null)}
@@ -702,9 +721,9 @@ export default function RecycleBinPage() {
       {isBatchDeletingModalOpen && (
         <ConfirmDeleteModal
           isOpen={true}
-          title={`ลบถาวรรายการที่เลือก (${selectedCount} รายการ)`}
-          message={`คำเตือน: คุณกำลังจะลบรายการที่เลือกทั้งหมด ${selectedCount} รายการออกจากระบบอย่างถาวร ข้อมูลทั้งหมดจะไม่สามารถกู้คืนได้อีกต่อไป คุณแน่ใจหรือไม่?`}
-          confirmLabel={`ยืนยันลบถาวร ${selectedCount} รายการ`}
+          title={`${t('confirmPermanentDeleteBatchTitle')} (${selectedCount} ${t('itemsUnit')})`}
+          message={t('confirmPermanentDeleteBatchMsg')}
+          confirmLabel={`${t('permanentDeleteSelected')} (${selectedCount})`}
           isLoading={isProcessingAction}
           onConfirm={handleBatchPermanentDelete}
           onClose={() => setIsBatchDeletingModalOpen(false)}

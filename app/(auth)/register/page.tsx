@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Lock, BookOpen, ArrowRight } from 'lucide-react';
+import { useLanguage } from '@/lib/languageContext';
 
 export default function RegisterPage() {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +42,7 @@ export default function RegisterPage() {
 
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'ลงทะเบียนไม่สำเร็จ');
+        throw new Error(data.error || 'Registration failed');
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -63,8 +65,8 @@ export default function RegisterPage() {
           <div className="inline-flex p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl mb-1">
             <BookOpen className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-100">สมัครสมาชิกใหม่</h1>
-          <p className="text-xs text-slate-400">สร้างบัญชีเพื่อบันทึกประวัติการอ่านและแปลนิยาย</p>
+          <h1 className="text-2xl font-extrabold text-slate-100">{t('registerTitle')}</h1>
+          <p className="text-xs text-slate-400">{t('registerSubtitle')}</p>
         </div>
 
         {error && (
@@ -96,25 +98,25 @@ export default function RegisterPage() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          <span>ดำเนินการต่อด้วย Google</span>
+          <span>{t('continueWithGoogle')}</span>
         </a>
 
         {/* Divider */}
         <div className="relative flex items-center justify-center">
           <div className="border-t border-slate-800 w-full" />
-          <span className="bg-slate-900 px-3 text-[11px] text-slate-500 uppercase tracking-wider">หรือ</span>
+          <span className="bg-slate-900 px-3 text-[11px] text-slate-500 uppercase tracking-wider">{t('orDivider')}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">ชื่อหรือนามแฝง</label>
+            <label className="text-xs font-semibold text-slate-300">{t('nameLabel')}</label>
             <div className="relative">
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="ชื่อของคุณ"
+                placeholder={t('namePlaceholder')}
                 required
                 className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
               />
@@ -122,7 +124,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">อีเมล</label>
+            <label className="text-xs font-semibold text-slate-300">{t('emailLabel')}</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
@@ -137,14 +139,14 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">รหัสผ่าน</label>
+            <label className="text-xs font-semibold text-slate-300">{t('passwordLabel')}</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="อย่างน้อย 6 ตัวอักษร"
+                placeholder={t('passwordPlaceholder')}
                 required
                 minLength={6}
                 className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
@@ -157,18 +159,18 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs sm:text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md shadow-amber-500/20 disabled:opacity-50"
           >
-            {loading ? 'กำลังสมัครสมาชิก...' : 'สมัครสมาชิก'}
+            {loading ? t('registering') : t('registerTitle')}
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
         <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/80">
-          มีบัญชีผู้ใช้อยู่แล้ว?{' '}
+          {t('alreadyHaveAccount')}{' '}
           <Link
             href={callbackUrl !== '/' ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'}
             className="font-semibold text-amber-400 hover:underline"
           >
-            เข้าสู่ระบบที่นี่
+            {t('loginHere')}
           </Link>
         </div>
       </div>
