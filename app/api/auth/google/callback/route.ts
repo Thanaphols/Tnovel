@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getBaseUrl, signToken } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET(request: Request) {
   const baseUrl = getBaseUrl(request);
@@ -100,7 +101,7 @@ export async function GET(request: Request) {
       const loginUrl = new URL('/login', baseUrl);
       loginUrl.searchParams.set(
         'error',
-        `อีเมลนี้ (${email}) ยังไม่ได้รับอนุญาตให้เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบเพื่อขอเพิ่มอีเมลเข้าสู่ระบบ (Whitelist)`
+        'คุณไม่มีสิทธ์ใช้งานระบบได้ กรุณาติดต่อผู้ดูแลระบบในการขอสิทธ์เข้าใช้งาน'
       );
       if (savedCallbackUrl !== '/') loginUrl.searchParams.set('callbackUrl', savedCallbackUrl);
       return NextResponse.redirect(loginUrl);
@@ -151,6 +152,15 @@ export async function GET(request: Request) {
       email: user.email,
       name: user.name,
       role: user.role as 'USER' | 'ADMIN',
+    });
+
+    await recordAuditLog({
+      userId: user.id,
+      action: 'AUTH_LOGIN_GOOGLE',
+      entity: 'AUTH',
+      entityId: user.id,
+      details: `เข้าสู่ระบบด้วย Google (${user.email})`,
+      request,
     });
 
     // 5. Redirect user to destination

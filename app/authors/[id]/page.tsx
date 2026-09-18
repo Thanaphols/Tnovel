@@ -45,8 +45,8 @@ export default function AuthorDetailPage() {
             <div className="h-3 w-24 bg-slate-900/60 rounded-md animate-pulse" />
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-          {Array.from({ length: 4 }).map((_, idx) => (
+        <div className="grid grid-cols-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 sm:gap-2.5">
+          {Array.from({ length: 8 }).map((_, idx) => (
             <NovelCardSkeleton key={idx} />
           ))}
         </div>
@@ -92,7 +92,7 @@ export default function AuthorDetailPage() {
         {author.novels.length === 0 ? (
           <p className="text-xs text-slate-500">{t('authorNoNovels')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 sm:gap-2.5">
             {author.novels.map((novel: any) => (
               <NovelCard
                 key={novel.id}
@@ -100,6 +100,7 @@ export default function AuthorDetailPage() {
                 titleEn={novel.titleEn}
                 titleTh={novel.titleTh}
                 coverUrl={novel.coverUrl}
+                category={novel.category}
                 author={{ id: author.id, name: author.name }}
                 createdBy={novel.createdBy}
                 chapterCount={novel._count?.chapters || 0}

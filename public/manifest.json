@@ -1,7 +1,7 @@
 {
-  "name": "NovelTrans Reader",
-  "short_name": "NovelTrans",
-  "description": "Mobile-First AI Web Novel Reader & Literary Thai Translator",
+  "name": "Tnovel Reader",
+  "short_name": "Tnovel",
+  "description": "Mobile-First Web Novel Reader & Literary Thai Translator",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

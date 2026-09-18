@@ -22,6 +22,7 @@ import { useSocket } from '@/lib/socket';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import UrlScrapeDrawer from '@/components/UrlScrapeDrawer';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
 
 interface HistoryNovel {
   id: string;
@@ -59,6 +60,7 @@ export default function HistoryPage() {
 
   const { socket } = useSocket();
   const { t, lang } = useLanguage();
+  const { isAdmin } = useAuth();
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -233,13 +235,15 @@ export default function HistoryPage() {
               </p>
             </div>
 
-            <button
-              onClick={() => setIsScrapeOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow-md active:scale-95 transition-all self-start sm:self-auto"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{t('btnTranslateNew')}</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsScrapeOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow-md active:scale-95 transition-all self-start sm:self-auto"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{t('btnTranslateNew')}</span>
+              </button>
+            )}
           </div>
 
           {/* Search & Filter Tabs */}
@@ -379,15 +383,15 @@ export default function HistoryPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         {/* Status Badge */}
                         {isCompleted ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-forest-500/15 border border-forest-500/30 text-forest-600 dark:text-forest-400">
                             <CheckCircle2 className="w-3 h-3" /> {t('statusCompleted')}
                           </span>
                         ) : isCurrentlyTranslating ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-ocean-500/15 border border-ocean-500/30 text-ocean-600 dark:text-ocean-400">
                             <Loader2 className="w-3 h-3 animate-spin" /> {t('translating')}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400">
                             <Clock className="w-3 h-3" /> {t('statusPaused')}
                           </span>
                         )}
@@ -401,7 +405,7 @@ export default function HistoryPage() {
                         </span>
                       </div>
 
-                      <h3 className="text-sm sm:text-base font-bold text-slate-100 line-clamp-1 group-hover:text-amber-300 transition-colors">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-100 line-clamp-1 group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors">
                         {novel.titleTh || novel.titleEn}
                       </h3>
 
@@ -435,8 +439,8 @@ export default function HistoryPage() {
 
                   {/* Right: Actions */}
                   <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0 pt-2 sm:pt-0">
-                    {/* Resume Translation Button */}
-                    {isPausedOrCancelled && (
+                    {/* Resume Translation Button (Admin only) */}
+                    {isAdmin && isPausedOrCancelled && (
                       <button
                         onClick={() => handleResume(novel)}
                         disabled={resumingId === novel.id || Boolean(activeJobId)}
@@ -476,14 +480,16 @@ export default function HistoryPage() {
                       </a>
                     )}
 
-                    {/* Delete Button */}
-                    <button
-                      onClick={() => setDeleteTarget(novel)}
-                      className="p-2 text-slate-400 hover:text-rose-400 bg-slate-950/80 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/30 rounded-xl transition-colors"
-                      title={t('moveToBin')}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Delete Button (Admin only) */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => setDeleteTarget(novel)}
+                        className="p-2 text-slate-400 hover:text-rose-400 bg-slate-950/80 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/30 rounded-xl transition-colors"
+                        title={t('moveToBin')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -492,18 +498,20 @@ export default function HistoryPage() {
         )}
       </div>
 
-      {/* Confirmation Modal for Delete */}
-      <ConfirmDeleteModal
-        isOpen={Boolean(deleteTarget)}
-        title={`${t('confirmMoveToBinTitle')} "${deleteTarget?.titleTh || deleteTarget?.titleEn}"`}
-        message={t('confirmMoveToBinMsg')}
-        isLoading={isDeleting}
-        onConfirm={handleDeleteConfirm}
-        onClose={() => setDeleteTarget(null)}
-      />
+      {/* Confirmation Modal for Delete (Admin only) */}
+      {isAdmin && (
+        <ConfirmDeleteModal
+          isOpen={Boolean(deleteTarget)}
+          title={`${t('confirmMoveToBinTitle')} "${deleteTarget?.titleTh || deleteTarget?.titleEn}"`}
+          message={t('confirmMoveToBinMsg')}
+          isLoading={isDeleting}
+          onConfirm={handleDeleteConfirm}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
 
-      {/* URL Scraper Drawer */}
-      <UrlScrapeDrawer isOpen={isScrapeOpen} onClose={() => setIsScrapeOpen(false)} />
+      {/* URL Scraper Drawer (Admin only) */}
+      {isAdmin && <UrlScrapeDrawer isOpen={isScrapeOpen} onClose={() => setIsScrapeOpen(false)} />}
     </div>
   );
 }

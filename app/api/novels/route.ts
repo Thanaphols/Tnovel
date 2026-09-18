@@ -20,43 +20,56 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, items: titles });
     }
 
-    const limit = parseInt(searchParams.get('limit') || '8', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
     const cursor = searchParams.get('cursor');
+    const categoryFilter = searchParams.get('category')?.trim();
 
     const session = await getSession();
 
-    const novels = await prisma.novel.findMany({
-      take: limit + 1,
-      cursor: cursor ? { id: cursor } : undefined,
-      skip: cursor ? 1 : 0,
-      where: {
-        deletedAt: null,
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-      include: {
-        author: {
-          select: { id: true, name: true },
+    const whereClause: any = {
+      deletedAt: null,
+    };
+    if (categoryFilter && categoryFilter !== 'ALL' && categoryFilter !== 'all') {
+      whereClause.category = categoryFilter;
+    }
+
+    const [totalCount, novels] = await Promise.all([
+      prisma.novel.count({
+        where: whereClause,
+      }),
+      prisma.novel.findMany({
+        take: limit + 1,
+        cursor: cursor ? { id: cursor } : undefined,
+        skip: cursor ? 1 : 0,
+        where: whereClause,
+        orderBy: [
+          { updatedAt: 'desc' },
+          { id: 'desc' },
+        ],
+        include: {
+          author: {
+            select: { id: true, name: true },
+          },
+          createdBy: {
+            select: { id: true, name: true, email: true, avatar: true },
+          },
+          chapters: {
+            where: { deletedAt: null },
+            orderBy: { chapterNumber: 'asc' },
+            select: { id: true, chapterNumber: true, titleTh: true, titleEn: true, updatedAt: true },
+          },
+          _count: {
+            select: { chapters: true },
+          },
         },
-        createdBy: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
-        chapters: {
-          where: { deletedAt: null },
-          orderBy: { chapterNumber: 'asc' },
-          select: { id: true, chapterNumber: true, titleTh: true, titleEn: true, updatedAt: true },
-        },
-        _count: {
-          select: { chapters: true },
-        },
-      },
-    });
+      }),
+    ]);
 
     let nextCursor: string | null = null;
     if (novels.length > limit) {
-      const nextItem = novels.pop();
-      nextCursor = nextItem?.id || null;
+      novels.pop();
+      const lastItem = novels[novels.length - 1];
+      nextCursor = lastItem?.id || null;
     }
 
     let userProgressMap: Record<string, number> = {};
@@ -88,6 +101,7 @@ export async function GET(request: Request) {
       titleTh: n.titleTh,
       coverUrl: n.coverUrl,
       sourceUrl: n.sourceUrl,
+      category: n.category,
       author: n.author,
       createdBy: n.createdBy,
       chapterCount: n._count.chapters,
@@ -106,6 +120,8 @@ export async function GET(request: Request) {
       success: true,
       items,
       nextCursor,
+      hasMore: !!nextCursor,
+      total: totalCount,
     });
   } catch (err: any) {
     console.error('Fetch novels error:', err);

@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { translateParagraphsGoogle } from '@/lib/googleTranslate';
-import { translateParagraphsInBatches } from '@/lib/translator';
+import { polishParagraphs } from '@/lib/translator';
+import { recordAuditLog } from '@/lib/auditLog';
+import { isThaiText } from '@/lib/scraper';
 
-// Gemini never throws on quota — it returns these markers as the "translation" instead,
-// so they have to be detected before anything is written back over good content.
-const FAILURE_PREFIXES = ['[แปลผิดพลาด', '[ยังไม่ได้ใส่', '[กำลังรอโควตา', '[แปลไม่สำเร็จ', '[แปล]'];
+// Failed scrapes/translations are stored with these markers instead of real Thai text,
+// so they have to be detected before anything is used as a draft or written back.
+const FAILURE_PREFIXES = ['[แปลผิดพลาด', '[ยังไม่ได้ใส่', '[กำลังรอโควตา', '[แปลไม่สำเร็จ', '[แปล]', '[ต้นฉบับ]'];
 const FAILURE_RATIO = 0.3;
 
 function looksFailed(paragraphs: string[]): boolean {
@@ -15,15 +17,24 @@ function looksFailed(paragraphs: string[]): boolean {
   return bad / paragraphs.length > FAILURE_RATIO;
 }
 
+function parseArray(json: string): string[] {
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'กรุณาเข้าสู่ระบบก่อนสั่งแปลใหม่' }, { status: 401 });
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น' }, { status: 403 });
     }
 
     const body = await request.json().catch(() => ({}));
-    const engine: 'google' | 'gemini' = body?.engine === 'gemini' ? 'gemini' : 'google';
+    const engine: 'google' | 'polish' = body?.engine === 'polish' ? 'polish' : 'google';
 
     const chapter = await prisma.chapter.findFirst({
       where: { id: params.id, deletedAt: null },
@@ -32,42 +43,81 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ success: false, error: 'ไม่พบบทนิยายนี้' }, { status: 404 });
     }
 
-    let contentEn: string[];
-    try {
-      contentEn = JSON.parse(chapter.contentEn);
-    } catch {
-      contentEn = [];
-    }
-    if (!Array.isArray(contentEn) || contentEn.length === 0) {
+    const contentEn = parseArray(chapter.contentEn);
+    if (contentEn.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'บทนี้ไม่มีต้นฉบับภาษาอังกฤษเก็บไว้ แปลใหม่ไม่ได้' },
+        { success: false, error: 'บทนี้ไม่มีต้นฉบับเก็บไว้ แปลใหม่ไม่ได้' },
         { status: 400 }
       );
     }
 
-    // Re-translates the stored source text, so no re-scraping and no Cloudflare in the way.
-    const translate = engine === 'gemini' ? translateParagraphsInBatches : translateParagraphsGoogle;
-    const [translatedTitle, ...translatedBody] = await translate([chapter.titleEn, ...contentEn]);
+    if (chapter.originalUrl.includes('dek-d.com') || isThaiText(contentEn)) {
+      return NextResponse.json({
+        success: true,
+        alreadyPolished: true,
+        message: 'นิยายเรื่องนี้เป็นภาษาไทยต้นฉบับอยู่แล้ว ไม่จำเป็นต้องแปลใหม่',
+        titleTh: chapter.titleTh,
+        contentTh: parseArray(chapter.contentTh),
+      });
+    }
 
-    if (looksFailed(translatedBody)) {
+    // Polishing costs Gemini quota; a chapter that is already polished is served as-is.
+    if (engine === 'polish' && chapter.polishedAt) {
+      return NextResponse.json({
+        success: true,
+        engine,
+        alreadyPolished: true,
+        titleTh: chapter.titleTh,
+        contentTh: parseArray(chapter.contentTh),
+      });
+    }
+
+    // Always draft from the stored English (free, ~2s), never from stored Thai: re-polishing
+    // an already-edited text drifts further from the source every time.
+    let draft: string[] | null = null;
+    try {
+      const fresh = await translateParagraphsGoogle([chapter.titleEn, ...contentEn]);
+      if (!looksFailed(fresh.slice(1))) draft = fresh;
+    } catch (err: any) {
+      console.error('Retranslate: Google draft failed:', err.message);
+    }
+
+    if (!draft && engine === 'polish') {
+      const stored = parseArray(chapter.contentTh);
+      if (stored.length === contentEn.length && !looksFailed(stored)) draft = [chapter.titleTh, ...stored];
+    }
+
+    if (!draft) {
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            engine === 'gemini'
-              ? 'Gemini แปลไม่สำเร็จ (โควตารายวันน่าจะหมด) เนื้อหาเดิมยังอยู่ครบ'
-              : 'Google Translate แปลไม่สำเร็จ เนื้อหาเดิมยังอยู่ครบ',
-        },
+        { success: false, error: 'Google Translate แปลไม่สำเร็จ เนื้อหาเดิมยังอยู่ครบ' },
         { status: 502 }
       );
     }
 
-    const titleTh =
-      translatedTitle && !translatedTitle.startsWith('[') ? translatedTitle : chapter.titleTh;
+    let translated = draft;
+    let polishedAt: Date | null = null;
+    let partial = false;
+
+    if (engine === 'polish') {
+      const result = await polishParagraphs([chapter.titleEn, ...contentEn], draft);
+      if (result.failedBatches === result.totalBatches) {
+        return NextResponse.json(
+          { success: false, error: 'ระบบเกลาสำนวนไม่สำเร็จ (โควตารายวันอาจหมด) เนื้อหาเดิมยังอยู่ครบ' },
+          { status: 502 }
+        );
+      }
+      translated = result.paragraphs;
+      partial = result.failedBatches > 0;
+      // Partially polished chapters stay unflagged so the reader can retry the rest later.
+      polishedAt = partial ? null : new Date();
+    }
+
+    const [translatedTitle, ...translatedBody] = translated;
+    const titleTh = translatedTitle && !translatedTitle.startsWith('[') ? translatedTitle : chapter.titleTh;
 
     await prisma.chapter.update({
       where: { id: chapter.id },
-      data: { titleTh, contentTh: JSON.stringify(translatedBody) },
+      data: { titleTh, contentTh: JSON.stringify(translatedBody), polishedAt },
     });
 
     const io = (global as any).io;
@@ -75,7 +125,16 @@ export async function POST(request: Request, { params }: { params: { id: string 
       io.emit('chapter:updated', { chapterId: chapter.id, novelId: chapter.novelId, titleTh });
     }
 
-    return NextResponse.json({ success: true, engine, titleTh, contentTh: translatedBody });
+    await recordAuditLog({
+      userId: session.id,
+      action: 'CHAPTER_RETRANSLATE',
+      entity: 'CHAPTER',
+      entityId: chapter.id,
+      details: `แปลใหม่บท "${titleTh}" (${engine === 'polish' ? 'AI เกลาสำนวน' : 'Google แปลตรง'})`,
+      request,
+    });
+
+    return NextResponse.json({ success: true, engine, partial, titleTh, contentTh: translatedBody });
   } catch (err: any) {
     console.error('Retranslate error:', err);
     return NextResponse.json(

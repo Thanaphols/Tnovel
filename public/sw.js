@@ -1,6 +1,5 @@
-const CACHE_NAME = 'noveltrans-v2';
+const CACHE_NAME = 'noveltrans-v4';
 const ASSETS_TO_CACHE = [
-  '/',
   '/manifest.json',
   '/favicon.ico',
 ];
@@ -32,23 +31,58 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // ponytail: never cache-first the API. Serving a stale /api/novels or /api/chapters
-  // is what forced a manual refresh before freshly translated chapters showed up.
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket.io')) return;
-  
+
+  // 1. Bypass APIs, WebSockets, and Next.js HMR/dev chunks
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/socket.io') ||
+    url.pathname.startsWith('/_next/webpack-hmr') ||
+    url.pathname.includes('hot-update')
+  ) {
+    return;
+  }
+
+  // 2. Navigation requests (HTML pages): ALWAYS Network-First
+  // Prevents stale SSR HTML from mismatching client React hydration
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // 3. Static assets: Cache-First with network fallback & background update
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached asset and update cache in background
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+            }
+          })
+          .catch(() => {});
         return cachedResponse;
       }
-      return fetch(event.request);
+
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        }
+        return networkResponse;
+      });
     })
   );
 });

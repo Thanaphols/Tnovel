@@ -30,8 +30,13 @@ export default function ChapterReaderPage() {
       const res = await fetch(`/api/chapters/${id}`);
       const data = await res.json();
 
-      if (data.success) {
-        setChapter(data.chapter);
+      if (data.success && data.chapter) {
+        setChapter({
+          ...data.chapter,
+          allChapters: Array.isArray(data.chapter.allChapters) ? data.chapter.allChapters : [],
+          contentEn: Array.isArray(data.chapter.contentEn) ? data.chapter.contentEn : [],
+          contentTh: Array.isArray(data.chapter.contentTh) ? data.chapter.contentTh : [],
+        });
         return;
       }
       throw new Error(data.error || t('loadChapterError'));
@@ -45,12 +50,13 @@ export default function ChapterReaderPage() {
           chapterNumber: cached.chapterNumber || 1,
           titleEn: cached.titleEn,
           titleTh: cached.titleTh,
-          contentEn: cached.contentEn,
-          contentTh: cached.contentTh,
+          contentEn: Array.isArray(cached.contentEn) ? cached.contentEn : [],
+          contentTh: Array.isArray(cached.contentTh) ? cached.contentTh : [],
           originalUrl: cached.originalUrl,
           novelId: '',
           novelTitle: cached.novelTitle || t('offline'),
           authorName: 'Unknown',
+          allChapters: [],
         });
       } else {
         setError(err.message || t('chapterNotFound'));

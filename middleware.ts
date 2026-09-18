@@ -63,9 +63,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // 5. Admin route protection (ADMIN role required)
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname === '/bin') {
     if (session.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/', request.url));
+      const homeUrl = new URL('/', request.url);
+      homeUrl.searchParams.set('unauthorized', 'admin');
+      return NextResponse.redirect(homeUrl);
     }
   }
 
@@ -85,5 +87,9 @@ export const config = {
      * - static image & font files
      */
     '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|socket.io|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$).*)',
+  ],
+  unstable_allowDynamic: [
+    '**/node_modules/jose/**',
+    '**/node_modules/@edge-runtime/**',
   ],
 };

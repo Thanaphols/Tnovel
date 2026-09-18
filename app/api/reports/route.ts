@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function POST(request: Request) {
   try {
@@ -29,6 +30,15 @@ export async function POST(request: Request) {
     if (io) {
       io.emit('report:created', { id: report.id });
     }
+
+    await recordAuditLog({
+      userId: session?.id || null,
+      action: 'REPORT_CREATE',
+      entity: 'REPORT',
+      entityId: report.id,
+      details: `รายงานปัญหา: "${reason}"`,
+      request,
+    });
 
     return NextResponse.json({
       success: true,

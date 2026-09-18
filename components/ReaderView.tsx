@@ -12,6 +12,7 @@ import { ReaderSettingsState, saveReaderSettings, getReaderSettings, saveChapter
 import { toggleChapterBookmark, recordGuestReadingHistory } from '@/lib/bookshelf';
 import { useAppTheme } from '@/lib/themeContext';
 import { useLanguage } from '@/lib/languageContext';
+import { deobfuscateThaiText } from '@/lib/thaiUtils';
 
 interface ReaderViewProps {
   chapter: {
@@ -74,6 +75,68 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
   const [isRetranslating, setIsRetranslating] = useState(false);
   const [retranslateToast, setRetranslateToast] = useState<{ ok: boolean; message: string } | null>(null);
   const [isCurrentChapterBookmarked, setIsCurrentChapterBookmarked] = useState(false);
+
+  // Smart back navigation: return to referrer (e.g. index '/' vs novel overview '/novels/[id]')
+  const [backUrl, setBackUrl] = useState<string>(() => {
+    return chapter.novelId ? `/novels/${chapter.novelId}` : '/';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let fromParam: string | null = null;
+    try {
+      fromParam = new URLSearchParams(window.location.search).get('from');
+    } catch {}
+
+    // 1. Explicit query param (?from=home or ?from=novel or ?from=...)
+    if (fromParam) {
+      const target =
+        fromParam === 'home' || fromParam === 'index'
+          ? '/'
+          : fromParam === 'novel' && chapter.novelId
+            ? `/novels/${chapter.novelId}`
+            : fromParam;
+      try {
+        sessionStorage.setItem('tnovel_reader_return_url', target);
+      } catch {}
+      setBackUrl(target);
+      return;
+    }
+
+    // 2. Reader-specific stored return url
+    try {
+      const stored = sessionStorage.getItem('tnovel_reader_return_url');
+      if (stored) {
+        setBackUrl(stored);
+        return;
+      }
+    } catch {}
+
+    // 3. General last visited non-reader page
+    try {
+      const prevNonReader = sessionStorage.getItem('tnovel_prev_non_reader_url');
+      if (prevNonReader) {
+        if (prevNonReader.startsWith('/novels/')) {
+          const prevNovelId = prevNonReader.split('/')[2];
+          if (prevNovelId && chapter.novelId && prevNovelId !== chapter.novelId) {
+            setBackUrl(`/novels/${chapter.novelId}`);
+            return;
+          }
+        }
+        setBackUrl(prevNonReader);
+        return;
+      }
+    } catch {}
+
+    // 4. Default fallback: novel detail page or home
+    setBackUrl(chapter.novelId ? `/novels/${chapter.novelId}` : '/');
+  }, [chapter.novelId]);
+
+  function handleBackClick(e: React.MouseEvent) {
+    e.preventDefault();
+    router.push(backUrl);
+  }
 
   // Check bookmark status when activeChapterId changes
   useEffect(() => {
@@ -163,19 +226,27 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
   const lastLoadedIndex = allChapters.findIndex((c) => c.id === lastLoaded?.id);
   const hasMoreChapters = lastLoadedIndex >= 0 && lastLoadedIndex < allChapters.length - 1;
 
+  // Stable refs to prevent loadNextChapter from recreating and triggering re-render loops
+  const loadedChaptersRef = useRef(loadedChapters);
+  loadedChaptersRef.current = loadedChapters;
+  const allChaptersRef = useRef(allChapters);
+  allChaptersRef.current = allChapters;
+
   // Auto-load next chapter function
   const loadNextChapter = useCallback(async () => {
     if (loadingNextRef.current) return;
-    const currentLast = loadedChapters[loadedChapters.length - 1];
+    const curLoaded = loadedChaptersRef.current;
+    const curAll = allChaptersRef.current;
+    const currentLast = curLoaded[curLoaded.length - 1];
     if (!currentLast) return;
 
-    const currentLastIdx = allChapters.findIndex((c) => c.id === currentLast.id);
-    if (currentLastIdx < 0 || currentLastIdx >= allChapters.length - 1) {
+    const currentLastIdx = curAll.findIndex((c) => c.id === currentLast.id);
+    if (currentLastIdx < 0 || currentLastIdx >= curAll.length - 1) {
       return; // No more chapters to load
     }
 
-    const nextMeta = allChapters[currentLastIdx + 1];
-    if (loadedChapters.some((c) => c.id === nextMeta.id)) return;
+    const nextMeta = curAll[currentLastIdx + 1];
+    if (curLoaded.some((c) => c.id === nextMeta.id)) return;
 
     loadingNextRef.current = true;
     setIsLoadingNext(true);
@@ -201,8 +272,8 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
             chapterNumber: cached.chapterNumber || nextMeta.chapterNumber,
             titleEn: cached.titleEn,
             titleTh: cached.titleTh,
-            contentEn: cached.contentEn,
-            contentTh: cached.contentTh,
+            contentEn: Array.isArray(cached.contentEn) ? cached.contentEn : [],
+            contentTh: Array.isArray(cached.contentTh) ? cached.contentTh : [],
             originalUrl: cached.originalUrl,
             novelId: chapter.novelId,
             novelTitle: cached.novelTitle || chapter.novelTitle,
@@ -235,7 +306,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       loadingNextRef.current = false;
       setIsLoadingNext(false);
     }
-  }, [loadedChapters, allChapters, chapter.novelId, chapter.novelTitle, chapter.authorName]);
+  }, [chapter.novelId, chapter.novelTitle, chapter.authorName]);
 
   // Bottom Sentinel Observer to load next chapter before reaching end
   useEffect(() => {
@@ -248,7 +319,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
           loadNextChapter();
         }
       },
-      { rootMargin: '400px', threshold: 0.05 }
+      { rootMargin: '300px', threshold: 0.1 }
     );
 
     observer.observe(sentinel);
@@ -256,12 +327,12 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
   }, [loadNextChapter]);
 
   // Re-translate active chapter
-  async function handleRetranslate(engine: 'google' | 'gemini') {
-    setIsRetranslating(true);
-    setRetranslateToast(null);
-
+  async function handleRetranslate(engine: 'google' | 'polish') {
     const target = loadedChapters.find((c) => c.id === activeChapterId) || loadedChapters[0];
     if (!target) return;
+
+    setIsRetranslating(true);
+    setRetranslateToast(null);
 
     try {
       const res = await fetch(`/api/chapters/${target.id}/retranslate`, {
@@ -288,7 +359,14 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       });
       setRetranslateToast({
         ok: true,
-        message: engine === 'gemini' ? t('retranslatedGeminiSuccess') : t('retranslatedGoogleSuccess'),
+        message:
+          engine === 'google'
+            ? t('retranslatedGoogleSuccess')
+            : data.alreadyPolished
+              ? t('alreadyPolished')
+              : data.partial
+                ? t('polishPartial')
+                : t('polishSuccess'),
       });
     } catch (err: any) {
       setRetranslateToast({ ok: false, message: err.message || t('retranslateFailed') });
@@ -331,12 +409,11 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
     };
   }, [socket, chapter.novelId, chapter.chapterNumber]);
 
-  // Touch gesture swipe states
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [swipeHint, setSwipeHint] = useState<string | null>(null);
-
-  const SWIPE_THRESHOLD = 75;
+  // Touch gesture swipe states (Commented out: clashes with mobile system back gesture)
+  // const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  // const [swipeOffset, setSwipeOffset] = useState(0);
+  // const [swipeHint, setSwipeHint] = useState<string | null>(null);
+  // const SWIPE_THRESHOLD = 75;
 
   // Load saved settings from IndexedDB
   useEffect(() => {
@@ -552,7 +629,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
     setIsCheckingNext(false);
   }
 
-  const isPointerDown = React.useRef(false);
+  // const isPointerDown = React.useRef(false);
 
   // Keyboard navigation listener (ArrowLeft / ArrowRight)
   useEffect(() => {
@@ -571,7 +648,9 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [prevChapter, nextChapter, isSettingsOpen, isReportOpen, router]);
 
+  /*
   // Unified Gesture Handlers (Touch + Mouse Pointer)
+  // Commented out: clashes with phone system back gesture (swiping from edges)
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     const target = e.target as HTMLElement;
@@ -650,6 +729,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       }
     }
   };
+  */
 
   const handleContentClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -665,34 +745,44 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
 
   return (
     <div
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      /* onPointerDown={handlePointerDown} */
+      /* onPointerMove={handlePointerMove} */
+      /* onPointerUp={handlePointerUp} */
+      /* onPointerCancel={handlePointerUp} */
       onClick={handleContentClick}
       className={`reader-view reader-theme-${settings.theme} min-h-screen flex flex-col transition-colors duration-300 select-none ${activeTheme.wrapper}`}
-      style={{
+      /* style={{
         transform: swipeOffset ? `translateX(${swipeOffset}px)` : undefined,
         transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none',
-      }}
+      }} */
     >
-      {/* Floating Swipe Hint Toast / Indicator */}
+      {/* Floating Swipe Hint Toast / Indicator (Commented out)
       {swipeHint && (
         <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border text-xs font-bold rounded-full shadow-2xl backdrop-blur-md transition-all animate-fade-in pointer-events-none flex items-center gap-2 ${activeTheme.swipeToast}`}>
           <span>{swipeHint}</span>
         </div>
-      )}
+      )} */}
 
       {/* Reader Navigation Top Bar */}
       <header className={`reader-header sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between backdrop-blur-md ${activeTheme.header}`}>
         <div className="flex items-center gap-3 max-w-[70%]">
-          <Link href="/" className={`p-1.5 rounded-xl transition-colors ${activeTheme.headerBtn}`}>
+          <Link
+            href={backUrl}
+            onClick={handleBackClick}
+            className={`p-1.5 rounded-xl transition-colors ${activeTheme.headerBtn}`}
+            title={t('back')}
+          >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="truncate">
-            <h2 className={`text-xs font-bold truncate ${activeTheme.headerTitle}`}>{activeChapter.novelTitle}</h2>
+            <Link
+              href={activeChapter.novelId ? `/novels/${activeChapter.novelId}` : "/"}
+              className="hover:underline block truncate"
+            >
+              <h2 className={`text-xs font-bold truncate ${activeTheme.headerTitle}`}>{deobfuscateThaiText(activeChapter.novelTitle)}</h2>
+            </Link>
             <p className={`text-[11px] opacity-90 truncate ${activeTheme.headerSubtitle}`}>
-              {t('chapterPrefix')} {activeChapter.chapterNumber} • {activeChapter.titleTh || activeChapter.titleEn}
+              {t('chapterPrefix')} {activeChapter.chapterNumber} • {deobfuscateThaiText(activeChapter.titleTh || activeChapter.titleEn)}
             </p>
           </div>
         </div>
@@ -735,7 +825,20 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       {/* Main Continuous Chapter Content */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-5 py-8 space-y-12">
         {loadedChapters.map((chap, chapIndex) => {
-          const maxParagraphs = Math.max(chap.contentTh?.length || 0, chap.contentEn?.length || 0);
+          const rawContentTh: string[] = Array.isArray(chap?.contentTh)
+            ? chap.contentTh
+            : typeof chap?.contentTh === 'string' && (chap.contentTh as string).startsWith('[')
+              ? (() => { try { const p = JSON.parse(chap.contentTh as any); return Array.isArray(p) ? p : [String(p)]; } catch { return [chap.contentTh]; } })()
+              : typeof chap?.contentTh === 'string' ? [chap.contentTh] : [];
+          const contentTh: string[] = rawContentTh.map(deobfuscateThaiText);
+
+          const contentEn: string[] = Array.isArray(chap?.contentEn)
+            ? chap.contentEn
+            : typeof chap?.contentEn === 'string' && (chap.contentEn as string).startsWith('[')
+              ? (() => { try { const p = JSON.parse(chap.contentEn as any); return Array.isArray(p) ? p : [String(p)]; } catch { return [chap.contentEn]; } })()
+              : typeof chap?.contentEn === 'string' ? [chap.contentEn] : [];
+
+          const maxParagraphs = Math.max(contentTh.length, contentEn.length);
 
           return (
             <section
@@ -751,9 +854,9 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                     {t('chapterPrefix')} {chap.chapterNumber}
                   </span>
                   <h1 className={`reader-title text-xl sm:text-2xl font-bold leading-tight ${activeTheme.titleText}`}>
-                    {settings.displayMode === 'en' ? chap.titleEn : chap.titleTh || chap.titleEn}
+                    {settings.displayMode === 'en' ? chap.titleEn : deobfuscateThaiText(chap.titleTh || chap.titleEn)}
                   </h1>
-                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>{t('authorTitle')}{chap.authorName}</p>
+                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>{t('authorTitle')}{deobfuscateThaiText(chap.authorName)}</p>
                 </div>
               ) : (
                 <div className={`pt-12 pb-6 border-t-2 border-dashed ${activeTheme.divider} text-center space-y-2`}>
@@ -763,9 +866,9 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                     </span>
                   </div>
                   <h2 className={`reader-title text-xl sm:text-2xl font-bold leading-tight ${activeTheme.titleText}`}>
-                    {settings.displayMode === 'en' ? chap.titleEn : chap.titleTh || chap.titleEn}
+                    {settings.displayMode === 'en' ? chap.titleEn : deobfuscateThaiText(chap.titleTh || chap.titleEn)}
                   </h2>
-                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>{t('authorTitle')}{chap.authorName}</p>
+                  <p className={`reader-author text-xs ${activeTheme.authorText}`}>{t('authorTitle')}{deobfuscateThaiText(chap.authorName)}</p>
                 </div>
               )}
 
@@ -776,8 +879,8 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                 }`}
               >
                 {Array.from({ length: maxParagraphs }).map((_, idx) => {
-                  const paragraphTh = chap.contentTh?.[idx] || '';
-                  const paragraphEn = chap.contentEn?.[idx] || '';
+                  const paragraphTh = contentTh[idx] || '';
+                  const paragraphEn = contentEn[idx] || '';
 
                   if (settings.displayMode === 'en') {
                     return (
@@ -959,6 +1062,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         isOpen={isTOCDrawerOpen}
         onClose={() => setIsTOCDrawerOpen(false)}
         novelTitle={chapter.novelTitle}
+        novelId={chapter.novelId}
         currentChapterId={activeChapter.id}
         chapters={allChapters}
         theme={settings.theme}

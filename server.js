@@ -3,10 +3,18 @@ const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
 
-const dev = process.env.NODE_ENV !== 'production';
+const isDev = process.argv.includes('--dev') || process.env.npm_lifecycle_event === 'dev';
 
 // Load .env / .env.local before reading process.env (Next's own loader)
-require('@next/env').loadEnvConfig(process.cwd(), dev);
+require('@next/env').loadEnvConfig(process.cwd());
+
+if (isDev) {
+  process.env.NODE_ENV = 'development';
+} else if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'development';
+}
+
+const dev = process.env.NODE_ENV !== 'production';
 
 const rawAppUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
@@ -32,7 +40,8 @@ global.translationState = {
   isCancelled: false,
 };
 
-app.prepare().then(() => {
+if (require.main === module) {
+  app.prepare().then(() => {
   const server = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true);
@@ -96,7 +105,13 @@ app.prepare().then(() => {
   });
 
   server.once('error', (err) => {
-    console.error(err);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Error: Port ${port} is already in use by another process!`);
+      console.error(`To free port ${port} on Windows, run:`);
+      console.error(`   Stop-Process -Id (Get-NetTCPConnection -LocalPort ${port}).OwningProcess -Force\n`);
+    } else {
+      console.error(err);
+    }
     process.exit(1);
   });
 
@@ -104,3 +119,4 @@ app.prepare().then(() => {
     console.log(`> Ready on ${appUrl} as ${dev ? 'development' : 'production'}`);
   });
 });
+}

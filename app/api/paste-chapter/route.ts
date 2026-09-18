@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { translateParagraphsGoogle } from '@/lib/googleTranslate';
+import { recordAuditLog } from '@/lib/auditLog';
+import { isThaiText, deobfuscateThaiText } from '@/lib/scraper';
 
 // Blank lines separate paragraphs in pasted text; if there are none, fall back to single
 // newlines so a chapter copied out of a reader that uses one line per paragraph still works.
@@ -22,14 +24,17 @@ function splitParagraphs(text: string): string[] {
 export async function POST(request: Request) {
   try {
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'กรุณาเข้าสู่ระบบก่อนเพิ่มตอน' }, { status: 401 });
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มตอนได้' }, { status: 403 });
     }
 
-    const { novelTitle, chapterTitle, text, sourceUrl } = await request.json();
+    const { novelTitle, chapterTitle, text, sourceUrl, category } = await request.json();
 
     if (!novelTitle || typeof novelTitle !== 'string' || !novelTitle.trim()) {
       return NextResponse.json({ success: false, error: 'กรุณาใส่ชื่อเรื่อง' }, { status: 400 });
+    }
+    if (!category || typeof category !== 'string' || !category.trim()) {
+      return NextResponse.json({ success: false, error: 'กรุณาระบุหมวดหมู่นิยาย (Category)' }, { status: 400 });
     }
     if (!text || typeof text !== 'string' || text.trim().length < 50) {
       return NextResponse.json(
@@ -38,12 +43,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const paragraphs = splitParagraphs(text);
+    const rawParagraphs = splitParagraphs(text);
+    const paragraphs = rawParagraphs.map(deobfuscateThaiText);
     if (paragraphs.length === 0) {
       return NextResponse.json({ success: false, error: 'ไม่พบเนื้อหาที่แปลได้' }, { status: 400 });
     }
 
-    const cleanNovelTitle = novelTitle.trim();
+    const cleanNovelTitle = deobfuscateThaiText(novelTitle.trim());
+    const isThai = isThaiText(paragraphs) || isThaiText(text) || isThaiText(cleanNovelTitle);
     const io = (global as any).io;
 
     // Same find-or-create by title the URL flow uses, so pasting into an existing story appends
@@ -62,17 +69,31 @@ export async function POST(request: Request) {
           titleEn: cleanNovelTitle,
           titleTh: cleanNovelTitle,
           sourceUrl: sourceUrl?.trim() || 'paste',
+          category: category.trim(),
           createdById: session.id,
         },
+      });
+    } else if (category && !novel.category) {
+      novel = await prisma.novel.update({
+        where: { id: novel.id },
+        data: { category: category.trim() },
       });
     }
 
     const chapterCount = await prisma.chapter.count({ where: { novelId: novel.id } });
     const chapterNumber = chapterCount + 1;
-    const cleanChapterTitle = (chapterTitle || '').trim() || `Chapter ${chapterNumber}`;
+    const defaultTitle = isThai ? `ตอนที่ ${chapterNumber}` : `Chapter ${chapterNumber}`;
+    const cleanChapterTitle = deobfuscateThaiText((chapterTitle || '').trim() || defaultTitle);
 
-    // Title rides along as paragraph 0, same as the scraped path — one request for the lot.
-    const [translatedTitle, ...contentTh] = await translateParagraphsGoogle([cleanChapterTitle, ...paragraphs]);
+    let translatedTitle = cleanChapterTitle;
+    let contentTh: string[] = paragraphs;
+
+    if (!isThai) {
+      // Title rides along as paragraph 0, same as the scraped path — one request for the lot.
+      const [transTitle, ...transBody] = await translateParagraphsGoogle([cleanChapterTitle, ...paragraphs]);
+      translatedTitle = transTitle || cleanChapterTitle;
+      contentTh = transBody;
+    }
 
     const chapter = await prisma.chapter.create({
       data: {
@@ -99,6 +120,15 @@ export async function POST(request: Request) {
         chapterTitle: chapter.titleTh,
       });
     }
+
+    await recordAuditLog({
+      userId: session.id,
+      action: 'CHAPTER_PASTE',
+      entity: 'CHAPTER',
+      entityId: chapter.id,
+      details: `เพิ่มตอนที่ ${chapterNumber} "${chapter.titleTh}" ในนิยาย "${novel.titleTh}"`,
+      request,
+    });
 
     return NextResponse.json({
       success: true,

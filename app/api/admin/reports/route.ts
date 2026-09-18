@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET() {
   try {
@@ -40,6 +41,16 @@ export async function POST(request: Request) {
 
     if (action === 'delete') {
       await prisma.report.delete({ where: { id: reportId } });
+
+      await recordAuditLog({
+        userId: session.id,
+        action: 'REPORT_DELETE',
+        entity: 'REPORT',
+        entityId: reportId,
+        details: `ลบรายการแจ้งปัญหา (ID: ${reportId})`,
+        request,
+      });
+
       return NextResponse.json({ success: true, message: 'ลบรายงานเรียบร้อยแล้ว' });
     }
 
@@ -48,6 +59,19 @@ export async function POST(request: Request) {
         where: { id: reportId },
         data: { status },
       });
+
+      const actionName = status === 'RESOLVED' ? 'REPORT_RESOLVE' : status === 'DISMISSED' ? 'REPORT_DISMISS' : 'REPORT_STATUS_CHANGE';
+      const statusText = status === 'RESOLVED' ? 'แก้ไขเสร็จสิ้น' : status === 'DISMISSED' ? 'ยกเลิก/ปฏิเสธ' : status;
+
+      await recordAuditLog({
+        userId: session.id,
+        action: actionName,
+        entity: 'REPORT',
+        entityId: reportId,
+        details: `เปลี่ยนสถานะรายงานเป็น "${statusText}" (เหตุผล: ${updated.reason})`,
+        request,
+      });
+
       return NextResponse.json({ success: true, report: updated });
     }
 

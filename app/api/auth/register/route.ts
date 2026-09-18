@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, signToken } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: `อีเมลนี้ (${normalizedEmail}) ยังไม่ได้รับอนุญาตให้เข้าใช้งาน กรุณาติดต่อผู้ดูแลระบบเพื่อขอเพิ่มอีเมลเข้าสู่ระบบ (Whitelist)`,
+          error: 'คุณไม่มีสิทธ์ใช้งานระบบได้ กรุณาติดต่อผู้ดูแลระบบในการขอสิทธ์เข้าใช้งาน',
         },
         { status: 403 }
       );
@@ -52,6 +53,15 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
       role: user.role as 'USER' | 'ADMIN',
+    });
+
+    await recordAuditLog({
+      userId: user.id,
+      action: 'AUTH_REGISTER',
+      entity: 'AUTH',
+      entityId: user.id,
+      details: `สมัครสมาชิกใหม่ (${user.email}) สิทธิ์: ${role}`,
+      request,
     });
 
     const response = NextResponse.json({

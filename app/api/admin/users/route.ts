@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET() {
   try {
@@ -46,6 +47,15 @@ export async function POST(request: Request) {
       where: { id: userId },
       data: { role: newRole },
       select: { id: true, email: true, name: true, role: true },
+    });
+
+    await recordAuditLog({
+      userId: session.id,
+      action: 'USER_ROLE_CHANGE',
+      entity: 'USER',
+      entityId: updatedUser.id,
+      details: `เปลี่ยนสิทธิ์ผู้ใช้ ${updatedUser.email} เป็น ${newRole}`,
+      request,
     });
 
     return NextResponse.json({ success: true, user: updatedUser });

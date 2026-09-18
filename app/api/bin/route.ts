@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น' }, { status: 403 });
+    }
+
     const deletedNovels = await prisma.novel.findMany({
       where: { deletedAt: { not: null } },
       include: { author: { select: { name: true } } },
@@ -29,6 +35,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { action, type, id, items } = body;
 
@@ -73,6 +84,14 @@ export async function POST(request: Request) {
       if (io) {
         io.emit('bin:updated', { action: 'restore', novelIds, chapterIds });
       }
+
+      await recordAuditLog({
+        userId: session.id,
+        action: 'BIN_RESTORE',
+        entity: 'BIN',
+        details: `กู้คืนข้อมูลจากถังขยะ ${targets.length} รายการ (นิยาย: ${novelIds.length}, ตอน: ${chapterIds.length})`,
+        request,
+      });
 
       return NextResponse.json({
         success: true,
@@ -129,6 +148,14 @@ export async function POST(request: Request) {
       if (io) {
         io.emit('bin:updated', { action: 'permanent_delete', novelIds, chapterIds });
       }
+
+      await recordAuditLog({
+        userId: session.id,
+        action: 'BIN_PERMANENT_DELETE',
+        entity: 'BIN',
+        details: `ลบข้อมูลถาวรออกจากระบบ ${targets.length} รายการ (นิยาย: ${novelIds.length}, ตอน: ${chapterIds.length})`,
+        request,
+      });
 
       return NextResponse.json({
         success: true,

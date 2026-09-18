@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 import { scrapeNovelIndex } from '@/lib/scraper';
 import { processBatchChaptersAsync } from '@/lib/batchTranslator';
 
@@ -8,6 +9,14 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถสั่งแปลต่อได้' },
+        { status: 403 }
+      );
+    }
+
     const novelId = params.id;
     const novel = await prisma.novel.findUnique({
       where: { id: novelId, deletedAt: null },

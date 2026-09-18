@@ -4,13 +4,14 @@ import React from 'react';
 import { X, Type, Sun, Moon, Palette, AlignLeft, Languages, RefreshCw, AlertCircle, Loader2, Sparkles, Bookmark } from 'lucide-react';
 import { ReaderSettingsState } from '@/lib/db';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
 
 interface ReaderSettingsProps {
   isOpen: boolean;
   onClose: () => void;
   settings: ReaderSettingsState;
   onUpdateSettings: (newSettings: Partial<ReaderSettingsState>) => void;
-  onRetranslate?: (engine: 'google' | 'gemini') => void;
+  onRetranslate?: (engine: 'google' | 'polish') => void;
   isRetranslating?: boolean;
   onOpenReport?: () => void;
   onToggleBookmark?: () => void;
@@ -29,6 +30,7 @@ export default function ReaderSettings({
   isBookmarked = false,
 }: ReaderSettingsProps) {
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
 
   if (!isOpen) return null;
 
@@ -166,52 +168,56 @@ export default function ReaderSettings({
 
         {/* 5. Chapter Tools: Re-translate & Report Issue */}
         <div className="pt-4 border-t border-slate-800 space-y-3">
-          <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-            <RefreshCw className="w-3.5 h-3.5 text-amber-400" /> {t('chapterToolsLabel')}
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              disabled={isRetranslating}
-              onClick={() => {
-                if (onRetranslate) {
-                  onRetranslate('google');
-                  onClose();
-                }
-              }}
-              className="flex flex-col items-start p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-800/80 transition-all text-left disabled:opacity-50"
-            >
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                {isRetranslating ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
-                )}
-                <span>{t('retranslateGoogle')}</span>
-              </div>
-              <span className="text-[10px] text-slate-400 mt-0.5">{t('retranslateGoogleDesc')}</span>
-            </button>
+          {isAdmin && onRetranslate && (
+            <>
+              <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400" /> {t('chapterToolsLabel')}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  disabled={isRetranslating}
+                  onClick={() => {
+                    if (onRetranslate) {
+                      onRetranslate('google');
+                      onClose();
+                    }
+                  }}
+                  className="flex flex-col items-start p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-800/80 transition-all text-left disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+                    {isRetranslating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span>{t('retranslateGoogle')}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-0.5">{t('retranslateGoogleDesc')}</span>
+                </button>
 
-            <button
-              disabled={isRetranslating}
-              onClick={() => {
-                if (onRetranslate) {
-                  onRetranslate('gemini');
-                  onClose();
-                }
-              }}
-              className="flex flex-col items-start p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-800/80 transition-all text-left disabled:opacity-50"
-            >
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                {isRetranslating ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                )}
-                <span>{t('retranslateGemini')}</span>
+                <button
+                  disabled={isRetranslating}
+                  onClick={() => {
+                    if (onRetranslate) {
+                      onRetranslate('polish');
+                      onClose();
+                    }
+                  }}
+                  className="flex flex-col items-start p-3 rounded-2xl border border-slate-800 bg-slate-950 hover:bg-slate-800/80 transition-all text-left disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+                    {isRetranslating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span>{t('polishWithAI')}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-0.5">{t('polishWithAIDesc')}</span>
+                </button>
               </div>
-              <span className="text-[10px] text-slate-400 mt-0.5">{t('retranslateGeminiDesc')}</span>
-            </button>
-          </div>
+            </>
+          )}
 
           {/* Bookmark Current Chapter Button */}
           <button

@@ -256,7 +256,7 @@ export default function BookshelfPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {bookshelfList.map((novel) => {
                       const hasRead = !!novel.lastReadChapter;
                       const nextTargetChapterId = hasRead
@@ -266,29 +266,29 @@ export default function BookshelfPage() {
                       return (
                         <div
                           key={novel.id}
-                          className="group relative flex flex-col bg-slate-900/90 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300"
+                          className="group relative flex flex-col bg-slate-900/90 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/40 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300"
                         >
                           {/* Unread badge */}
                           {novel.unreadCount > 0 && hasRead && (
-                            <div className="absolute top-3 left-3 z-10 px-2.5 py-1 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                            <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full shadow-lg flex items-center gap-1 animate-pulse">
                               <Sparkles className="w-3 h-3" />
                               <span>{t('newChaptersNotice')}{novel.unreadCount} {t('chaptersCount')}</span>
                             </div>
                           )}
 
                           {/* Cover & Backdrop */}
-                          <div className="relative h-44 w-full bg-slate-950 overflow-hidden">
+                          <div className="relative h-36 sm:h-40 w-full bg-slate-950 overflow-hidden">
                             {novel.coverUrl ? (
                               <Image
                                 src={novel.coverUrl}
                                 alt={novel.titleTh || novel.titleEn}
                                 fill
-                                sizes="(max-width: 768px) 100vw, 33vw"
+                                sizes="(max-width: 768px) 100vw, 25vw"
                                 className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-700">
-                                <BookOpen className="w-12 h-12" />
+                                <BookOpen className="w-10 h-10" />
                               </div>
                             )}
                             <div className="absolute inset-0 bg-slate-950/20" />
@@ -296,31 +296,31 @@ export default function BookshelfPage() {
                             {/* Remove from bookshelf button */}
                             <button
                               onClick={() => handleRemoveFromBookshelf(novel)}
-                              className="absolute top-3 right-3 p-2 bg-slate-950/70 hover:bg-rose-500/80 text-slate-300 hover:text-white rounded-xl backdrop-blur-md transition-all opacity-80 hover:opacity-100"
+                              className="absolute top-2.5 right-2.5 p-1.5 bg-slate-950/70 hover:bg-rose-500/80 text-slate-300 hover:text-white rounded-lg backdrop-blur-md transition-all opacity-80 hover:opacity-100"
                               title={t('removeFromBookshelfTooltip')}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
 
                           {/* Info Body */}
-                          <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
-                            <div className="space-y-1.5">
-                              <h3 className="text-sm font-bold text-slate-100 line-clamp-1 group-hover:text-amber-400 transition-colors">
+                          <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
+                            <div className="space-y-1">
+                              <h3 className="text-xs sm:text-sm font-bold text-slate-100 line-clamp-1 group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors">
                                 {novel.titleTh || novel.titleEn}
                               </h3>
-                              <p className="text-[11px] text-slate-400 line-clamp-1">{novel.titleEn}</p>
+                              <p className="text-[10.5px] text-slate-400 line-clamp-1">{novel.titleEn}</p>
                               {novel.author?.name && (
-                                <p className="text-[11px] text-slate-400">{t('authorTitle')}{novel.author.name}</p>
+                                <p className="text-[10.5px] text-slate-400">{t('authorTitle')}{novel.author.name}</p>
                               )}
                             </div>
 
                             {/* Reading Status Pill */}
-                            <div className="pt-2 border-t border-slate-800/80 space-y-3">
-                              <div className="flex items-center justify-between text-[11px]">
+                            <div className="pt-2 border-t border-slate-800/80 space-y-2.5">
+                              <div className="flex items-center justify-between text-[10.5px]">
                                 {hasRead ? (
                                   <div className="flex items-center gap-1.5 text-amber-400 font-semibold truncate">
-                                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                                    <Clock className="w-3 h-3 shrink-0" />
                                     <span className="truncate">
                                       {t('chapterPrefix')} {novel.lastReadChapter?.chapterNumber} ({novel.lastReadChapter?.scrollPercent || 0}%)
                                     </span>
@@ -335,7 +335,7 @@ export default function BookshelfPage() {
                               {nextTargetChapterId ? (
                                 <Link
                                   href={`/reader/${nextTargetChapterId}`}
-                                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+                                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3.5 text-xs font-bold rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
                                 >
                                   <Play className="w-3.5 h-3.5 fill-current" />
                                   <span>{hasRead ? t('btnContinueReading') : t('btnStartFirstChapter')}</span>
@@ -343,7 +343,7 @@ export default function BookshelfPage() {
                               ) : (
                                 <button
                                   disabled
-                                  className="w-full py-2.5 px-4 text-xs font-semibold rounded-2xl bg-slate-800 text-slate-500 cursor-not-allowed"
+                                  className="w-full py-2 px-3.5 text-xs font-semibold rounded-xl bg-slate-800 text-slate-500 cursor-not-allowed"
                                 >
                                   {t('noTranslatedChaptersYet')}
                                 </button>
@@ -414,7 +414,7 @@ export default function BookshelfPage() {
                           </div>
 
                           <div className="space-y-1 min-w-0">
-                            <h3 className="text-sm font-bold text-slate-100 line-clamp-1 group-hover:text-amber-400 transition-colors">
+                            <h3 className="text-sm font-bold text-slate-100 line-clamp-1 group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors">
                               {item.novelTitle}
                             </h3>
                             <p className="text-xs text-amber-400 font-semibold line-clamp-1">

@@ -1,12 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const LITERARY_SYSTEM_PROMPT = `คุณคือคำสั่งแปลวรรณกรรมมืออาชีพ Translate this novel text from English to natural, immersive, and elegant Thai (วรรณกรรมไทยประณีต).
+// MTPE: Google Translate gives a complete, aligned Thai draft; Gemini only edits the prose.
+const POLISH_PROMPT = `คุณคือบรรณาธิการเกลาสำนวนนิยายแปลภาษาไทยมืออาชีพ
+Input คือ JSON Array ของ object {"en": ต้นฉบับภาษาอังกฤษ, "th": ร่างคำแปลจาก Google Translate} เรียงตามย่อหน้า (ย่อหน้าแรกคือชื่อตอน)
 
-กฎการแปล:
-1. แปลให้อ่านลื่นไหล ถ่ายทอดอารมณ์และสำนวนภาษาไทยอย่างเป็นธรรมชาติ ไม่แปลแข็งเป็นคำต่อคำ
-2. ถ่ายทอดน้ำเสียง บทสนทนา (Dialogue) ให้เหมาะกับตัวละคร
-3. ห้ามข้ามเนื้อหา ห้ามสรุปความ คงรูปแบบย่อหน้าไว้เป็นลำดับ JSON Array ของ String
-4. ตอบกลับเฉพาะรูปแบบ JSON Array เท่านั้น ห้ามใส่ข้อความเกริ่นหรือคำอธิบายเพิ่มเติม`;
+กฎ:
+1. ยึดความหมายจาก "en" เป็นหลัก แก้จุดที่ร่าง "th" แปลผิดหรือแปลคำต่อคำ
+2. เกลา "th" ให้เป็นภาษาวรรณกรรมไทยที่อ่านลื่นไหล เป็นธรรมชาติ ไม่แข็งทื่อ
+3. ใช้สรรพนามให้เข้ากับตัวละครและแนวเรื่อง (เช่น ข้า-เจ้า, ฉัน-นาย) และคงไว้สม่ำเสมอ
+4. แปลงสำนวนหรือสแลงอังกฤษเป็นสำนวนไทยที่ความหมายเทียบเท่า
+5. ห้ามตัด ห้ามสรุป ห้ามรวมหรือแยกย่อหน้า ห้ามเพิ่มเนื้อหาที่ไม่มีในต้นฉบับ
+6. ตอบกลับเป็น JSON Array ของ String เท่านั้น จำนวนสมาชิกต้องเท่ากับ input พอดี ห้ามมีข้อความอื่น`;
+
+const BATCH_SIZE = 75;
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY || '';
@@ -29,7 +35,7 @@ async function callGeminiWithRetry(model: any, prompt: string, maxRetries = 3): 
         err.status === 429;
 
       // The API says how long to wait. A per-day quota never clears inside a retry loop, so
-      // fail fast instead of burning 30s of backoff per call and storing fallback text.
+      // fail fast instead of burning 30s of backoff per call.
       const retryMatch = /retry in ([\d.]+)s/i.exec(err.message || '');
       const suggestedMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1]) * 1000) : attempt * 5000;
 
@@ -44,105 +50,58 @@ async function callGeminiWithRetry(model: any, prompt: string, maxRetries = 3): 
   throw new Error('Gemini API quota exceeded after retries.');
 }
 
-export async function translateTitle(titleEn: string): Promise<string> {
-  const genAI = getGeminiClient();
-  if (!genAI) {
-    return `[แปล] ${titleEn}`;
-  }
-
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-
+/**
+ * Accepts Gemini's reply only if it lines up 1:1 with the draft; otherwise returns null so the
+ * caller keeps the draft. Blank draft paragraphs stay blank so alignment with contentEn holds.
+ */
+export function parsePolishedBatch(rawText: string, draft: string[]): string[] | null {
+  let parsed: unknown;
   try {
-    const model = genAI.getGenerativeModel({ model: modelName });
-    const prompt = `Translate this web novel title to short, captivating Thai title: "${titleEn}". Return only the Thai title text without quotes.`;
-    const rawText = await callGeminiWithRetry(model, prompt);
-    return rawText.trim().replace(/^["']|["']$/g, '');
-  } catch (err) {
-    console.error('Title translation error:', err);
-    return `[แปล] ${titleEn}`;
+    parsed = JSON.parse(rawText);
+  } catch {
+    return null;
   }
+  if (!Array.isArray(parsed) || parsed.length !== draft.length) return null;
+  if (!parsed.every((p) => typeof p === 'string')) return null;
+  return parsed.map((p: string, i) => (draft[i].trim() === '' ? draft[i] : p.trim() || draft[i]));
 }
 
-export async function translateParagraphsInBatches(
-  paragraphs: string[],
-  onChunkProgress?: (translatedBatch: string[], currentBatch: number, totalBatches: number) => void
-): Promise<string[]> {
+/**
+ * Polishes a Google Translate draft with Gemini, batch by batch. A batch that fails (quota,
+ * bad JSON, paragraph count drift) keeps its draft, so the result is always readable Thai.
+ */
+export async function polishParagraphs(
+  en: string[],
+  thDraft: string[]
+): Promise<{ paragraphs: string[]; failedBatches: number; totalBatches: number }> {
   const genAI = getGeminiClient();
+  if (!genAI) throw new Error('ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์');
 
-  if (!genAI) {
-    return paragraphs.map(
-      (p) =>
-        `[ยังไม่ได้ใส่ GEMINI_API_KEY] กรุณานำ Gemini API Key ใส่ในไฟล์ .env.local แล้วรีสตาร์ทเซิร์ฟเวอร์\n\n(ต้นฉบับ: ${p})`
-    );
-  }
-
-  const BATCH_SIZE = 75;
-  const batches: string[][] = [];
-  for (let i = 0; i < paragraphs.length; i += BATCH_SIZE) {
-    batches.push(paragraphs.slice(i, i + BATCH_SIZE));
-  }
-
-  const totalBatches = batches.length;
-  const translatedResult: string[] = [];
-
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   const model = genAI.getGenerativeModel({
-    model: modelName,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      temperature: 0.3,
-    },
+    model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
   });
 
-  for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
-    // Check global pause state
-    while ((global as any).translationState?.isPaused) {
-      if ((global as any).translationState?.isCancelled) break;
-      await new Promise((resolve) => setTimeout(resolve, 800));
-    }
+  const paragraphs: string[] = [];
+  let failedBatches = 0;
+  const totalBatches = Math.ceil(thDraft.length / BATCH_SIZE);
 
-    // Check global cancel state
-    if ((global as any).translationState?.isCancelled) {
-      console.log('Translation batch cancelled by user.');
-      break;
-    }
+  for (let start = 0; start < thDraft.length; start += BATCH_SIZE) {
+    const draft = thDraft.slice(start, start + BATCH_SIZE);
+    const pairs = draft.map((th, i) => ({ en: en[start + i] ?? '', th }));
 
-    const batch = batches[batchIdx];
-
-    const prompt = `${LITERARY_SYSTEM_PROMPT}\n\nTranslate the following array of English paragraphs into a Thai JSON string array:\n${JSON.stringify(
-      batch
-    )}`;
-
+    let polished: string[] | null = null;
     try {
-      const rawText = await callGeminiWithRetry(model, prompt);
-      let parsedBatch: string[] = JSON.parse(rawText);
-
-      if (!Array.isArray(parsedBatch)) {
-        parsedBatch = batch.map((p) => `[แปล] ${p}`);
-      }
-
-      if (parsedBatch.length !== batch.length) {
-        while (parsedBatch.length < batch.length) {
-          parsedBatch.push(batch[parsedBatch.length] || '');
-        }
-      }
-
-      translatedResult.push(...parsedBatch);
-
-      if (onChunkProgress) {
-        onChunkProgress(parsedBatch, batchIdx + 1, totalBatches);
-      }
+      const rawText = await callGeminiWithRetry(model, `${POLISH_PROMPT}\n\n${JSON.stringify(pairs)}`);
+      polished = parsePolishedBatch(rawText, draft);
+      if (!polished) console.warn(`[Polish] batch at ${start} came back misaligned, keeping draft`);
     } catch (err: any) {
-      console.error(`Error translating batch ${batchIdx + 1}:`, err.message || err);
-      const isQuota = err.message?.includes('429') || err.message?.includes('Quota');
-      const prefix = isQuota ? '[กำลังรอโควตาแปล AI]' : '[ต้นฉบับ]';
-      const fallbackBatch = batch.map((p) => `${prefix} ${p}`);
-      translatedResult.push(...fallbackBatch);
-      if (onChunkProgress) {
-        onChunkProgress(fallbackBatch, batchIdx + 1, totalBatches);
-      }
+      console.error(`[Polish] batch at ${start} failed:`, err.message || err);
     }
+
+    if (!polished) failedBatches++;
+    paragraphs.push(...(polished ?? draft));
   }
 
-  return translatedResult;
+  return { paragraphs, failedBatches, totalBatches };
 }

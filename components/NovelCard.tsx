@@ -8,12 +8,16 @@ import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { useSocket } from '@/lib/socket';
 import { toggleBookshelf, isNovelInGuestBookshelf } from '@/lib/bookshelf';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
+import { deobfuscateThaiText } from '@/lib/thaiUtils';
+import { getCategoryLabel, getCategoryBadgeClass } from '@/lib/categories';
 
 interface NovelCardProps {
   id: string;
   titleEn: string;
   titleTh: string;
   coverUrl?: string | null;
+  category?: string | null;
   author?: { id: string; name: string } | null;
   createdBy?: { id: string; name?: string | null; email?: string | null; avatar?: string | null } | null;
   chapterCount: number;
@@ -32,6 +36,7 @@ export default function NovelCard({
   titleEn,
   titleTh,
   coverUrl,
+  category,
   author,
   createdBy,
   chapterCount,
@@ -46,7 +51,8 @@ export default function NovelCard({
 }: NovelCardProps) {
   const router = useRouter();
   const { socket } = useSocket();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const { isAdmin } = useAuth();
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -161,32 +167,10 @@ export default function NovelCard({
     }
   }, [liked, likeCount, id]);
 
-  const firstChapterId = liveChapters.length > 0 ? liveChapters[0].id : null;
-  const targetUrl = firstChapterId ? `/reader/${firstChapterId}` : '#';
+  const targetUrl = `/novels/${id}`;
 
-  async function handleCardClick(e: React.MouseEvent) {
-    if (firstChapterId) {
-      return;
-    }
-
-    e.preventDefault();
-    setIsNavigating(true);
-
-    // Re-check live — a chapter may have been saved since this card first rendered. This IS the
-    // "check for new chapters" the old reload modal did, minus throwing the whole page away.
-    try {
-      const res = await fetch(`/api/novels/${id}`);
-      const data = await res.json();
-      if (data.success && data.novel?.chapters?.length > 0) {
-        const first = data.novel.chapters[0];
-        router.push(`/reader/${first.id}`);
-        return;
-      }
-    } catch {}
-
-    // Still nothing translated. The "กำลังแปล..." badge + the progress widget show status, and
-    // this card updates itself over the socket when the first chapter lands — no reload needed.
-    setIsNavigating(false);
+  function handleCardClick(e: React.MouseEvent) {
+    router.push(targetUrl);
   }
 
   async function handleLike(e: React.MouseEvent) {
@@ -257,13 +241,20 @@ export default function NovelCard({
 
   return (
     <>
-      <Link
-        href={targetUrl}
+      <div
         onClick={handleCardClick}
-        className="group relative flex flex-col bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.99] cursor-pointer"
+        className="group relative flex flex-col bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/40 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 active:scale-[0.99] cursor-pointer"
       >
+        {/* Full card background link for keyboard/screen-readers without nesting buttons */}
+        <Link
+          href={targetUrl}
+          className="absolute inset-0 z-0 pointer-events-none"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+
         {/* Cover Aspect Ratio Container */}
-        <div className="novel-cover-box relative aspect-[4/4.5] w-full bg-slate-950 overflow-hidden">
+        <div className="novel-cover-box relative aspect-[3/4] w-full bg-slate-950 overflow-hidden">
           {coverUrl && !imgError ? (
             <img
               src={coverUrl}
@@ -273,9 +264,9 @@ export default function NovelCard({
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="novel-placeholder w-full h-full flex flex-col items-center justify-center p-4 bg-slate-950 text-center">
-              <BookOpen className="w-10 h-10 text-amber-500/60 mb-2 group-hover:scale-110 transition-transform" />
-              <p className="text-xs font-bold text-amber-200/90 line-clamp-2 px-1">
+            <div className="novel-placeholder w-full h-full flex flex-col items-center justify-center p-2 bg-slate-950 text-center">
+              <BookOpen className="w-6 h-6 text-amber-500/60 mb-1 group-hover:scale-110 transition-transform" />
+              <p className="text-[10px] font-bold text-amber-200/90 line-clamp-2 px-1">
                 {titleTh || titleEn}
               </p>
             </div>
@@ -283,28 +274,41 @@ export default function NovelCard({
 
           {/* Badge for translation status / chapters */}
           {liveChapterCount === 0 ? (
-            <div className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500 text-slate-950 rounded-lg backdrop-blur-md shadow-md flex items-center gap-1">
+            <div className="absolute top-1 left-1 px-1.5 py-0.5 text-[8.5px] font-bold bg-amber-500 text-slate-950 rounded backdrop-blur-md shadow-md flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-slate-950 rounded-full animate-ping" />
               <span>{t('translating')}</span>
             </div>
           ) : liveTotalChapters && liveChapterCount < liveTotalChapters ? (
-            <div className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500/90 text-slate-950 rounded-lg backdrop-blur-md shadow-md flex items-center gap-1">
+            <div className="absolute top-1 left-1 px-1.5 py-0.5 text-[8.5px] font-bold bg-amber-500/90 text-slate-950 rounded backdrop-blur-md shadow-md flex items-center gap-1">
               <span>{liveChapterCount}/{liveTotalChapters} {t('chaptersCount')}</span>
             </div>
           ) : null}
 
-          {/* Delete Button (Soft Delete) */}
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowConfirmDelete(true);
-            }}
-            className="novel-delete-btn absolute top-2 right-2 p-1.5 text-slate-400 hover:text-rose-400 bg-slate-950/80 hover:bg-rose-500/20 backdrop-blur-md border border-slate-800 hover:border-rose-500/40 rounded-xl transition-all z-10"
-            title={t('moveToBin')}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {/* Delete Button (Soft Delete - Admin only) */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowConfirmDelete(true);
+              }}
+              className="novel-delete-btn absolute top-1 right-1 p-1 text-slate-400 hover:text-rose-400 bg-slate-950/80 hover:bg-rose-500/20 backdrop-blur-md border border-slate-800 hover:border-rose-500/40 rounded transition-all z-10"
+              title={t('moveToBin')}
+            >
+              <Trash2 className="w-2.5 h-2.5" />
+            </button>
+          )}
+
+          {/* Category Badge on Cover Overlay */}
+          {category && (
+            <div
+              className={`absolute bottom-1.5 left-1 z-10 px-1.5 py-0.5 text-[8px] font-bold rounded backdrop-blur-md border shadow-sm ${getCategoryBadgeClass(category)}`}
+              title={`${t('categoryLabel')}: ${getCategoryLabel(category, lang)}`}
+            >
+              {getCategoryLabel(category, lang)}
+            </div>
+          )}
 
           {/* Reading Progress Indicator Overlay */}
           {progress > 0 && (
@@ -318,30 +322,33 @@ export default function NovelCard({
         </div>
 
         {/* Content Info */}
-        <div className="flex-1 flex flex-col p-3 space-y-1.5">
-          <h4 className="text-xs sm:text-sm font-bold text-slate-100 line-clamp-2 leading-snug group-hover:text-amber-400 transition-colors">
-            {titleTh || titleEn}
+        <div className="flex-1 flex flex-col p-2 space-y-1">
+          <h4
+            className="text-[11px] sm:text-xs font-bold text-slate-100 line-clamp-1 leading-snug group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors"
+            title={deobfuscateThaiText(titleTh || titleEn)}
+          >
+            {deobfuscateThaiText(titleTh || titleEn)}
           </h4>
 
-          <div className="space-y-0.5">
-            {author && (
+          {/* Author & Added By Compact Line */}
+          <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[9.5px] text-slate-400 leading-tight">
+            {author ? (
               <div
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
-                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-amber-400 transition-colors line-clamp-1"
+                className="inline-flex items-center gap-0.5 text-slate-400 hover:text-ocean-600 dark:hover:text-ocean-400 transition-colors truncate max-w-[60%]"
                 title={`${t('authorTitle')}${author.name}`}
               >
-                <User className="w-3 h-3 flex-shrink-0 text-slate-500" />
-                <span className="truncate">{author.name}</span>
+                <User className="w-2.5 h-2.5 flex-shrink-0 text-slate-500" />
+                <span className="truncate">{deobfuscateThaiText(author.name)}</span>
               </div>
-            )}
+            ) : <span />}
 
             <div
-              className="flex items-center gap-1 text-[10.5px] text-slate-400 line-clamp-1"
+              className="flex items-center gap-0.5 text-slate-500 truncate max-w-[40%] justify-end"
               title={`${t('addedByTitle')}${createdBy?.name || createdBy?.email || t('guest')}`}
             >
-              <span className="text-[10px] text-slate-500 flex-shrink-0">{t('addedBy')}</span>
               <span className="text-amber-400/90 font-medium truncate">
                 {createdBy?.name || (createdBy?.email ? createdBy.email.split('@')[0] : t('guest'))}
               </span>
@@ -349,18 +356,18 @@ export default function NovelCard({
           </div>
 
           {/* Bottom Stats & Like Row */}
-          <div className="mt-auto pt-2 border-t border-slate-800/60 flex items-center justify-between gap-1.5 text-[11px]">
+          <div className="mt-auto pt-1 border-t border-slate-800/60 flex items-center justify-between gap-1 text-[9px] sm:text-[9.5px]">
             {/* Left: Views + Chapters */}
-            <div className="flex items-center gap-2.5 text-slate-400">
+            <div className="flex items-center gap-1.5 text-slate-400">
               {/* Views (Eye icon) */}
-              <div className="flex items-center gap-1" title={`${t('viewCountTitle')}${viewCount}${t('timesUnit')}`}>
-                <Eye className="w-3.5 h-3.5 text-slate-400" />
+              <div className="flex items-center gap-0.5" title={`${t('viewCountTitle')}${viewCount}${t('timesUnit')}`}>
+                <Eye className="w-2.5 h-2.5 text-slate-400" />
                 <span className="font-semibold text-slate-300">{viewCount}</span>
               </div>
 
               {/* Chapters count (Book icon) */}
-              <div className="flex items-center gap-1" title={`${liveChapterCount}${liveTotalChapters ? `${t('fromTotal')}${liveTotalChapters}` : ''} ${t('chaptersCount')}`}>
-                <BookOpen className="w-3.5 h-3.5 text-amber-400/90" />
+              <div className="flex items-center gap-0.5" title={`${liveChapterCount}${liveTotalChapters ? `${t('fromTotal')}${liveTotalChapters}` : ''} ${t('chaptersCount')}`}>
+                <BookOpen className="w-2.5 h-2.5 text-amber-400/90" />
                 <span className="font-semibold text-amber-400/90 font-mono">
                   {liveChapterCount}{liveTotalChapters && liveTotalChapters > 0 ? `/${liveTotalChapters}` : ''}
                 </span>
@@ -368,12 +375,13 @@ export default function NovelCard({
             </div>
 
             {/* Right: Bookshelf & Like Buttons */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5 relative z-10">
               {/* Bookshelf / Follow Button */}
               <button
+                type="button"
                 onClick={handleToggleBookshelf}
                 disabled={isBookmarking}
-                className={`flex items-center gap-1 p-1 rounded-lg transition-all ${
+                className={`flex items-center p-0.5 rounded transition-all ${
                   isBookmarked
                     ? 'text-amber-400 hover:text-amber-500'
                     : 'text-slate-400 hover:text-amber-400'
@@ -381,7 +389,7 @@ export default function NovelCard({
                 title={isBookmarked ? t('inBookshelfTooltip') : t('addToBookshelfTooltip')}
               >
                 <Bookmark
-                  className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
+                  className={`w-2.5 h-2.5 transition-transform active:scale-125 ${
                     isBookmarked ? 'fill-amber-400 text-amber-400' : 'text-slate-400 hover:text-amber-400'
                   }`}
                 />
@@ -389,8 +397,10 @@ export default function NovelCard({
 
               {/* Like Button (Heart icon) */}
               <button
+                type="button"
                 onClick={handleLike}
-                className={`flex items-center gap-1 p-1 rounded-lg transition-all ${
+                disabled={isLiking}
+                className={`flex items-center gap-0.5 p-0.5 rounded transition-all ${
                   isLiked
                     ? 'text-rose-500 hover:text-rose-600'
                     : 'text-slate-400 hover:text-rose-400'
@@ -398,28 +408,30 @@ export default function NovelCard({
                 title={isLiked ? t('likedTooltip') : t('likeTooltip')}
               >
                 <Heart
-                  className={`w-3.5 h-3.5 transition-transform active:scale-125 ${
+                  className={`w-2.5 h-2.5 transition-transform active:scale-125 ${
                     isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400 hover:text-rose-400'
                   }`}
                 />
-                <span className={`font-semibold text-[11px] ${isLiked ? 'text-rose-500' : 'text-slate-400'}`}>
+                <span className={`font-semibold text-[9px] sm:text-[9.5px] ${isLiked ? 'text-rose-500' : 'text-slate-400'}`}>
                   {currentLikes}
                 </span>
               </button>
             </div>
           </div>
         </div>
-      </Link>
+      </div>
 
       {/* Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={showConfirmDelete}
-        title={`${t('confirmMoveToBinTitle')} "${titleTh || titleEn}"`}
-        message={t('confirmMoveToBinMsg')}
-        isLoading={isDeleting}
-        onConfirm={handleSoftDelete}
-        onClose={() => setShowConfirmDelete(false)}
-      />
+      {isAdmin && (
+        <ConfirmDeleteModal
+          isOpen={showConfirmDelete}
+          title={`${t('confirmMoveToBinTitle')} "${titleTh || titleEn}"`}
+          message={t('confirmMoveToBinMsg')}
+          isLoading={isDeleting}
+          onConfirm={handleSoftDelete}
+          onClose={() => setShowConfirmDelete(false)}
+        />
+      )}
     </>
   );
 }

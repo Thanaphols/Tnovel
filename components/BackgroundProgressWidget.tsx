@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Loader2, X, CheckCircle2, ChevronRight, Pause, Play } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
 
 export default function BackgroundProgressWidget() {
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
   const [active, setActive] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -23,6 +25,7 @@ export default function BackgroundProgressWidget() {
 
   // Restore active translation state on mount (e.g. after page refresh)
   useEffect(() => {
+    if (!isAdmin) return;
     let isMounted = true;
 
     async function checkActiveStatus() {
@@ -55,10 +58,10 @@ export default function BackgroundProgressWidget() {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [t, isAdmin]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !isAdmin) return;
 
     function handleProgress(data: any) {
       if (data.status === 'batch_progress') {
@@ -101,11 +104,11 @@ export default function BackgroundProgressWidget() {
       socket.off('translation:progress', handleProgress);
       socket.off('translation:state', handleState);
     };
-  }, [socket, t]);
+  }, [socket, t, isAdmin]);
 
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  if (!active) return null;
+  if (!isAdmin || !active) return null;
 
   function togglePause() {
     if (!socket) return;

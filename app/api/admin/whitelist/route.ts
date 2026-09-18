@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 const PRIMARY_ADMIN_EMAIL = 'cupteo254504@gmail.com';
 
@@ -91,6 +92,15 @@ export async function POST(request: Request) {
       },
     });
 
+    await recordAuditLog({
+      userId: session.id,
+      action: 'WHITELIST_ADD',
+      entity: 'WHITELIST',
+      entityId: created.id,
+      details: `เพิ่ม ${email} เข้าสู่ Whitelist${note ? ` (${note})` : ''}`,
+      request,
+    });
+
     return NextResponse.json({ success: true, item: created });
   } catch (err: any) {
     console.error('Whitelist POST error:', err);
@@ -131,6 +141,15 @@ export async function DELETE(request: Request) {
 
     await prisma.whitelistedEmail.delete({
       where: { id },
+    });
+
+    await recordAuditLog({
+      userId: session.id,
+      action: 'WHITELIST_DELETE',
+      entity: 'WHITELIST',
+      entityId: target.id,
+      details: `ลบอีเมล ${target.email} ออกจาก Whitelist`,
+      request,
     });
 
     return NextResponse.json({ success: true, message: 'ลบอีเมลออกจาก Whitelist เรียบร้อยแล้ว' });

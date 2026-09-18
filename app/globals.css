@@ -1,482 +1,245 @@
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cinzel:wght@500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, html.theme-light, html.light {
     --font-kanit: 'Kanit', sans-serif;
     --font-sarabun: 'Sarabun', serif;
+
+    /* NomadKit Light Palette (docs/nomadkit-DESIGN.md) */
+    /* Background: #FFFDF7, Surface Default: #FFFFFF */
+    --slate-950: 255 253 247;     /* #FFFDF7 Page Background */
+    --slate-900: 255 255 255;     /* #FFFFFF Card Surface Default */
+    --slate-850: 250 245 238;     /* #FAF5EE Inset / Form Input */
+    --slate-800: 235 211 179;     /* #EBD3B3 Warm Sand Border */
+    --slate-700: 224 189 142;     /* #E0BD8E Medium Sand Border */
+    --slate-600: 167 159 146;     /* #A79F92 Muted Border / Muted Icons */
+    --slate-500: 131 123 110;     /* #837B6E Placeholder / Helper text */
+    --slate-400: 111 90 69;       /* #6F5A45 Secondary Text (Authors, stats, subtitles) */
+    --slate-300: 85 66 49;        /* #554231 Body Text */
+    --slate-200: 59 42 24;        /* #3B2A18 Emphasized Text */
+    --slate-100: 45 35 25;        /* #2D2319 Primary Heading / Titles */
+    --slate-50: 26 20 14;         /* #1A140E High Contrast */
+  }
+
+  html.dark, html.theme-dark {
+    /* NomadKit Warm Stone Dark */
+    --slate-950: 23 19 15;        /* #17130F Warm Stone Dark Background */
+    --slate-900: 33 29 24;        /* #211D18 Warm Stone Card Surface */
+    --slate-850: 41 36 30;        /* #29241E Inset Surface */
+    --slate-800: 49 44 37;        /* #312C25 Card Border */
+    --slate-700: 74 68 59;        /* #4A443B Secondary Border */
+    --slate-600: 99 91 80;        /* #635B50 Muted */
+    --slate-500: 131 123 110;     /* #837B6E Placeholder / Muted */
+    --slate-400: 167 159 146;     /* #A79F92 Secondary Text */
+    --slate-300: 211 204 192;     /* #D3CCC0 Body Text */
+    --slate-200: 231 227 219;     /* #E7E3DB Emphasized Text */
+    --slate-100: 244 242 238;     /* #F4F2EE Primary Heading */
+    --slate-50: 250 249 247;      /* #FAF9F7 */
+  }
+
+  html.sepia, html.theme-sepia {
+    /* NomadKit Eye-Care Parchment */
+    --slate-950: 232 222 200;     /* #E8DEC8 Parchment Ground */
+    --slate-900: 244 236 216;     /* #F4ECD8 Surface Default */
+    --slate-850: 237 226 200;     /* Inset Surface */
+    --slate-800: 207 189 153;     /* #CFBD99 Border */
+    --slate-700: 190 170 131;     /* #BEAA83 */
+    --slate-600: 140 120 90;
+    --slate-500: 120 100 70;
+    --slate-400: 89 67 45;        /* #59432D Secondary Text */
+    --slate-300: 67 52 34;        /* #433422 Body Text */
+    --slate-200: 46 32 19;        /* #2E2013 */
+    --slate-100: 38 25 12;        /* #26190C Heading */
+    --slate-50: 25 15 5;
   }
 
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-amber-500/30 selection:text-amber-200;
+    background-color: rgb(var(--slate-950));
+    color: rgb(var(--slate-100));
+    font-family: var(--font-kanit), 'Inter', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Custom Reader Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(var(--slate-950), 0.6);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(var(--slate-700), 0.5);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
+  background: rgba(var(--slate-600), 0.8);
 }
 
-/* Smooth Reader Animations */
+/* Smooth Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ========================================================= */
-/*                   LIGHT THEME OVERRIDES                   */
+/*              NOMADKIT COMPONENT SYSTEM (style.md)         */
 /* ========================================================= */
 
-/* NomadKit Light — warm cream (#FFFDF7) ground, Sand primary, Ocean links */
-html.theme-light, html.theme-light body {
-  background-color: #fffdf7 !important;
-  color: #3b2a18 !important;
+/* Navbar & Bottom Nav */
+header, nav {
+  background-color: rgb(var(--slate-950) / 0.92) !important;
+  border-color: rgb(var(--slate-800) / 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-/* Navbar & Bottom Nav in Light */
-html.theme-light:not(.reader-active) header,
-html.theme-light:not(.reader-active) nav {
-  background-color: rgba(255, 253, 247, 0.96) !important;
-  border-color: #ebd3b3 !important;
-  box-shadow: 0 -2px 10px rgba(84, 58, 30, 0.06) !important;
+/* Modal Backdrop */
+.modal-backdrop {
+  background-color: rgb(var(--slate-950) / 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
-/* Modal Backdrop Blur in Light Mode */
-html.theme-light .modal-backdrop {
-  background-color: rgba(255, 253, 247, 0.65) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+/* Hero Banner */
+.hero-banner {
+  background-color: rgb(var(--slate-900)) !important;
+  border-color: rgb(var(--slate-800)) !important;
+  box-shadow: 0 4px 14px rgba(212, 163, 115, 0.08);
 }
 
-/* Hero Banner in Light Mode */
-html.theme-light .hero-banner {
-  background-color: #ffffff !important;
-  border-color: #ebd3b3 !important;
-  box-shadow: 0 4px 12px rgba(212, 163, 115, 0.1) !important;
-}
-
-html.theme-light .hero-badge {
-  background-color: #f4e7d5 !important;
-  color: #6f4530 !important;
-  border-color: #ebd3b3 !important;
-}
-
-html.theme-light .hero-badge svg,
-html.theme-light .hero-badge span {
-  color: #6f4530 !important;
-}
-
-html.theme-light .hero-title {
-  color: #3b2a18 !important;
-}
-
-/* Ocean accent for the AI highlight (secondary color) */
-html.theme-light .hero-ai-accent {
-  background: none !important;
-  -webkit-text-fill-color: #0a7495 !important;
-  color: #0a7495 !important;
-  font-weight: 800 !important;
-}
-
-html.theme-light .hero-desc {
-  color: #6f5a45 !important;
-}
-
-html.theme-light .hero-search {
-  background-color: #ffffff !important;
-  color: #3b2a18 !important;
-  border-color: #e0bd8e !important;
-}
-
-html.theme-light .hero-search::placeholder {
-  color: #a79f92 !important;
-}
-
-/* Modals, Drawers & Cards in Light Mode */
-html.theme-light .bg-slate-900,
-html.theme-light .bg-slate-900\/95,
-html.theme-light .bg-slate-900\/90,
-html.theme-light .bg-slate-900\/80,
-html.theme-light .bg-slate-900\/60,
-html.theme-light .bg-slate-900\/40,
-html.theme-light .group.relative.flex.flex-col {
-  background-color: #ffffff !important;
-  border-color: #ebd3b3 !important;
-  color: #3b2a18 !important;
-  box-shadow: 0 4px 6px -1px rgba(84, 58, 30, 0.08), 0 2px 4px -2px rgba(84, 58, 30, 0.05) !important;
-}
-
-/* Inputs, Textareas, Selects & Dark Insets in Light Mode */
-html.theme-light .bg-slate-950,
-html.theme-light .bg-slate-950\/50,
-html.theme-light .bg-slate-950\/80,
-html.theme-light input,
-html.theme-light textarea,
-html.theme-light select {
-  background-color: #faf5ee !important;
-  border-color: #e0bd8e !important;
-  color: #3b2a18 !important;
-}
-
-html.theme-light input::placeholder,
-html.theme-light textarea::placeholder {
-  color: #a79f92 !important;
-}
-
-/* Buttons & Chips in Light Mode */
-html.theme-light .bg-slate-800,
-html.theme-light .bg-slate-800\/50,
-html.theme-light .bg-slate-800\/20,
-html.theme-light button.bg-slate-950,
-html.theme-light button.bg-slate-900,
-html.theme-light a.bg-slate-900 {
-  background-color: #f4e7d5 !important;
-  border-color: #ebd3b3 !important;
-  color: #5b3a2a !important;
-}
-
-html.theme-light .bg-slate-800:hover,
-html.theme-light button.bg-slate-950:hover,
-html.theme-light button.bg-slate-900:hover {
-  background-color: #ebd3b3 !important;
-  color: #3b2a18 !important;
-}
-
-html.theme-light:not(.reader-active) h1,
-html.theme-light:not(.reader-active) h2,
-html.theme-light:not(.reader-active) h3,
-html.theme-light:not(.reader-active) h4 {
-  color: #3b2a18 !important;
-}
-
-html.theme-light:not(.reader-active) p,
-html.theme-light:not(.reader-active) .text-slate-400,
-html.theme-light:not(.reader-active) .text-slate-500 {
-  color: #837b6e !important;
-}
-
-html.theme-light:not(.reader-active) .text-slate-100,
-html.theme-light:not(.reader-active) .text-slate-200,
-html.theme-light:not(.reader-active) .text-slate-300 {
-  color: #3b2a18 !important;
-}
-
-html.theme-light .border-slate-800,
-html.theme-light .border-slate-800\/80,
-html.theme-light .border-slate-800\/60,
-html.theme-light .border-slate-800\/40 {
-  border-color: #ebd3b3 !important;
-}
-
-/* Card Elements in Light Mode */
-html.theme-light .novel-cover-box {
-  background-color: #f4e7d5 !important;
-}
-
-html.theme-light .novel-placeholder {
-  background-color: #f4e7d5 !important;
-}
-
-html.theme-light .novel-placeholder p {
-  color: #5b3a2a !important;
-}
-
-html.theme-light .novel-placeholder svg {
+.hero-badge {
+  background-color: rgba(212, 163, 115, 0.15) !important;
+  border: 1px solid rgba(212, 163, 115, 0.35) !important;
   color: #b06f3d !important;
 }
 
-html.theme-light .novel-chapter-badge {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  color: #8f5734 !important;
-  border-color: #ebd3b3 !important;
+html.dark .hero-badge,
+html.theme-dark .hero-badge {
+  color: #e0bd8e !important;
+  border-color: rgba(212, 163, 115, 0.25) !important;
 }
 
-html.theme-light .novel-delete-btn {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  color: #dc2626 !important;
-  border-color: #fee2e2 !important;
+.hero-title {
+  color: rgb(var(--slate-100)) !important;
 }
 
-html.theme-light .read-now-btn,
-html.theme-light .read-now-btn span,
-html.theme-light .read-now-btn svg {
-  background-color: #d4a373 !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.01em !important;
+.hero-desc {
+  color: rgb(var(--slate-400)) !important;
 }
 
-html.theme-light .read-now-btn {
-  border-color: #b06f3d !important;
-  box-shadow: 0 2px 6px rgba(212, 163, 115, 0.4) !important;
+/* NomadKit Secondary Ocean (#0891B2): Accent highlight for Gemini AI */
+.hero-ai-accent {
+  color: #0891b2 !important;
+  font-weight: 800;
 }
 
-html.theme-light .read-now-btn:hover {
-  background-color: #c5884f !important;
-  color: #ffffff !important;
+html.dark .hero-ai-accent,
+html.theme-dark .hero-ai-accent {
+  color: #22c6ec !important;
 }
 
-/* ========================================================= */
-/*       SEPIA (EYE CARE / PARCHMENT) THEME OVERRIDES        */
-/* ========================================================= */
-
-html.theme-sepia, html.theme-sepia body {
-  background-color: #e8dec8 !important;
-  color: #2e2013 !important;
+/* Inputs, Textareas, Selects */
+input, textarea, select {
+  background-color: rgb(var(--slate-850)) !important;
+  border-color: rgb(var(--slate-800)) !important;
+  color: rgb(var(--slate-100)) !important;
 }
 
-/* Navbar & Bottom Nav in Sepia */
-html.theme-sepia:not(.reader-active) header,
-html.theme-sepia:not(.reader-active) nav {
-  background-color: rgba(230, 218, 196, 0.97) !important;
-  border-color: #ccb997 !important;
-  box-shadow: 0 -2px 10px rgba(60, 40, 15, 0.08) !important;
+input:focus, textarea:focus, select:focus {
+  border-color: #d4a373 !important;
+  outline: none;
 }
 
-/* Modal Backdrop Blur in Sepia Mode */
-html.theme-sepia .modal-backdrop {
-  background-color: rgba(232, 222, 200, 0.7) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+/* Google OAuth Login Button */
+.google-auth-btn {
+  background-color: rgb(var(--slate-900)) !important;
+  border-color: rgb(var(--slate-800)) !important;
+  color: rgb(var(--slate-100)) !important;
+  box-shadow: 0 1px 3px rgba(84, 58, 30, 0.06);
 }
 
-/* Hero Banner in Sepia */
-html.theme-sepia .hero-banner {
-  background-color: #f7f0e1 !important;
-  border-color: #ccb895 !important;
-  box-shadow: 0 4px 12px rgba(60, 40, 15, 0.08) !important;
+.google-auth-btn:hover {
+  background-color: rgb(var(--slate-850)) !important;
+  border-color: rgb(var(--slate-700)) !important;
 }
 
-html.theme-sepia .hero-badge {
-  background-color: #dfcdab !important;
-  color: #632b05 !important;
-  border-color: #beaa83 !important;
+/* Primary Sand Buttons: Ensure dark espresso text (#17130F) for crisp AAA contrast */
+button.bg-amber-400,
+a.bg-amber-400,
+button.bg-amber-500,
+a.bg-amber-500 {
+  color: #17130f !important;
 }
 
-html.theme-sepia .hero-badge svg,
-html.theme-sepia .hero-badge span {
-  color: #632b05 !important;
+button.bg-amber-400 *,
+a.bg-amber-400 *,
+button.bg-amber-500 *,
+a.bg-amber-500 * {
+  color: inherit;
 }
 
-html.theme-sepia .hero-title {
-  color: #26190c !important;
-}
-
-html.theme-sepia .hero-ai-accent {
-  background: none !important;
-  -webkit-text-fill-color: #0f5c78 !important;
-  color: #0f5c78 !important;
-  font-weight: 800 !important;
-}
-
-html.theme-sepia .hero-desc {
-  color: #59432d !important;
-}
-
-html.theme-sepia .hero-search {
-  background-color: #fcf8ee !important;
-  color: #26190c !important;
-  border-color: #c9b590 !important;
-}
-
-html.theme-sepia .hero-search::placeholder {
-  color: #8a7359 !important;
-}
-
-/* Modals, Drawers & Cards in Sepia Mode */
-html.theme-sepia .bg-slate-900,
-html.theme-sepia .bg-slate-900\/95,
-html.theme-sepia .bg-slate-900\/90,
-html.theme-sepia .bg-slate-900\/80,
-html.theme-sepia .bg-slate-900\/60,
-html.theme-sepia .bg-slate-900\/40,
-html.theme-sepia .group.relative.flex.flex-col {
-  background-color: #faf5ea !important;
-  border-color: #cfbd99 !important;
-  color: #26190c !important;
-  box-shadow: 0 4px 10px -2px rgba(60, 40, 15, 0.1) !important;
-}
-
-/* Inputs, Textareas, Selects & Dark Insets in Sepia Mode */
-html.theme-sepia .bg-slate-950,
-html.theme-sepia .bg-slate-950\/50,
-html.theme-sepia .bg-slate-950\/80,
-html.theme-sepia input,
-html.theme-sepia textarea,
-html.theme-sepia select {
-  background-color: #f7f0e1 !important;
-  border-color: #c9b590 !important;
-  color: #26190c !important;
-}
-
-html.theme-sepia input::placeholder,
-html.theme-sepia textarea::placeholder {
-  color: #8a7359 !important;
-}
-
-/* Buttons & Chips in Sepia Mode */
-html.theme-sepia .bg-slate-800,
-html.theme-sepia .bg-slate-800\/50,
-html.theme-sepia .bg-slate-800\/20,
-html.theme-sepia button.bg-slate-950,
-html.theme-sepia button.bg-slate-900,
-html.theme-sepia a.bg-slate-900 {
-  background-color: #ede2c8 !important;
-  border-color: #cfbd99 !important;
-  color: #433422 !important;
-}
-
-html.theme-sepia .bg-slate-800:hover,
-html.theme-sepia button.bg-slate-950:hover,
-html.theme-sepia button.bg-slate-900:hover {
-  background-color: #e4d7ba !important;
-  color: #26190c !important;
-}
-
-html.theme-sepia:not(.reader-active) h1,
-html.theme-sepia:not(.reader-active) h2,
-html.theme-sepia:not(.reader-active) h3,
-html.theme-sepia:not(.reader-active) h4 {
-  color: #26190c !important;
-}
-
-html.theme-sepia:not(.reader-active) p,
-html.theme-sepia:not(.reader-active) .text-slate-400,
-html.theme-sepia:not(.reader-active) .text-slate-500 {
-  color: #694f36 !important;
-}
-
-html.theme-sepia:not(.reader-active) .text-slate-100,
-html.theme-sepia:not(.reader-active) .text-slate-200,
-html.theme-sepia:not(.reader-active) .text-slate-300 {
-  color: #26190c !important;
-}
-
-html.theme-sepia .border-slate-800,
-html.theme-sepia .border-slate-800\/80,
-html.theme-sepia .border-slate-800\/60,
-html.theme-sepia .border-slate-800\/40 {
-  border-color: #cfbd99 !important;
-}
-
-/* Card Elements in Sepia Mode */
-html.theme-sepia .novel-cover-box {
-  background-color: #dfceab !important;
-}
-
-html.theme-sepia .novel-placeholder {
-  background-color: #eee1c4 !important;
-  border-bottom: 1px solid #cfbd99 !important;
-}
-
-html.theme-sepia .novel-placeholder p {
-  color: #3b2512 !important;
-}
-
-html.theme-sepia .novel-placeholder svg {
-  color: #7d5226 !important;
-}
-
-html.theme-sepia .novel-chapter-badge {
-  background-color: rgba(250, 245, 234, 0.96) !important;
-  color: #6e330a !important;
-  border-color: #c4b08a !important;
-}
-
-html.theme-sepia .novel-delete-btn {
-  background-color: rgba(250, 245, 234, 0.96) !important;
-  color: #b91c1c !important;
-  border-color: #e5baba !important;
-}
-
-html.theme-sepia .read-now-btn,
-html.theme-sepia .read-now-btn span,
-html.theme-sepia .read-now-btn svg {
-  background-color: #8b4513 !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.01em !important;
-}
-
-html.theme-sepia .read-now-btn {
-  border-color: #6e350c !important;
-  box-shadow: 0 2px 8px rgba(110, 50, 15, 0.35) !important;
-}
-
-html.theme-sepia .read-now-btn:hover {
-  background-color: #6e350c !important;
-  color: #ffffff !important;
-}
-
-/* ========================================================= */
-/*                    DARK THEME (DEFAULT)                   */
-/* ========================================================= */
-
-html.theme-dark, html.theme-dark body {
-  background-color: #17130f !important;
-  color: #faf9f7 !important;
-}
-
-html.theme-dark .read-now-btn,
-html.theme-dark .read-now-btn span,
-html.theme-dark .read-now-btn svg {
+/* Read Now Button */
+.read-now-btn,
+.read-now-btn span,
+.read-now-btn svg {
   background-color: #d4a373 !important;
   color: #17130f !important;
-  -webkit-text-fill-color: #17130f !important;
-  font-size: 13px !important;
   font-weight: 800 !important;
 }
 
-/* Base / Dark Hero Banner Styles */
-.hero-banner {
-  background-color: #0f172a;
-  border-color: rgba(51, 65, 85, 0.8);
-}
-.hero-badge {
-  background-color: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-}
-.hero-badge svg,
-.hero-badge span {
-  color: #fbbf24;
-}
-.hero-title {
-  color: #f8fafc;
-}
-.hero-desc {
-  color: #94a3b8;
+/* Novel Card Cover Box & Placeholder */
+.novel-cover-box {
+  background-color: rgb(var(--slate-850)) !important;
 }
 
-/* ========================================================= */
-/*               READER VIEW DEDICATED STYLING               */
-/* ========================================================= */
+.novel-placeholder {
+  background-color: rgb(var(--slate-850)) !important;
+  border-bottom: 1px solid rgb(var(--slate-800)) !important;
+}
 
+.novel-placeholder p {
+  color: rgb(var(--slate-400)) !important;
+}
+
+.novel-placeholder svg {
+  color: #d4a373 !important;
+}
+
+/* Delete Button on Card */
+.novel-delete-btn {
+  background-color: rgb(var(--slate-900) / 0.9) !important;
+  border-color: rgb(var(--slate-800)) !important;
+  color: rgb(var(--slate-400)) !important;
+}
+
+.novel-delete-btn:hover {
+  color: #dc2626 !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+  background-color: rgba(220, 38, 38, 0.1) !important;
+}
+
+/* Reader View Dedicated Styling */
 .reader-view.reader-theme-dark,
 .reader-theme-dark {
   background-color: #0b0f19 !important;
@@ -563,4 +326,3 @@ html.theme-dark .read-now-btn svg {
   border-color: #e7e5e4 !important;
   color: #1c1917 !important;
 }
-

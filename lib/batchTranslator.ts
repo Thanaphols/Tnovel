@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { scrapeNovelChapter } from '@/lib/scraper';
+import { scrapeNovelChapter, isThaiText } from '@/lib/scraper';
 import { translateParagraphsGoogle } from '@/lib/googleTranslate';
 
 export async function processBatchChaptersAsync(
@@ -10,6 +10,7 @@ export async function processBatchChaptersAsync(
 ) {
   const total = chapterLinks.length;
   let saved = 0;
+  const isThaiNovel = isThaiText(novel.titleTh) || isThaiText(novel.titleEn);
 
   if (!(global as any).translationState) {
     (global as any).translationState = { isPaused: false, isCancelled: false };
@@ -23,7 +24,7 @@ export async function processBatchChaptersAsync(
     novelTitle: novel.titleTh || novel.titleEn,
     currentChapter: 0,
     totalChapters: total,
-    chapterTitle: 'กำลังเตรียมการแปล...',
+    chapterTitle: isThaiNovel ? 'กำลังเตรียมการนำเข้า...' : 'กำลังเตรียมการแปล...',
     percent: 0,
     isPaused: false,
     updatedAt: new Date().toISOString(),
@@ -50,7 +51,9 @@ export async function processBatchChaptersAsync(
         io.emit('translation:progress', {
           status: 'batch_cancelled',
           novelTitle: novel.titleTh || novel.titleEn,
-          message: `ยกเลิกการแปลเรื่อง "${novel.titleTh || novel.titleEn}" แล้ว`,
+          message: isThaiNovel
+            ? `ยกเลิกการนำเข้าเรื่อง "${novel.titleTh || novel.titleEn}" แล้ว`
+            : `ยกเลิกการแปลเรื่อง "${novel.titleTh || novel.titleEn}" แล้ว`,
         });
       }
       break;
@@ -95,21 +98,27 @@ export async function processBatchChaptersAsync(
         continue;
       }
 
-      // ponytail: the chapter title rides along as paragraph 0, so a whole chapter is one request.
-      let titleTh = `ตอนที่ ${currentNum}: ${link.title}`;
+      const isChapterThai = isThaiNovel || link.url.includes('dek-d.com') || isThaiText(scrapedData.paragraphs) || isThaiText(scrapedData.title);
+      let titleTh = scrapedData.title || link.title || `ตอนที่ ${currentNum}`;
       let contentTh: string[] = [];
-      try {
-        const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
-          scrapedData.title || link.title,
-          ...scrapedData.paragraphs,
-        ]);
-        if (translatedTitle && !translatedTitle.startsWith('[')) titleTh = translatedTitle;
-        contentTh = translatedBody;
-      } catch (err: any) {
-        // Keep the English so the chapter is still readable and the reader's re-translate
-        // button has source text to work from.
-        console.error(`Translation failed for chapter ${currentNum}:`, err.message);
-        contentTh = scrapedData.paragraphs.map((p) => `[แปลไม่สำเร็จ กดแปลใหม่ได้ในหน้าอ่าน] ${p}`);
+
+      if (isChapterThai) {
+        contentTh = scrapedData.paragraphs;
+      } else {
+        // ponytail: the chapter title rides along as paragraph 0, so a whole chapter is one request.
+        try {
+          const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
+            scrapedData.title || link.title,
+            ...scrapedData.paragraphs,
+          ]);
+          if (translatedTitle && !translatedTitle.startsWith('[')) titleTh = translatedTitle;
+          contentTh = translatedBody;
+        } catch (err: any) {
+          // Keep the English so the chapter is still readable and the reader's re-translate
+          // button has source text to work from.
+          console.error(`Translation failed for chapter ${currentNum}:`, err.message);
+          contentTh = scrapedData.paragraphs.map((p) => `[แปลไม่สำเร็จ กดแปลใหม่ได้ในหน้าอ่าน] ${p}`);
+        }
       }
 
       const chapter = await prisma.chapter.create({
@@ -156,7 +165,9 @@ export async function processBatchChaptersAsync(
       io.emit('translation:progress', {
         status: 'batch_completed',
         novelTitle: novel.titleTh || novel.titleEn,
-        message: `แปลนิยายเรื่อง "${novel.titleTh || novel.titleEn}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`,
+        message: isThaiNovel
+          ? `นำเข้านิยายเรื่อง "${novel.titleTh || novel.titleEn}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`
+          : `แปลนิยายเรื่อง "${novel.titleTh || novel.titleEn}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`,
       });
     }
   }

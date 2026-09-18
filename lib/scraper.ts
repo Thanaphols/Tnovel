@@ -37,6 +37,8 @@ export interface NovelSiteConfig {
   tocSelectors: string[];
   usePuppeteer?: boolean;
 }
+import { isThaiText, deobfuscateThaiText } from './thaiUtils';
+export { isThaiText, deobfuscateThaiText };
 
 export const NOVEL_SITE_CONFIGS: NovelSiteConfig[] = [
   {
@@ -75,6 +77,29 @@ export const NOVEL_SITE_CONFIGS: NovelSiteConfig[] = [
     authorSelector: ['span[itemprop="author"]', '[itemprop="author"]', '.author-name', '.author'],
     contentSelectors: ['.chapter-content p', '.chapter-content'],
     tocSelectors: ['ul.chapter-list li a', '.chapter-list a'],
+  },
+  {
+    domain: 'dek-d.com',
+    titleSelector: ['.header-chapter-name', 'h2.chaptername', '.chapter-title', 'h1'],
+    authorSelector: ['.author', '.writer-context .writer-name', 'a[href*="/profile/writer/"]', '.alias-author', '.writer-name'],
+    contentSelectors: ['#story-content p', '#story-content', '.story-content', '#story_body'],
+    tocSelectors: ['a[href*="viewlongc.php"]', '#chapter-list-app a', '.chapter-item a'],
+  },
+  {
+    domain: 'novellive.app',
+    titleSelector: ['h1.tit', 'h1', 'title'],
+    authorSelector: ['a[href*="/author/"]', '.author', '[itemprop="author"]'],
+    contentSelectors: ['.txt p', '.txt-content p', '.reading-content p', '.chapter-content p', '.txt'],
+    tocSelectors: ['.m-newest2 ul.ul-list5 li a', 'ul.ul-list5 li a', 'a[href*="/chapter-"]'],
+    usePuppeteer: true,
+  },
+  {
+    domain: 'novellive.com',
+    titleSelector: ['h1.tit', 'h1', 'title'],
+    authorSelector: ['a[href*="/author/"]', '.author', '[itemprop="author"]'],
+    contentSelectors: ['.txt p', '.txt-content p', '.reading-content p', '.chapter-content p', '.txt'],
+    tocSelectors: ['.m-newest2 ul.ul-list5 li a', 'ul.ul-list5 li a', 'a[href*="/chapter-"]'],
+    usePuppeteer: true,
   },
 ];
 
@@ -186,9 +211,9 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
   const page = await browser.newPage();
 
   try {
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
-    );
+    const rawUA = await browser.userAgent();
+    const cleanUA = rawUA.replace('HeadlessChrome', 'Chrome');
+    await page.setUserAgent(cleanUA);
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9,th;q=0.8',
     });
@@ -310,11 +335,29 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
     if (rawNovelTitle) {
       novelTitle = rawNovelTitle.replace(/[-|•]?\s*Webnovel.*$/i, '').trim();
     }
+  } else if (hostname.includes('dek-d.com')) {
+    const rawNovelTitle =
+      $('.header-story-name a').text().trim() ||
+      $('h1 a').text().trim() ||
+      $('title').text().split('>')[0].replace(/^นิยาย\s*/i, '').replace(/:\s*Dek-D.*$/i, '').trim();
+    if (rawNovelTitle) {
+      novelTitle = rawNovelTitle;
+    }
+  } else if (hostname.includes('novellive.')) {
+    const rawNovelTitle = $('h1.tit').first().text().trim() || $('a[href*="/book/"]').first().text().trim();
+    if (rawNovelTitle) {
+      novelTitle = rawNovelTitle.replace(/[-|•]?\s*Novel\s*Live.*$/i, '').trim();
+    }
+    const breadcrumbChap = $('a[href*="/chapter-"]').first().text().trim();
+    if (breadcrumbChap) {
+      title = breadcrumbChap;
+    }
   }
 
   $(
     'script, style, iframe, nav, noscript, .ads, .ad, .social-share, .comments, .sidebar, #sidebar, .nav-links, .j_report_btn, .btn-report, #challenge-stage, #challenge-error-text'
   ).remove();
+  $('#story-content style, #story-content script, #story-content iframe').remove();
 
   const authorSelectors = matchedConfig?.authorSelector || [
     'span[itemprop="author"]',
@@ -328,6 +371,16 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
     if (text) {
       authorName = text;
       break;
+    }
+  }
+
+  if (hostname.includes('dek-d.com')) {
+    const aliasMatch = html.match(/window\.writerAlias\s*=\s*['"]([^'"]+)['"]/);
+    const usernameMatch = html.match(/window\.ownerUsername\s*=\s*['"]([^'"]+)['"]/);
+    if (aliasMatch && aliasMatch[1]) {
+      authorName = aliasMatch[1].trim();
+    } else if (usernameMatch && usernameMatch[1]) {
+      authorName = usernameMatch[1].trim();
     }
   }
 
@@ -364,11 +417,18 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
 
   const isValidParagraph = (text: string) =>
     text.length > 0 &&
+    !/@font-face/i.test(text) &&
+    !/format\(['"]woff/i.test(text) &&
     !/^next chapter$/i.test(text) &&
     !/^previous chapter$/i.test(text) &&
     !/webnovel/i.test(text) &&
     !/download app/i.test(text) &&
     !/^advertisement$/i.test(text) &&
+    !/visit and read more novel/i.test(text) &&
+    !/update chapter quickly/i.test(text) &&
+    !/thank you so much/i.test(text) &&
+    !/^translator:\s*/i.test(text) &&
+    !/novellive/i.test(text) &&
     !isBotText(text);
 
   let foundBySelector = false;
@@ -424,21 +484,29 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
   }
 
   title = title.replace(/\s+/g, ' ').replace(/(Read|Online|Free|Webnovel|Royal Road)/gi, '').trim();
-  const chapterMatch = title.match(/chapter\s*(\d+)/i) || url.match(/chapter-?(\d+)/i) || url.match(/_(\d+)\.html/i);
+  const chapterMatch =
+    title.match(/chapter\s*(\d+)/i) ||
+    url.match(/chapter-?(\d+)/i) ||
+    url.match(/_(\d+)\.html/i) ||
+    url.match(/[?&]chapter=(\d+)/i) ||
+    title.match(/ตอนที่\s*(\d+)/i) ||
+    title.match(/#(\d+)/i);
   const chapterNumber = chapterMatch ? parseInt(chapterMatch[1], 10) : 1;
 
   if (!title || isBotText(title) || title.includes('webnovel.com')) {
-    title = `Chapter ${chapterNumber}`;
+    title = isThaiText(paragraphs) ? `ตอนที่ ${chapterNumber}` : `Chapter ${chapterNumber}`;
   }
 
   authorName = authorName.replace(/^(Author|By):?/i, '').trim() || 'Unknown Author';
 
-  const cleanParagraphs = paragraphs.filter((p) => !isBotText(p));
+  const cleanParagraphs = paragraphs
+    .filter((p) => !isBotText(p))
+    .map(deobfuscateThaiText);
 
   return {
-    title,
-    novelTitle,
-    authorName,
+    title: deobfuscateThaiText(title),
+    novelTitle: novelTitle ? deobfuscateThaiText(novelTitle) : undefined,
+    authorName: deobfuscateThaiText(authorName),
     paragraphs: cleanParagraphs,
     sourceUrl: url,
     chapterNumber,
@@ -458,6 +526,88 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
     }
   } else if (hostname.includes('fanmtl.com')) {
     targetIndexUrl = targetIndexUrl.replace(/_\d+\.html$/i, '.html');
+  } else if (hostname.includes('novellive.') && url.includes('/book/')) {
+    const bookSlugMatch = url.match(/\/book\/([^\/]+)/i);
+    if (bookSlugMatch) {
+      targetIndexUrl = `${new URL(url).origin}/book/${bookSlugMatch[1]}`;
+    }
+  }
+
+  // Fast direct REST API indexing for Dek-D novels
+  if (hostname.includes('dek-d.com')) {
+    const dekdMatch = url.match(/[?&]id=(\d+)/i) || url.match(/dek-d\.com\/(?:writer|novel)\/(\d+)/i);
+    if (dekdMatch) {
+      const novelId = dekdMatch[1];
+      try {
+        const apiUrl = `https://www.dek-d.com/api/rest/novel/${novelId}/chapter/list?page=1&sortBy=asc`;
+        const res = await axios.get(apiUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          },
+          timeout: 12000,
+        });
+
+        if (res.data?.list && Array.isArray(res.data.list) && res.data.list.length > 0) {
+          const firstItem = res.data.list[0];
+          const dekTitle = firstItem?.novelTitle || '';
+          const authorAlias =
+            firstItem?.owners?.[0]?.alias ||
+            firstItem?.owners?.[0]?.username ||
+            'Unknown Author';
+          const coverUrl =
+            firstItem?.thumbnail?.normal ||
+            firstItem?.thumbnail?.landscape ||
+            undefined;
+
+          const totalPages = res.data.pageInfo?.numberOfPages || 1;
+          let allList = [...res.data.list];
+
+          if (totalPages > 1) {
+            const pagePromises: Promise<any>[] = [];
+            for (let p = 2; p <= Math.min(totalPages, 50); p++) {
+              pagePromises.push(
+                axios
+                  .get(`https://www.dek-d.com/api/rest/novel/${novelId}/chapter/list?page=${p}&sortBy=asc`, {
+                    headers: {
+                      'User-Agent':
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    },
+                    timeout: 10000,
+                  })
+                  .then((r) => r.data?.list || [])
+                  .catch(() => [])
+              );
+            }
+            const extraLists = await Promise.all(pagePromises);
+            for (const list of extraLists) {
+              allList = allList.concat(list);
+            }
+          }
+
+          const chapters: ChapterLinkItem[] = [];
+          for (let i = 0; i < allList.length; i++) {
+            const chap = allList[i];
+            const chapId = chap.id !== undefined ? chap.id : chap.order || i + 1;
+            chapters.push({
+              chapterNumber: chapters.length + 1,
+              title: deobfuscateThaiText(chap.title || `ตอนที่ ${chapters.length + 1}`),
+              url: `https://writer.dek-d.com/dek-d/writer/viewlongc.php?id=${novelId}&chapter=${chapId}`,
+            });
+          }
+
+          return {
+            title: deobfuscateThaiText(dekTitle || `นิยาย Dek-D #${novelId}`),
+            authorName: deobfuscateThaiText(authorAlias),
+            coverUrl,
+            description: undefined,
+            chapters,
+          };
+        }
+      } catch (err: any) {
+        console.warn(`[Dek-D API] Failed to fetch REST API for novel ${novelId}, falling back to HTML:`, err.message);
+      }
+    }
   }
 
   const indexConfig = NOVEL_SITE_CONFIGS.find((cfg) => hostname.includes(cfg.domain));
@@ -476,11 +626,15 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
 
   title = title
     .replace(/[-|•]?\s*Webnovel.*$/i, '')
+    .replace(/:\s*Dek-D.*$/i, '')
+    .replace(/[-|•]?\s*Novel\s*Live.*$/i, '')
+    .replace(/^นิยาย\s*/i, '')
     .replace(/\b(Read|Online|Free|Fanfic|Royal Road)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   let authorName =
+    $('a[href*="/author/"]').first().text().trim() ||
     $('span[itemprop="author"]').text().trim() ||
     $('.author-name').text().trim() ||
     $('meta[name="author"]').attr('content')?.trim() ||
@@ -497,6 +651,7 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
   }
 
   let coverUrl =
+    $('.m-imgtxt .pic img').attr('src') ||
     $('img[alt="' + title + '"]').attr('data-src') ||
     $('.figure img').attr('data-src') ||
     $('.novel-cover img').attr('data-src') ||
@@ -517,6 +672,7 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
   }
 
   const description =
+    $('.m-desc .txt').text().trim() ||
     $('.summary').text().replace(/^Summary\s*/i, '').trim() ||
     $('.description').text().trim() ||
     $('meta[name="description"]').attr('content')?.trim();
@@ -527,6 +683,7 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
 
   // Specific catalog container selectors first to avoid grabbing header preview / latest chapter duplicates out of order
   const tocSelectors = [
+    '.m-newest2 ul.ul-list5 li a',
     '.volume-item li a',
     '.chapter-list li a',
     '.contents-item li a',
@@ -677,11 +834,50 @@ export async function scrapeNovelIndex(url: string): Promise<ScrapedNovelIndexDa
     }
   }
 
+  // Handle NovelLive pagination (e.g. /book/<slug>/2)
+  if (hostname.includes('novellive.')) {
+    const totalPages = $('#indexselect option').length || 1;
+    if (totalPages > 1) {
+      const maxPages = Math.min(totalPages, 5); // fetch up to 200 chapters initially
+      for (let p = 2; p <= maxPages; p++) {
+        try {
+          const pageUrl = `${targetIndexUrl}/${p}`;
+          const pageHtml = await fetchHtml(pageUrl, {
+            selector: '.m-newest2 ul.ul-list5 li a',
+            minCount: 1,
+          });
+          const $p = cheerio.load(pageHtml);
+          $p('.m-newest2 ul.ul-list5 li a').each((_: number, el: any) => {
+            let href = $p(el).attr('href');
+            if (!href) return;
+            if (!href.startsWith('http')) {
+              try {
+                href = new URL(href, parsedOrigin).toString();
+              } catch {
+                return;
+              }
+            }
+            if (seenUrls.has(href)) return;
+            seenUrls.add(href);
+            let chapTitle = $p(el).text().trim().replace(/\s+/g, ' ');
+            chapters.push({
+              chapterNumber: chapters.length + 1,
+              title: chapTitle || `Chapter ${chapters.length + 1}`,
+              url: href,
+            });
+          });
+        } catch (err: any) {
+          console.warn(`[NovelLive Index] Failed to fetch page ${p}:`, err.message);
+        }
+      }
+    }
+  }
+
   return {
-    title,
-    authorName,
+    title: deobfuscateThaiText(title),
+    authorName: deobfuscateThaiText(authorName),
     coverUrl: coverUrl || undefined,
-    description: description || undefined,
-    chapters,
+    description: description ? deobfuscateThaiText(description) : undefined,
+    chapters: chapters.map((c) => ({ ...c, title: deobfuscateThaiText(c.title) })),
   };
 }

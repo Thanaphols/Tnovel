@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { scrapeNovelChapter, scrapeNovelIndex } from '@/lib/scraper';
+import { scrapeNovelChapter, scrapeNovelIndex, isThaiText } from '@/lib/scraper';
 import { translateParagraphsGoogle, translateTitleGoogle } from '@/lib/googleTranslate';
 import { processBatchChaptersAsync } from '@/lib/batchTranslator';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function POST(request: Request) {
   try {
-    const { url, mode = 'auto' } = await request.json();
+    const { url, mode = 'auto', category } = await request.json();
 
     if (!url || typeof url !== 'string' || !url.startsWith('http')) {
       return NextResponse.json(
@@ -16,11 +17,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await getSession();
-    if (!session) {
+    if (!category || typeof category !== 'string' || !category.trim()) {
       return NextResponse.json(
-        { success: false, error: 'กรุณาเข้าสู่ระบบก่อน จึงจะเพิ่มนิยายแปลได้' },
-        { status: 401 }
+        { success: false, error: 'กรุณาระบุหมวดหมู่นิยาย (Category)' },
+        { status: 400 }
+      );
+    }
+
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มนิยายหรือสั่งแปลได้' },
+        { status: 403 }
       );
     }
     const creatorId = session.id;
@@ -28,9 +36,10 @@ export async function POST(request: Request) {
     const io = (global as any).io;
 
     const isFanmtlChapter = url.includes('fanmtl.com') && /_\d+\.html$/i.test(url);
+    const isDekDChapter = url.includes('dek-d.com') && (url.includes('viewlongc.php') || url.includes('&chapter='));
     const isNovelIndex =
       mode === 'full_novel' ||
-      (mode !== 'single' && !url.includes('/chapter') && !url.includes('chapter-') && !isFanmtlChapter);
+      (mode !== 'single' && !url.includes('/chapter') && !url.includes('chapter-') && !isFanmtlChapter && !isDekDChapter);
 
     if (isNovelIndex) {
       const targetIndexUrl = url.includes('fanmtl.com') ? url.replace(/_\d+\.html$/i, '.html') : url;
@@ -38,7 +47,9 @@ export async function POST(request: Request) {
       if (io) {
         io.emit('translation:progress', {
           status: 'indexing',
-          message: 'กำลังกวาดสายตาดึงรายชื่อบทนิยายทั้งหมดจากหน้าหลัก...',
+          message: targetIndexUrl.includes('dek-d.com')
+            ? 'กำลังดึงรายชื่อบทนิยายและข้อมูลจาก Dek-D...'
+            : 'กำลังกวาดสายตาดึงรายชื่อบทนิยายทั้งหมดจากหน้าหลัก...',
           url: targetIndexUrl,
         });
       }
@@ -46,7 +57,7 @@ export async function POST(request: Request) {
       const indexData = await scrapeNovelIndex(targetIndexUrl);
 
       if (!indexData.chapters || indexData.chapters.length === 0) {
-        return processSingleChapter(url, session, io);
+        return processSingleChapter(url, session, io, category);
       }
 
       let author = await prisma.author.findUnique({
@@ -61,7 +72,17 @@ export async function POST(request: Request) {
       const cleanUrl = targetIndexUrl.trim().replace(/\/+$/, '');
       const bookIdMatch = cleanUrl.match(/(?:book|fiction)\/(?:[^\/]+_)?(\d+)/i);
       const fanmtlMatch = cleanUrl.match(/fanmtl\.com\/novel\/([^.]+)\.html/i);
-      const bookIdentifier = bookIdMatch ? bookIdMatch[1] : (fanmtlMatch ? fanmtlMatch[1] : cleanUrl);
+      const dekdMatch = cleanUrl.match(/[?&]id=(\d+)/i) || cleanUrl.match(/dek-d\.com\/(?:writer|novel)\/(\d+)/i);
+      const novelliveMatch = cleanUrl.match(/novellive\.(?:app|com)\/book\/([^\/]+)/i);
+      const bookIdentifier = bookIdMatch
+        ? bookIdMatch[1]
+        : fanmtlMatch
+        ? fanmtlMatch[1]
+        : dekdMatch
+        ? dekdMatch[1]
+        : novelliveMatch
+        ? novelliveMatch[1]
+        : cleanUrl;
 
       let novel = await prisma.novel.findFirst({
         where: {
@@ -69,19 +90,26 @@ export async function POST(request: Request) {
           OR: [
             { sourceUrl: cleanUrl },
             { sourceUrl: cleanUrl + '/' },
-            ...(bookIdMatch || fanmtlMatch ? [{ sourceUrl: { contains: bookIdentifier } }] : []),
+            ...(bookIdMatch || fanmtlMatch || dekdMatch ? [{ sourceUrl: { contains: bookIdentifier } }] : []),
             { titleEn: indexData.title },
+            { titleTh: indexData.title },
           ],
         },
       });
 
+      const isThaiNovel =
+        targetIndexUrl.includes('dek-d.com') ||
+        isThaiText(indexData.title) ||
+        (indexData.description && isThaiText(indexData.description));
+
       if (!novel) {
-        const translatedNovelTitle = await safeTranslateTitle(indexData.title);
+        const translatedNovelTitle = isThaiNovel ? indexData.title : await safeTranslateTitle(indexData.title);
         novel = await prisma.novel.create({
           data: {
             titleEn: indexData.title,
             titleTh: translatedNovelTitle,
             sourceUrl: targetIndexUrl,
+            category: category.trim(),
             coverUrl: indexData.coverUrl || null,
             description: indexData.description || null,
             totalChapters: indexData.chapters.length,
@@ -98,11 +126,23 @@ export async function POST(request: Request) {
             titleEn: novel.titleEn,
           });
         }
+
+        await recordAuditLog({
+          userId: session.id,
+          action: 'NOVEL_CREATE',
+          entity: 'NOVEL',
+          entityId: novel.id,
+          details: `นำเข้านิยายเรื่อง "${novel.titleTh || novel.titleEn}" (${indexData.chapters.length} ตอน) [หมวดหมู่: ${category}]`,
+          request,
+        });
       } else {
         const updateData: any = {
           totalChapters: indexData.chapters.length,
           translationStatus: 'TRANSLATING',
         };
+        if (category && (!novel.category || category !== novel.category)) {
+          updateData.category = category.trim();
+        }
         if (!novel.coverUrl && indexData.coverUrl) updateData.coverUrl = indexData.coverUrl;
         if (!novel.description && indexData.description) updateData.description = indexData.description;
         if (author.id && author.id !== novel.authorId) updateData.authorId = author.id;
@@ -120,7 +160,9 @@ export async function POST(request: Request) {
         novelId: novel.id,
         novelTitle: novel.titleTh || novel.titleEn,
         totalChapters: indexData.chapters.length,
-        message: `เริ่มต้นดึงและแปลนิยายทั้งเรื่อง (${indexData.chapters.length} ตอน) เบื้องหลังเรียบร้อยแล้ว!`,
+        message: isThaiNovel
+          ? `เริ่มต้นนำเข้านิยายภาษาไทยทั้งเรื่อง (${indexData.chapters.length} ตอน) เบื้องหลังเรียบร้อยแล้ว!`
+          : `เริ่มต้นดึงและแปลนิยายทั้งเรื่อง (${indexData.chapters.length} ตอน) เบื้องหลังเรียบร้อยแล้ว!`,
       });
     }
 
@@ -144,7 +186,7 @@ async function safeTranslateTitle(titleEn: string): Promise<string> {
   }
 }
 
-async function processSingleChapter(url: string, session: any, io: any) {
+async function processSingleChapter(url: string, session: any, io: any, category?: string) {
   const existingChapter = await prisma.chapter.findFirst({
     where: { originalUrl: url, deletedAt: null },
     include: { novel: { include: { author: true } } },
@@ -200,15 +242,18 @@ async function processSingleChapter(url: string, session: any, io: any) {
     },
   });
 
+  const isThaiContent = url.includes('dek-d.com') || isThaiText(scrapedData.paragraphs) || isThaiText(scrapedData.title);
+
   if (!novel) {
     const creatorId = session.id;
 
-    const translatedNovelTitle = await safeTranslateTitle(mainTitleEn);
+    const translatedNovelTitle = isThaiContent ? mainTitleEn : await safeTranslateTitle(mainTitleEn);
     novel = await prisma.novel.create({
       data: {
         titleEn: mainTitleEn,
         titleTh: translatedNovelTitle,
         sourceUrl: novelSourceUrl,
+        category: category?.trim() || null,
         coverUrl: scrapedData.coverUrl || null,
         authorId: author.id,
         createdById: creatorId,
@@ -222,27 +267,45 @@ async function processSingleChapter(url: string, session: any, io: any) {
         titleEn: novel.titleEn,
       });
     }
-  }
-
-  if (io) {
-    io.emit('translation:progress', {
-      status: 'translating',
-      message: 'กำลังแปลเป็นภาษาไทยด้วย Google Translate...',
-      paragraphsCount: scrapedData.paragraphs.length,
+  } else if (category && !novel.category) {
+    novel = await prisma.novel.update({
+      where: { id: novel.id },
+      data: { category: category.trim() },
     });
   }
 
-  const titleTh = await safeTranslateTitle(scrapedData.title);
-  const contentTh = await translateParagraphsGoogle(scrapedData.paragraphs, (done, total) => {
+  let titleTh = scrapedData.title;
+  let contentTh = scrapedData.paragraphs;
+
+  if (isThaiContent) {
     if (io) {
       io.emit('translation:progress', {
-        status: 'translating_batch',
-        currentBatch: done,
-        totalBatches: total,
-        percent: Math.round((done / total) * 100),
+        status: 'translating',
+        message: 'นำเข้าเนื้อหาภาษาไทยโดยตรง...',
+        paragraphsCount: scrapedData.paragraphs.length,
       });
     }
-  });
+  } else {
+    if (io) {
+      io.emit('translation:progress', {
+        status: 'translating',
+        message: 'กำลังแปลเป็นภาษาไทยด้วย Google Translate...',
+        paragraphsCount: scrapedData.paragraphs.length,
+      });
+    }
+
+    titleTh = await safeTranslateTitle(scrapedData.title);
+    contentTh = await translateParagraphsGoogle(scrapedData.paragraphs, (done, total) => {
+      if (io) {
+        io.emit('translation:progress', {
+          status: 'translating_batch',
+          currentBatch: done,
+          totalBatches: total,
+          percent: Math.round((done / total) * 100),
+        });
+      }
+    });
+  }
 
   const currentChapterCount = await prisma.chapter.count({
     where: { novelId: novel.id },
@@ -273,7 +336,7 @@ async function processSingleChapter(url: string, session: any, io: any) {
 
     io.emit('translation:progress', {
       status: 'completed',
-      message: 'แปลเนื้อหาสมบูรณ์พร้อมอ่าน!',
+      message: isThaiContent ? 'นำเข้าเนื้อหาสมบูรณ์พร้อมอ่าน!' : 'แปลเนื้อหาสมบูรณ์พร้อมอ่าน!',
       chapterId: chapter.id,
     });
   }

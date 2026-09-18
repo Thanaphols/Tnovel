@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { X, BookOpen, Search, Check, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
+import { deobfuscateThaiText } from '@/lib/thaiUtils';
 
 interface ChapterItem {
   id: string;
@@ -16,6 +17,7 @@ interface ChapterListDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   novelTitle: string;
+  novelId?: string;
   currentChapterId: string;
   chapters: ChapterItem[];
   theme?: 'dark' | 'sepia' | 'light';
@@ -25,6 +27,7 @@ export default function ChapterListDrawer({
   isOpen,
   onClose,
   novelTitle,
+  novelId,
   currentChapterId,
   chapters = [],
   theme = 'dark',
@@ -35,12 +38,40 @@ export default function ChapterListDrawer({
   if (!isOpen) return null;
 
   const filtered = chapters.filter((c) => {
-    const query = search.trim().toLowerCase();
-    if (!query) return true;
+    const rawQuery = search.trim();
+    if (!rawQuery) return true;
+
+    const titleTh = c.titleTh || `${t('chapterPrefix')} ${c.chapterNumber}`;
+    const titleEn = c.titleEn || '';
+
+    // 1. Explicit chapter number prefix: #25
+    if (rawQuery.startsWith('#')) {
+      const numStr = rawQuery.replace('#', '').trim();
+      if (/^\d+$/.test(numStr)) {
+        return c.chapterNumber === parseInt(numStr, 10);
+      }
+    }
+
+    // 2. Exact pure number search (e.g. "25"):
+    if (/^\d+$/.test(rawQuery)) {
+      const regex = new RegExp(`(?<!\\d)${rawQuery}(?!\\d)`);
+      return regex.test(titleTh) || regex.test(titleEn);
+    }
+
+    // 3. Query ending with a number (e.g. "บทที่ 2", "ตอนที่ 25", "Chapter 125"):
+    const endNumMatch = rawQuery.match(/^(.*?)(\d+)$/);
+    if (endNumMatch) {
+      const escapedPrefix = endNumMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const num = endNumMatch[2];
+      const regex = new RegExp(`(?<!\\d)${escapedPrefix}${num}(?!\\d)`, 'i');
+      return regex.test(titleTh) || regex.test(titleEn);
+    }
+
+    // 4. General text search in chapter title
+    const lowerQuery = rawQuery.toLowerCase();
     return (
-      c.chapterNumber.toString().includes(query) ||
-      (c.titleTh && c.titleTh.toLowerCase().includes(query)) ||
-      (c.titleEn && c.titleEn.toLowerCase().includes(query))
+      titleTh.toLowerCase().includes(lowerQuery) ||
+      titleEn.toLowerCase().includes(lowerQuery)
     );
   });
 
@@ -93,7 +124,18 @@ export default function ChapterListDrawer({
                 {chapters.length} {t('chaptersCount')}
               </span>
             </div>
-            <p className="text-xs opacity-75 truncate">{novelTitle}</p>
+            {novelId ? (
+              <Link
+                href={`/novels/${novelId}`}
+                onClick={onClose}
+                className="text-xs opacity-75 hover:opacity-100 hover:text-amber-400 hover:underline transition-all block truncate"
+                title={novelTitle}
+              >
+                {novelTitle}
+              </Link>
+            ) : (
+              <p className="text-xs opacity-75 truncate">{novelTitle}</p>
+            )}
           </div>
 
           <button
@@ -143,7 +185,7 @@ export default function ChapterListDrawer({
                     <span className="font-mono text-[11px] opacity-70 flex-shrink-0">
                       #{chap.chapterNumber}
                     </span>
-                    <span className="truncate">{chap.titleTh || `${t('chapterPrefix')} ${chap.chapterNumber}`}</span>
+                    <span className="truncate">{deobfuscateThaiText(chap.titleTh || `${t('chapterPrefix')} ${chap.chapterNumber}`)}</span>
                   </div>
 
                   {isCurrent && (

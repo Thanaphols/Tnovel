@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export const dynamic = 'force-dynamic';
+
+function safeParseArray(val: string): string[] {
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [String(parsed)];
+  } catch {
+    return val ? [val] : [];
+  }
+}
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -50,8 +60,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
         chapterNumber: chapter.chapterNumber,
         titleEn: chapter.titleEn,
         titleTh: chapter.titleTh,
-        contentEn: JSON.parse(chapter.contentEn),
-        contentTh: JSON.parse(chapter.contentTh),
+        contentEn: safeParseArray(chapter.contentEn),
+        contentTh: safeParseArray(chapter.contentTh),
         originalUrl: chapter.originalUrl,
         novelId: chapter.novelId,
         novelTitle: chapter.novel.titleTh || chapter.novel.titleEn,
@@ -90,19 +100,29 @@ export async function POST(request: Request, { params }: { params: { id: string 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' }, { status: 401 });
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น' }, { status: 403 });
     }
 
-    await prisma.chapter.update({
+    const updatedChapter = await prisma.chapter.update({
       where: { id: params.id },
       data: { deletedAt: new Date() },
+      select: { titleTh: true, titleEn: true, chapterNumber: true },
     });
 
     const io = (global as any).io;
     if (io) {
       io.emit('chapter:deleted', { id: params.id });
     }
+
+    await recordAuditLog({
+      userId: session.id,
+      action: 'CHAPTER_DELETE_SOFT',
+      entity: 'CHAPTER',
+      entityId: params.id,
+      details: `ย้ายบทที่ ${updatedChapter.chapterNumber} "${updatedChapter.titleTh || updatedChapter.titleEn}" ไปถังขยะ`,
+      request,
+    });
 
     return NextResponse.json({ success: true, message: 'ย้ายบทนิยายไปถังขยะเรียบร้อยแล้ว' });
   } catch (err: any) {

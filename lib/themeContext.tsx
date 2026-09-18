@@ -11,13 +11,13 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   setTheme: () => {},
   toggleTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<AppTheme>('dark');
+  const [theme, setThemeState] = useState<AppTheme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeState(saved);
       applyThemeToDoc(saved);
     } else {
-      applyThemeToDoc('dark');
+      applyThemeToDoc('light');
     }
   }, []);
 
@@ -45,7 +45,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   function toggleTheme() {
-    const next: AppTheme = theme === 'dark' ? 'light' : theme === 'light' ? 'sepia' : 'dark';
+    const next: AppTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'sepia' : 'light';
     setTheme(next);
   }
 

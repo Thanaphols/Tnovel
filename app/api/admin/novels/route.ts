@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET() {
   try {
@@ -38,6 +39,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'ระบุ novelId' }, { status: 400 });
     }
 
+    const targetNovel = await prisma.novel.findUnique({
+      where: { id: novelId },
+      select: { titleTh: true, titleEn: true },
+    });
+    const novelTitle = targetNovel?.titleTh || targetNovel?.titleEn || novelId;
+
     if (action === 'delete_soft') {
       await prisma.novel.update({
         where: { id: novelId },
@@ -47,6 +54,16 @@ export async function POST(request: Request) {
         where: { novelId },
         data: { deletedAt: new Date() },
       });
+
+      await recordAuditLog({
+        userId: session.id,
+        action: 'NOVEL_DELETE_SOFT',
+        entity: 'NOVEL',
+        entityId: novelId,
+        details: `ย้ายนิยาย "${novelTitle}" ไปถังขยะ`,
+        request,
+      });
+
       return NextResponse.json({ success: true, message: 'ย้ายนิยายไปถังขยะเรียบร้อย' });
     } else if (action === 'restore') {
       await prisma.novel.update({
@@ -57,9 +74,29 @@ export async function POST(request: Request) {
         where: { novelId },
         data: { deletedAt: null },
       });
+
+      await recordAuditLog({
+        userId: session.id,
+        action: 'NOVEL_RESTORE',
+        entity: 'NOVEL',
+        entityId: novelId,
+        details: `กู้คืนนิยาย "${novelTitle}"`,
+        request,
+      });
+
       return NextResponse.json({ success: true, message: 'กู้คืนนิยายเรียบร้อย' });
     } else if (action === 'delete_permanent') {
       await prisma.novel.delete({ where: { id: novelId } });
+
+      await recordAuditLog({
+        userId: session.id,
+        action: 'NOVEL_DELETE_PERMANENT',
+        entity: 'NOVEL',
+        entityId: novelId,
+        details: `ลบนิยาย "${novelTitle}" ถาวร`,
+        request,
+      });
+
       return NextResponse.json({ success: true, message: 'ลบนิยายถาวรเรียบร้อย' });
     }
 

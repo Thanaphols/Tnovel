@@ -147,12 +147,37 @@ export function isNovelInGuestBookshelf(novelId: string): boolean {
 // 2. Reading History Helpers
 // ----------------------------------------------------
 
+const CACHED_HISTORY_KEY = 'tnovel_cached_reading_history';
+
+export function getCachedReadingHistory(): ReadingHistoryItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const cached = localStorage.getItem(CACHED_HISTORY_KEY);
+    if (cached) {
+      const list = JSON.parse(cached);
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+    const guest = localStorage.getItem(GUEST_HISTORY_KEY);
+    if (guest) {
+      const list = JSON.parse(guest);
+      if (Array.isArray(list)) return list;
+    }
+  } catch {}
+  return [];
+}
+
 export async function fetchReadingHistory(): Promise<{ loggedIn: boolean; history: ReadingHistoryItem[] }> {
   try {
     const res = await fetch('/api/reading-history');
     const data = await res.json();
     if (data.success && data.loggedIn) {
-      return { loggedIn: true, history: data.history || [] };
+      const hist = data.history || [];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(CACHED_HISTORY_KEY, JSON.stringify(hist));
+        } catch {}
+      }
+      return { loggedIn: true, history: hist };
     }
   } catch {}
 
@@ -215,8 +240,14 @@ export async function clearReadingHistory(novelId?: string): Promise<boolean> {
           let list: ReadingHistoryItem[] = stored ? JSON.parse(stored) : [];
           list = list.filter((h) => h.novelId !== novelId);
           localStorage.setItem(GUEST_HISTORY_KEY, JSON.stringify(list));
+
+          const cached = localStorage.getItem(CACHED_HISTORY_KEY);
+          let cList: ReadingHistoryItem[] = cached ? JSON.parse(cached) : [];
+          cList = cList.filter((h) => h.novelId !== novelId);
+          localStorage.setItem(CACHED_HISTORY_KEY, JSON.stringify(cList));
         } else {
           localStorage.removeItem(GUEST_HISTORY_KEY);
+          localStorage.removeItem(CACHED_HISTORY_KEY);
         }
       }
       return true;
@@ -229,8 +260,14 @@ export async function clearReadingHistory(novelId?: string): Promise<boolean> {
       let list: ReadingHistoryItem[] = stored ? JSON.parse(stored) : [];
       list = list.filter((h) => h.novelId !== novelId);
       localStorage.setItem(GUEST_HISTORY_KEY, JSON.stringify(list));
+
+      const cached = localStorage.getItem(CACHED_HISTORY_KEY);
+      let cList: ReadingHistoryItem[] = cached ? JSON.parse(cached) : [];
+      cList = cList.filter((h) => h.novelId !== novelId);
+      localStorage.setItem(CACHED_HISTORY_KEY, JSON.stringify(cList));
     } else {
       localStorage.removeItem(GUEST_HISTORY_KEY);
+      localStorage.removeItem(CACHED_HISTORY_KEY);
     }
     return true;
   }

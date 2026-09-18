@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste } from 'lucide-react';
+import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, ChevronDown, Tag } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
+import { NOVEL_CATEGORIES } from '@/lib/categories';
 
 interface UrlScrapeDrawerProps {
   isOpen: boolean;
@@ -13,7 +15,9 @@ interface UrlScrapeDrawerProps {
 
 export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProps) {
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
   const [url, setUrl] = useState('');
+  const [category, setCategory] = useState('');
   const [mode, setMode] = useState<'auto' | 'single' | 'full_novel'>('auto');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -65,46 +69,36 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
   }, [socket, t]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !isAdmin) {
       setAuthed(false);
       return;
     }
     let cancelled = false;
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (data.success) {
-          setAuthed(true);
-          fetch('/api/novels?titlesOnly=1')
-            .then((r) => r.json())
-            .then((d) => {
-              if (!cancelled && d.success) setNovelTitles(d.items || []);
-            })
-            .catch(() => {});
-        } else {
-          onClose();
-          router.push('/login');
-        }
+    fetch('/api/novels?titlesOnly=1')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.success) setNovelTitles(d.items || []);
       })
-      // ponytail: on network failure just open it; the API 401 is the real gate
-      .catch(() => {
-        if (!cancelled) setAuthed(true);
-      });
+      .catch(() => {});
+    setAuthed(true);
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, isAdmin]);
 
-  if (!isOpen || !authed) return null;
+  if (!isOpen || !isAdmin || !authed) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!url.trim()) return;
+    if (!category) {
+      setError(t('categoryRequiredNotice'));
+      return;
+    }
 
     setError(null);
     setLoading(true);
-    setStatusMessage(t('scrapeStatusInit'));
+    setStatusMessage(url.includes('dek-d.com') ? 'กำลังเชื่อมต่อ Dek-D และดึงข้อมูลนิยาย...' : t('scrapeStatusInit'));
     setProgressPercent(5);
     setBatchInfo(null);
 
@@ -112,7 +106,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       const res = await fetch('/api/scrape-and-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), mode }),
+        body: JSON.stringify({ url: url.trim(), mode, category }),
       });
 
       let data;
@@ -136,18 +130,23 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         setProgressPercent(100);
         setTimeout(() => {
           setLoading(false);
+          setUrl('');
+          setCategory('');
           onClose();
-          router.push('/');
         }, 1200);
-      } else {
-        setStatusMessage(t('scrapeSuccessRedirecting'));
-        setProgressPercent(100);
-        setTimeout(() => {
-          setLoading(false);
-          onClose();
-          router.push(`/reader/${data.chapterId}`);
-        }, 500);
+        return;
       }
+
+      setStatusMessage(t('scrapeStatusComplete'));
+      setProgressPercent(100);
+
+      setTimeout(() => {
+        setLoading(false);
+        setUrl('');
+        setCategory('');
+        onClose();
+        router.push(`/reader/${data.chapterId}`);
+      }, 600);
     } catch (err: any) {
       console.error(err);
       setError(err.message || t('scrapeErrorFetch'));
@@ -158,10 +157,15 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
   async function handlePasteSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pasteNovelTitle.trim() || !pasteText.trim()) return;
+    if (!category) {
+      setError(t('categoryRequiredNotice'));
+      return;
+    }
 
+    const isThai = /[\u0E00-\u0E7F]/.test(pasteText) || /[\u0E00-\u0E7F]/.test(pasteNovelTitle);
     setError(null);
     setLoading(true);
-    setStatusMessage(t('scrapeStatusPasting'));
+    setStatusMessage(isThai ? 'กำลังนำเข้าเนื้อหาภาษาไทย...' : t('scrapeStatusPasting'));
     setProgressPercent(30);
     setBatchInfo(null);
 
@@ -173,6 +177,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
           novelTitle: pasteNovelTitle.trim(),
           chapterTitle: pasteChapterTitle.trim(),
           text: pasteText,
+          category,
         }),
       });
 
@@ -197,6 +202,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         setLoading(false);
         setPasteText('');
         setPasteChapterTitle('');
+        setCategory('');
         onClose();
         router.push(`/reader/${data.chapterId}`);
       }, 600);
@@ -208,6 +214,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
   }
 
   const SAMPLE_URLS = [
+    { title: t('sampleDekDTitle'), mode: 'full_novel', url: 'https://writer.dek-d.com/sirimanee1411/writer/view.php?id=2693816' },
     { title: t('sampleFullTitle'), mode: 'full_novel', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning' },
     { title: t('sampleSingleTitle'), mode: 'single', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning/chapter/301778/1-good-morning-brother' },
   ];
@@ -342,15 +349,76 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
               <p className="text-[11px] text-slate-500">
                 {pasteText.trim() ? `${pasteText.trim().length.toLocaleString()} ${t('charCount')}` : t('noContentYet')}
               </p>
+              {pasteText.trim().length > 0 && /[\u0E00-\u0E7F]/.test(pasteText) && (
+                <div className="p-2.5 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{t('thaiDetectedNotice')}</span>
+                </div>
+              )}
             </div>
 
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.99] rounded-xl shadow-md transition-all"
-            >
-              <Sparkles className="w-4 h-4" /> {t('btnTranslateAndSave')}
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Novel Category Selector (Required) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t('categoryLabel')}</span>
+                  <span className="text-rose-400">*</span>
+                </label>
+                {!category && (
+                  <span className="text-[11px] font-medium text-amber-400">
+                    * {t('categoryRequiredNotice')}
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  required
+                  className={`w-full px-4 py-3 text-sm rounded-xl appearance-none bg-slate-950 border transition-all cursor-pointer ${
+                    !category
+                      ? 'border-amber-500/50 text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30'
+                      : 'border-slate-800 text-slate-100 focus:border-amber-500/60'
+                  }`}
+                >
+                  <option value="" disabled className="text-slate-500">
+                    -- {t('selectCategory')} --
+                  </option>
+                  {NOVEL_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id} className="text-slate-100 bg-slate-900">
+                      {cat.nameTh} ({cat.nameEn})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3.5 pointer-events-none text-slate-400">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="submit"
+                disabled={!category || !pasteNovelTitle.trim() || !pasteText.trim() || loading}
+                className={`w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold rounded-xl shadow-md transition-all ${
+                  !category || !pasteNovelTitle.trim() || !pasteText.trim() || loading
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                    : 'text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.99]'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" /> {t('btnTranslateAndSave')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              {!category && (
+                <p className="text-[11px] text-amber-400/90 text-center font-medium">
+                  ⚠️ {t('categoryRequiredNotice')}
+                </p>
+              )}
+            </div>
           </form>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -397,13 +465,68 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.99] rounded-xl shadow-md transition-all"
-            >
-              <Sparkles className="w-4 h-4" /> {t('btnStartScrapeAndTranslate')}
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Novel Category Selector (Required) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t('categoryLabel')}</span>
+                  <span className="text-rose-400">*</span>
+                </label>
+                {!category && (
+                  <span className="text-[11px] font-medium text-amber-400">
+                    * {t('categoryRequiredNotice')}
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  required
+                  className={`w-full px-4 py-3 text-sm rounded-xl appearance-none bg-slate-950 border transition-all cursor-pointer ${
+                    !category
+                      ? 'border-amber-500/50 text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30'
+                      : 'border-slate-800 text-slate-100 focus:border-amber-500/60'
+                  }`}
+                >
+                  <option value="" disabled className="text-slate-500">
+                    -- {t('selectCategory')} --
+                  </option>
+                  {NOVEL_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id} className="text-slate-100 bg-slate-900">
+                      {cat.nameTh} ({cat.nameEn})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3.5 pointer-events-none text-slate-400">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="submit"
+                disabled={!category || !url.trim() || loading}
+                className={`w-full flex items-center justify-center gap-2 py-3.5 px-4 text-sm font-semibold rounded-xl shadow-md transition-all ${
+                  !category || !url.trim() || loading
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                    : 'text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.99]'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" /> {t('btnStartScrapeAndTranslate')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              {!category && (
+                <p className="text-[11px] text-amber-400/90 text-center font-medium">
+                  ⚠️ {t('categoryRequiredNotice')}
+                </p>
+              )}
+            </div>
 
             <div className="pt-2 border-t border-slate-800/80">
               <p className="text-[11px] text-slate-400 mb-2">{t('sampleUrlsLabel')}</p>
