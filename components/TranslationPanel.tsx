@@ -14,6 +14,9 @@ import {
   Loader2,
   Sliders,
   Check,
+  Cloud,
+  Server,
+  Lightbulb,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -45,6 +48,8 @@ export default function TranslationPanel({
 
   // Engine selection
   const [engine, setEngine] = useState<'google' | 'polish'>('polish');
+  // AI provider for polish; '' = use server global setting
+  const [provider, setProvider] = useState<'' | 'ollama' | 'gemini'>('');
 
   // Scope selection
   const [scope, setScope] = useState<'unfinished' | 'failed' | 'range' | 'all'>('unfinished');
@@ -69,7 +74,7 @@ export default function TranslationPanel({
     for (const c of chapters) {
       if (c.status === 'POLISHED') polished++;
       else if (c.status === 'TRANSLATED_GT') gt++;
-      else if (c.status === 'POLISH_FAILED' || c.status === 'FAILED') failed++;
+      else if (!!c.status && ['POLISH_FAILED', 'TRANSLATE_FAILED', 'FETCH_FAILED'].includes(c.status)) failed++;
       else tocOnly++;
     }
 
@@ -92,7 +97,7 @@ export default function TranslationPanel({
       return sorted.filter((c) => c.status !== 'POLISHED');
     }
     if (scope === 'failed') {
-      return sorted.filter((c) => c.status === 'POLISH_FAILED' || c.status === 'FAILED');
+      return sorted.filter((c) => !!c.status && ['POLISH_FAILED', 'TRANSLATE_FAILED', 'FETCH_FAILED'].includes(c.status));
     }
     if (scope === 'range') {
       return sorted.filter(
@@ -128,10 +133,18 @@ export default function TranslationPanel({
         const res = await fetch(`/api/chapters/${chap.id}/retranslate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ engine }),
+          body: JSON.stringify({ engine, ...(engine === 'polish' && provider ? { provider } : {}) }),
         });
 
-        const data = await res.json();
+        // Server can hand back an HTML page (dev overlay / restart / gateway) instead of JSON;
+        // parse defensively so the report shows a readable reason, not "Unexpected token '<'".
+        const raw = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = { success: false, error: `เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (HTTP ${res.status})` };
+        }
         if (!res.ok || !data.success) {
           setErrorLog((prev) => [
             ...prev,
@@ -281,7 +294,7 @@ export default function TranslationPanel({
               >
                 <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-slate-200">✨ แปลเกลาคำ (AI Polish)</p>
+                  <p className="text-xs font-bold text-slate-200">แปลเกลาคำ (AI Polish)</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     ใช้ AI ตรวจสอบสำนวนวรรณกรรม ถอดเสียงชื่อเฉพาะภาษาไทย และปรับบริบทให้สละสลวย
                   </p>
@@ -300,7 +313,7 @@ export default function TranslationPanel({
               >
                 <Zap className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-bold text-slate-200">⚡ แปลเร็ว (Google Translate)</p>
+                  <p className="text-xs font-bold text-slate-200">แปลเร็ว (Google Translate)</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     แปลตรงความหมายจากภาษาอังกฤษทันที พร้อมผูกคำจากตาราง Glossary (ความเร็วสูง)
                   </p>
@@ -308,6 +321,35 @@ export default function TranslationPanel({
               </button>
             </div>
           </div>
+
+          {/* AI Provider (polish only) */}
+          {engine === 'polish' && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300">เครื่อง AI ที่ใช้เกลา (Provider):</label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { v: '', label: 'ค่าเริ่มต้น', Icon: Sliders },
+                  { v: 'gemini', label: 'Gemini API', Icon: Cloud },
+                  { v: 'ollama', label: 'Ollama Local', Icon: Server },
+                ] as const).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    disabled={isRunning}
+                    onClick={() => setProvider(o.v)}
+                    className={`flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                      provider === o.v
+                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-300'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <o.Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{o.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Scope Choice */}
           <div className="space-y-2">
@@ -336,7 +378,7 @@ export default function TranslationPanel({
                     : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800'
                 }`}
               >
-                เฉพาะตอนที่ล้มเหลว ({chapters.filter((c) => c.status === 'POLISH_FAILED' || c.status === 'FAILED').length})
+                เฉพาะตอนที่ล้มเหลว ({chapters.filter((c) => !!c.status && ['POLISH_FAILED', 'TRANSLATE_FAILED', 'FETCH_FAILED'].includes(c.status)).length})
               </button>
 
               <button
@@ -460,8 +502,9 @@ export default function TranslationPanel({
           </div>
         </div>
       ) : (
-        <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl text-xs text-slate-400">
-          💡 ผู้อ่านสามารถตรวจดูสถานะความพร้อมของแต่ละตอนได้จากสารบัญ หากพบบทที่มีคำผิดหรือสำนวนขัดข้อง สามารถกดปุ่มรายงาน (Report) ในหน้าอ่านได้ตลอดเวลา
+        <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl text-xs text-slate-400 flex items-start gap-2">
+          <Lightbulb className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <span>ผู้อ่านสามารถตรวจดูสถานะความพร้อมของแต่ละตอนได้จากสารบัญ หากพบบทที่มีคำผิดหรือสำนวนขัดข้อง สามารถกดปุ่มรายงาน (Report) ในหน้าอ่านได้ตลอดเวลา</span>
         </div>
       )}
     </div>

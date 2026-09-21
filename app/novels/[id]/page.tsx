@@ -119,9 +119,13 @@ export default function NovelDetailPage() {
     loadNovel();
   }, [id]);
 
-  async function loadNovel() {
-    setLoading(true);
-    setError(null);
+  // silent: refresh novel data (chapter statuses for the overview) without the full-page
+  // loading/error takeover — used mid-batch so the running panel never unmounts.
+  async function loadNovel(opts?: { silent?: boolean }) {
+    if (!opts?.silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await fetch(`/api/novels/${id}`);
       const data = await res.json();
@@ -171,9 +175,10 @@ export default function NovelDetailPage() {
       }
     } catch (err: any) {
       console.error('Failed to load novel:', err);
-      setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลนิยาย');
+      // A transient mid-batch refetch failure must not tear the page down to the error screen.
+      if (!opts?.silent) setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลนิยาย');
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }
 
@@ -857,7 +862,7 @@ export default function NovelDetailPage() {
             novelId={novel.id}
             novelTitle={novel.titleTh || novel.titleEn}
             chapters={novel.chapters}
-            onChaptersUpdated={loadNovel}
+            onChaptersUpdated={() => loadNovel({ silent: true })}
           />
         ) : activeTab === 'glossary' ? (
           <section className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-5 sm:p-7">
