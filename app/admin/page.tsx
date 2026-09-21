@@ -23,6 +23,7 @@ import {
 import { useLanguage } from '@/lib/languageContext';
 import { useSocket } from '@/lib/socket';
 import UrlScrapeDrawer from '@/components/UrlScrapeDrawer';
+import OllamaStatusCard from '@/components/OllamaStatusCard';
 
 export default function AdminDashboardPage() {
   const { t, lang } = useLanguage();
@@ -225,6 +226,9 @@ export default function AdminDashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* AI Ollama Connection & VRAM Control */}
+      <OllamaStatusCard />
 
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

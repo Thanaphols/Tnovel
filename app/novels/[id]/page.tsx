@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   Sparkles,
   RotateCcw,
+  BookMarked,
+  Languages,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -31,12 +33,15 @@ import { toggleBookshelf, isNovelInGuestBookshelf, fetchReadingHistory } from '@
 import { deobfuscateThaiText } from '@/lib/thaiUtils';
 import { getCategoryLabel, getCategoryBadgeClass } from '@/lib/categories';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import GlossaryEditor from '@/components/GlossaryEditor';
+import TranslationPanel from '@/components/TranslationPanel';
 
 interface ChapterItem {
   id: string;
   chapterNumber: number;
   titleEn: string;
   titleTh: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,7 +102,8 @@ export default function NovelDetailPage() {
   // Synopsis expansion
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
 
-  // Table of Contents controls
+  // Table of Contents & Translation controls
+  const [activeTab, setActiveTab] = useState<'chapters' | 'glossary' | 'translation'>('chapters');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -801,8 +807,65 @@ export default function NovelDetailPage() {
           )}
         </section>
 
-        {/* Chapter Table of Contents Section */}
-        <section className="space-y-4">
+        {/* Navigation Tabs: Chapters vs Glossary */}
+        <div className="flex items-center gap-4 border-b border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveTab('chapters')}
+            className={`flex items-center gap-2 pb-3 px-1 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'chapters'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>{t('tableOfContentsForNovel')}</span>
+            <span className="px-2 py-0.5 text-xs font-mono font-semibold bg-slate-800 text-amber-400 rounded-full border border-slate-700/60">
+              {novel.chapters?.length || 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('glossary')}
+            className={`flex items-center gap-2 pb-3 px-1 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'glossary'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <BookMarked className="w-4 h-4" />
+            <span>คำศัพท์เฉพาะเรื่อง (Glossary)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('translation')}
+            className={`flex items-center gap-2 pb-3 px-1 text-sm font-bold border-b-2 transition-all ${
+              activeTab === 'translation'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Languages className="w-4 h-4" />
+            <span>การแปล</span>
+          </button>
+        </div>
+
+        {activeTab === 'translation' ? (
+          <TranslationPanel
+            novelId={novel.id}
+            novelTitle={novel.titleTh || novel.titleEn}
+            chapters={novel.chapters}
+            onChaptersUpdated={loadNovel}
+          />
+        ) : activeTab === 'glossary' ? (
+          <section className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-5 sm:p-7">
+            <GlossaryEditor novelId={novel.id} novelTitle={novel.titleTh || novel.titleEn} />
+          </section>
+        ) : (
+          /* Chapter Table of Contents Section */
+          <section className="space-y-4">
           {/* Section Header & Filters */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800/80">
             <div className="flex items-center gap-2.5">
@@ -929,6 +992,7 @@ export default function NovelDetailPage() {
             </div>
           )}
         </section>
+      )}
       </main>
 
       {/* Admin Confirm Delete Modal */}

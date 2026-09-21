@@ -115,7 +115,7 @@ function getSystemBrowserExecutablePaths(): string[] {
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
   ];
-  return possiblePaths.filter((p) => p && fs.existsSync(p));
+  return possiblePaths.filter((p) => p && fs.existsSync(/*turbopackIgnore: true*/ p));
 }
 
 // What "the page finished rendering" means, per page type. Both lists are paragraph/link
@@ -225,26 +225,39 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Wait for Cloudflare Turnstile verification if present
-    for (let i = 0; i < 15; i++) {
-      const isChallenge = await page.evaluate(() => {
-        const bodyText = document.body ? document.body.innerText : '';
-        const hasTurnstile = Boolean(
-          document.querySelector(
-            '#challenge-stage, #challenge-error-text, [name="cf-turnstile-response"], .cf-turnstile, iframe[src*="challenges.cloudflare.com"]'
-          )
-        );
-        const hasBotText =
-          bodyText.includes('verifies you are not a bot') ||
-          bodyText.includes('Security verification') ||
-          bodyText.includes('Just a moment...') ||
-          bodyText.includes('Checking your browser');
-        return hasTurnstile || hasBotText;
-      });
+    let isChallenge = false;
+    for (let i = 0; i < 10; i++) {
+      try {
+        isChallenge = await page.evaluate(() => {
+          const bodyText = document.body ? document.body.innerText : '';
+          const hasTurnstile = Boolean(
+            document.querySelector(
+              '#challenge-stage, #challenge-error-text, [name="cf-turnstile-response"], .cf-turnstile, iframe[src*="challenges.cloudflare.com"]'
+            )
+          );
+          const hasBotText =
+            bodyText.includes('verifies you are not a bot') ||
+            bodyText.includes('Security verification') ||
+            bodyText.includes('Just a moment...') ||
+            bodyText.includes('Checking your browser');
+          return hasTurnstile || hasBotText;
+        });
+      } catch {
+        // Navigation may be happening, wait and retry
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
 
       if (!isChallenge) {
         break;
       }
       await new Promise((r) => setTimeout(r, 1000));
+    }
+
+    if (isChallenge) {
+      throw new Error(
+        'เว็บต้นทางติดระบบป้องกันบอท (Cloudflare Turnstile/Bot Protection) ไม่สามารถดึงเนื้อหาอัตโนมัติได้ กรุณาใช้ฟังก์ชัน "แปะเนื้อหาเอง" (Manual Paste)'
+      );
     }
 
     // Wait for what this page type is supposed to render. A chapter page never grows a
@@ -254,7 +267,7 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
     try {
       await page.waitForFunction(
         (sel: string, min: number) => document.querySelectorAll(sel).length >= min,
-        { timeout: 15000 },
+        { timeout: 8000 },
         target.selector,
         target.minCount
       );
@@ -262,9 +275,31 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
       console.warn(`[Puppeteer] "${target.selector}" never reached ${target.minCount} match(es) on ${url}`);
     }
 
-    return await page.content();
+    const html = await page.content();
+    if (html.includes('524: A timeout occurred') || html.includes('Error 524')) {
+      throw new Error('เว็บต้นทางเซิร์ฟเวอร์กำลังค้างหรือไม่ตอบสนอง (Cloudflare 524 Origin Timeout) กรุณาลองใหม่อีกครั้งในอีกสักครู่ หรือใช้ฟังก์ชัน "แปะเนื้อหาเอง"');
+    }
+    if (html.includes('502 Bad Gateway') || html.includes('504 Gateway Time-out')) {
+      throw new Error('เว็บต้นทางเซิร์ฟเวอร์ขัดข้องชั่วคราว (Bad Gateway / Gateway Timeout) กรุณาลองใหม่อีกครั้ง');
+    }
+    return html;
   } catch (err: any) {
     console.error(`[Puppeteer Error] ${url}:`, err.message);
+    const isTargetClosed =
+      err.message?.includes('Target closed') ||
+      err.message?.includes('Session closed') ||
+      err.message?.includes('Protocol error') ||
+      err.message?.includes('Connection closed');
+
+    if (isTargetClosed) {
+      if (sharedBrowser) {
+        sharedBrowser.close().catch(() => {});
+        sharedBrowser = null;
+      }
+      throw new Error(
+        'การเชื่อมต่อไปยังเว็บต้นทางหลุดหรือหมดเวลา (Connection Timeout / Closed) กรุณาลองใหม่อีกครั้ง หรือใช้ฟังก์ชัน "แปะเนื้อหาเอง"'
+      );
+    }
     throw err;
   } finally {
     await page.close().catch(() => {});

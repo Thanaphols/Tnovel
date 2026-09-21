@@ -26,7 +26,10 @@ interface ReaderViewProps {
     novelId: string;
     novelTitle: string;
     authorName: string;
-    allChapters?: Array<{ id: string; chapterNumber: number; titleTh: string }>;
+    status?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    allChapters?: Array<{ id: string; chapterNumber: number; titleTh: string; status?: string }>;
     savedScrollPercent?: number;
   };
 }
@@ -42,6 +45,9 @@ interface LoadedChapter {
   novelId: string;
   novelTitle: string;
   authorName: string;
+  status?: string;
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 export default function ReaderView({ chapter }: ReaderViewProps) {
@@ -179,6 +185,111 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
     setRetranslateToast({ ok: true, message: res.message });
     setTimeout(() => setRetranslateToast(null), 3000);
   }
+
+  // JIT On-Demand State
+  const [jitLoadingMap, setJitLoadingMap] = useState<Record<string, boolean>>({});
+  const [jitErrorMap, setJitErrorMap] = useState<Record<string, string>>({});
+  const [showManualPaste, setShowManualPaste] = useState<Record<string, boolean>>({});
+  const [manualTextMap, setManualTextMap] = useState<Record<string, string>>({});
+  const [isSubmittingPaste, setIsSubmittingPaste] = useState<Record<string, boolean>>({});
+  const prefetchAbortRef = useRef<AbortController | null>(null);
+  const prefetchingIdsRef = useRef<Set<string>>(new Set());
+
+  const handleJitFetch = useCallback(async (chapId: string) => {
+    setJitLoadingMap((prev) => ({ ...prev, [chapId]: true }));
+    setJitErrorMap((prev) => {
+      const next = { ...prev };
+      delete next[chapId];
+      return next;
+    });
+
+    try {
+      const res = await fetch(`/api/chapters/${chapId}/jit-fetch`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.chapter) {
+        throw new Error(data.error || 'ดึงเนื้อหาจากเว็บต้นทางไม่สำเร็จ');
+      }
+
+      const updated = data.chapter;
+      const parsedTh = Array.isArray(updated.contentTh)
+        ? updated.contentTh
+        : typeof updated.contentTh === 'string' && updated.contentTh.startsWith('[')
+        ? JSON.parse(updated.contentTh)
+        : [updated.contentTh || ''];
+      const parsedEn = Array.isArray(updated.contentEn)
+        ? updated.contentEn
+        : typeof updated.contentEn === 'string' && updated.contentEn.startsWith('[')
+        ? JSON.parse(updated.contentEn)
+        : [updated.contentEn || ''];
+
+      setLoadedChapters((prev) =>
+        prev.map((c) =>
+          c.id === chapId
+            ? {
+                ...c,
+                titleTh: updated.titleTh,
+                titleEn: updated.titleEn,
+                contentTh: parsedTh,
+                contentEn: parsedEn,
+                status: updated.status,
+              }
+            : c
+        )
+      );
+    } catch (err: any) {
+      setJitErrorMap((prev) => ({ ...prev, [chapId]: err.message || 'ดึงเนื้อหาไม่สำเร็จ' }));
+    } finally {
+      setJitLoadingMap((prev) => ({ ...prev, [chapId]: false }));
+    }
+  }, []);
+
+  const handleManualPasteSubmit = useCallback(async (chapId: string) => {
+    const text = manualTextMap[chapId]?.trim();
+    if (!text) return;
+
+    setIsSubmittingPaste((prev) => ({ ...prev, [chapId]: true }));
+    try {
+      const res = await fetch(`/api/chapters/${chapId}/manual-paste`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ textEn: text }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.chapter) {
+        throw new Error(data.error || 'บันทึกและแปลเนื้อหาไม่สำเร็จ');
+      }
+
+      const updated = data.chapter;
+      const parsedTh = Array.isArray(updated.contentTh)
+        ? updated.contentTh
+        : JSON.parse(updated.contentTh || '[]');
+      const parsedEn = Array.isArray(updated.contentEn)
+        ? updated.contentEn
+        : JSON.parse(updated.contentEn || '[]');
+
+      setLoadedChapters((prev) =>
+        prev.map((c) =>
+          c.id === chapId
+            ? {
+                ...c,
+                titleTh: updated.titleTh,
+                titleEn: updated.titleEn,
+                contentTh: parsedTh,
+                contentEn: parsedEn,
+                status: updated.status,
+              }
+            : c
+        )
+      );
+      setShowManualPaste((prev) => ({ ...prev, [chapId]: false }));
+    } catch (err: any) {
+      alert(err.message || 'บันทึกไม่สำเร็จ');
+    } finally {
+      setIsSubmittingPaste((prev) => ({ ...prev, [chapId]: false }));
+    }
+  }, [manualTextMap]);
 
   const [settings, setSettings] = useState<ReaderSettingsState>({
     theme: 'dark',
@@ -403,11 +514,143 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       }
     }
 
+    function handleChapterPolished(data: any) {
+      if (data?.chapterId) {
+        setLoadedChapters((prev) => {
+          const exists = prev.some((c) => c.id === data.chapterId);
+          if (!exists) return prev;
+          // Refetch polished chapter quietly
+          fetch(`/api/chapters/${data.chapterId}`)
+            .then((r) => r.json())
+            .then((res) => {
+              if (res.success && res.chapter) {
+                setLoadedChapters((current) =>
+                  current.map((c) =>
+                    c.id === data.chapterId
+                      ? {
+                          ...c,
+                          titleTh: res.chapter.titleTh,
+                          contentTh: res.chapter.contentTh,
+                          status: 'POLISHED',
+                        }
+                      : c
+                  )
+                );
+              }
+            })
+            .catch(() => {});
+          return prev;
+        });
+      }
+    }
+
     socket.on('chapter:created', handleChapterCreated);
+    socket.on('chapter:polished', handleChapterPolished);
     return () => {
       socket.off('chapter:created', handleChapterCreated);
+      socket.off('chapter:polished', handleChapterPolished);
     };
   }, [socket, chapter.novelId, chapter.chapterNumber]);
+
+  // Auto-trigger JIT fetch for TOC_ONLY chapters when mounted
+  useEffect(() => {
+    for (const chap of loadedChapters) {
+      const rawTh = Array.isArray(chap.contentTh) ? chap.contentTh : [];
+      const rawEn = Array.isArray(chap.contentEn) ? chap.contentEn : [];
+      const hasNoContent = rawTh.length === 0 && rawEn.length === 0;
+
+      if (
+        (chap.status === 'TOC_ONLY' || hasNoContent) &&
+        !jitLoadingMap[chap.id] &&
+        !jitErrorMap[chap.id]
+      ) {
+        handleJitFetch(chap.id);
+      }
+    }
+  }, [loadedChapters, jitLoadingMap, jitErrorMap, handleJitFetch]);
+
+  // Dwell-Time Preload Guard: Proactively prefetch Chapter N+1 after 5 seconds of reading Chapter N
+  useEffect(() => {
+    // 1. Abort any previous pending prefetch request
+    if (prefetchAbortRef.current) {
+      prefetchAbortRef.current.abort();
+      prefetchAbortRef.current = null;
+    }
+
+    const curAll = allChaptersRef.current;
+    const activeIdx = curAll.findIndex((c) => c.id === activeChapterId);
+    if (activeIdx < 0 || activeIdx >= curAll.length - 1) return;
+
+    const nextMeta = curAll[activeIdx + 1];
+
+    // Skip if already loaded or currently prefetching
+    const alreadyLoaded = loadedChaptersRef.current.some(
+      (c) => c.id === nextMeta.id && (c.contentTh?.length ?? 0) > 0
+    );
+    if (alreadyLoaded || prefetchingIdsRef.current.has(nextMeta.id)) return;
+
+    // 2. Dwell-time gate: Wait 5 seconds to ensure user is genuinely reading
+    const timer = setTimeout(() => {
+      const controller = new AbortController();
+      prefetchAbortRef.current = controller;
+      prefetchingIdsRef.current.add(nextMeta.id);
+
+      fetch(`/api/chapters/${nextMeta.id}/jit-fetch`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && data.chapter) {
+            const updated = data.chapter;
+            const parsedTh = Array.isArray(updated.contentTh)
+              ? updated.contentTh
+              : typeof updated.contentTh === 'string' && updated.contentTh.startsWith('[')
+              ? JSON.parse(updated.contentTh)
+              : [updated.contentTh || ''];
+            const parsedEn = Array.isArray(updated.contentEn)
+              ? updated.contentEn
+              : typeof updated.contentEn === 'string' && updated.contentEn.startsWith('[')
+              ? JSON.parse(updated.contentEn)
+              : [updated.contentEn || ''];
+
+            setLoadedChapters((prev) =>
+              prev.map((c) =>
+                c.id === nextMeta.id
+                  ? {
+                      ...c,
+                      titleTh: updated.titleTh,
+                      titleEn: updated.titleEn,
+                      contentTh: parsedTh,
+                      contentEn: parsedEn,
+                      status: updated.status,
+                    }
+                  : c
+              )
+            );
+          }
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            // Silent error handling for background prefetch
+          }
+        })
+        .finally(() => {
+          prefetchingIdsRef.current.delete(nextMeta.id);
+          if (prefetchAbortRef.current === controller) {
+            prefetchAbortRef.current = null;
+          }
+        });
+    }, 5000);
+
+    return () => {
+      clearTimeout(timer);
+      if (prefetchAbortRef.current) {
+        prefetchAbortRef.current.abort();
+        prefetchAbortRef.current = null;
+      }
+    };
+  }, [activeChapterId]);
 
   // Touch gesture swipe states (Commented out: clashes with mobile system back gesture)
   // const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -764,61 +1007,71 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       )} */}
 
       {/* Reader Navigation Top Bar */}
-      <header className={`reader-header sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between backdrop-blur-md ${activeTheme.header}`}>
-        <div className="flex items-center gap-3 max-w-[70%]">
-          <Link
-            href={backUrl}
-            onClick={handleBackClick}
-            className={`p-1.5 rounded-xl transition-colors ${activeTheme.headerBtn}`}
-            title={t('back')}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="truncate">
+      <header className={`reader-header sticky top-0 z-40 border-b backdrop-blur-md relative ${activeTheme.header}`}>
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 max-w-[70%]">
             <Link
-              href={activeChapter.novelId ? `/novels/${activeChapter.novelId}` : "/"}
-              className="hover:underline block truncate"
+              href={backUrl}
+              onClick={handleBackClick}
+              className={`p-1.5 rounded-xl transition-colors ${activeTheme.headerBtn}`}
+              title={t('back')}
             >
-              <h2 className={`text-xs font-bold truncate ${activeTheme.headerTitle}`}>{deobfuscateThaiText(activeChapter.novelTitle)}</h2>
+              <ArrowLeft className="w-5 h-5" />
             </Link>
-            <p className={`text-[11px] opacity-90 truncate ${activeTheme.headerSubtitle}`}>
-              {t('chapterPrefix')} {activeChapter.chapterNumber} • {deobfuscateThaiText(activeChapter.titleTh || activeChapter.titleEn)}
-            </p>
+            <div className="truncate">
+              <Link
+                href={activeChapter.novelId ? `/novels/${activeChapter.novelId}` : "/"}
+                className="hover:underline block truncate"
+              >
+                <h2 className={`text-xs font-bold truncate ${activeTheme.headerTitle}`}>{deobfuscateThaiText(activeChapter.novelTitle)}</h2>
+              </Link>
+              <p className={`text-[11px] opacity-90 truncate ${activeTheme.headerSubtitle}`}>
+                {t('chapterPrefix')} {activeChapter.chapterNumber} • {deobfuscateThaiText(activeChapter.titleTh || activeChapter.titleEn)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {/* Table of Contents / Chapter List Button */}
+            <button
+              onClick={() => setIsTOCDrawerOpen(true)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${activeTheme.headerBtn}`}
+              title={t('tocTitle')}
+            >
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">{t('tableOfContents')} ({allChapters.length})</span>
+            </button>
+
+            {/* Toggle Language Quick Button */}
+            <button
+              onClick={() =>
+                handleUpdateSettings({
+                  displayMode: settings.displayMode === 'th' ? 'en' : settings.displayMode === 'en' ? 'parallel' : 'th',
+                })
+              }
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold border rounded-xl transition-all ${activeTheme.langBtn}`}
+            >
+              <Languages className="w-3.5 h-3.5" />
+              <span className="uppercase">{settings.displayMode}</span>
+            </button>
+
+            {/* Settings Trigger */}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className={`p-2 rounded-xl transition-colors ${activeTheme.headerBtn}`}
+              title={t('readerSettingsTitle')}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Table of Contents / Chapter List Button */}
-          <button
-            onClick={() => setIsTOCDrawerOpen(true)}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${activeTheme.headerBtn}`}
-            title={t('tocTitle')}
-          >
-            <BookOpen className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">{t('tableOfContents')} ({allChapters.length})</span>
-          </button>
-
-          {/* Toggle Language Quick Button */}
-          <button
-            onClick={() =>
-              handleUpdateSettings({
-                displayMode: settings.displayMode === 'th' ? 'en' : settings.displayMode === 'en' ? 'parallel' : 'th',
-              })
-            }
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold border rounded-xl transition-all ${activeTheme.langBtn}`}
-          >
-            <Languages className="w-3.5 h-3.5" />
-            <span className="uppercase">{settings.displayMode}</span>
-          </button>
-
-          {/* Settings Trigger */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className={`p-2 rounded-xl transition-colors ${activeTheme.headerBtn}`}
-            title={t('readerSettingsTitle')}
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+        {/* Reading Progress Bar attached right under the headbar */}
+        <div className={`absolute -bottom-[1px] inset-x-0 h-1 sm:h-1.5 overflow-hidden transition-all ${activeTheme.progressTrack}`}>
+          <div
+            className={`h-full transition-all duration-150 ${activeTheme.progressBar}`}
+            style={{ width: `${scrollProgress}%` }}
+          />
         </div>
       </header>
 
@@ -872,40 +1125,109 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                 </div>
               )}
 
-              {/* Paragraphs Loop */}
+              {/* Paragraphs Loop or JIT Loading/Error */}
               <article
                 className={`space-y-6 ${fontSizes[settings.fontSize]} ${lineHeights[settings.lineHeight]} ${
                   settings.fontFamily === 'serif' ? 'font-serif' : 'font-sans'
                 }`}
               >
-                {Array.from({ length: maxParagraphs }).map((_, idx) => {
-                  const paragraphTh = contentTh[idx] || '';
-                  const paragraphEn = contentEn[idx] || '';
+                {maxParagraphs === 0 ? (
+                  <div className="py-12 px-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-center space-y-4">
+                    {jitLoadingMap[chap.id] ? (
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                        <p className="text-sm font-semibold text-amber-400">กำลังเชื่อมต่อไปยังเว็บต้นทางและแปลเป็นภาษาไทยด่วน...</p>
+                        <p className="text-xs text-neutral-400">ระบบแปลและพร้อมอ่านในไม่กี่วินาที (และส่งเกลาสำนวน AI ในพื้นหลัง)</p>
+                        <div className="w-full max-w-md space-y-2 pt-4">
+                          <div className="h-3 bg-amber-500/10 rounded animate-pulse w-full"></div>
+                          <div className="h-3 bg-amber-500/10 rounded animate-pulse w-5/6 mx-auto"></div>
+                          <div className="h-3 bg-amber-500/10 rounded animate-pulse w-4/6 mx-auto"></div>
+                        </div>
+                      </div>
+                    ) : jitErrorMap[chap.id] ? (
+                      <div className="space-y-4">
+                        <div className="inline-flex p-3 rounded-full bg-red-500/10 text-red-400">
+                          <AlertCircle className="w-6 h-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-base font-bold text-red-400">ดึงเนื้อหาจากเว็บต้นทางไม่สำเร็จ</h3>
+                          <p className="text-xs text-neutral-400">{jitErrorMap[chap.id]}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                          <button
+                            onClick={() => handleJitFetch(chap.id)}
+                            className="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500 text-neutral-950 hover:bg-amber-400 transition"
+                          >
+                            ลองใหม่อีกครั้ง (Retry)
+                          </button>
+                          <button
+                            onClick={() => setShowManualPaste((prev) => ({ ...prev, [chap.id]: !prev[chap.id] }))}
+                            className="px-4 py-2 rounded-xl text-xs font-semibold border border-neutral-700 hover:border-neutral-500 transition"
+                          >
+                            วางเนื้อหาด้วยตนเอง (Manual Paste)
+                          </button>
+                        </div>
+                        {showManualPaste[chap.id] && (
+                          <div className="pt-4 text-left max-w-lg mx-auto space-y-3">
+                            <textarea
+                              value={manualTextMap[chap.id] || ''}
+                              onChange={(e) => setManualTextMap((prev) => ({ ...prev, [chap.id]: e.target.value }))}
+                              placeholder="วางข้อความภาษาอังกฤษของบทนี้ที่นี่..."
+                              rows={6}
+                              className="w-full p-3 rounded-xl border border-neutral-700 bg-neutral-900 text-xs text-neutral-200 focus:outline-none focus:border-amber-500"
+                            />
+                            <button
+                              disabled={isSubmittingPaste[chap.id]}
+                              onClick={() => handleManualPasteSubmit(chap.id)}
+                              className="w-full py-2.5 rounded-xl text-xs font-bold bg-amber-500 text-neutral-950 hover:bg-amber-400 transition disabled:opacity-50"
+                            >
+                              {isSubmittingPaste[chap.id] ? 'กำลังบันทึกและแปล...' : 'บันทึกและแปลเป็นภาษาไทยทันที'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-neutral-300">ตอนนี้ยังไม่ได้ดึงเนื้อหาจากเว็บต้นทาง</p>
+                        <button
+                          onClick={() => handleJitFetch(chap.id)}
+                          className="px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 text-neutral-950 hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+                        >
+                          ดึงและแปลภาษาไทยทันที ⚡
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  Array.from({ length: maxParagraphs }).map((_, idx) => {
+                    const paragraphTh = contentTh[idx] || '';
+                    const paragraphEn = contentEn[idx] || '';
 
-                  if (settings.displayMode === 'en') {
+                    if (settings.displayMode === 'en') {
+                      return (
+                        <p key={idx} className={`reader-paragraph indent-6 text-justify ${activeTheme.bodyText}`}>
+                          {paragraphEn}
+                        </p>
+                      );
+                    }
+
+                    if (settings.displayMode === 'parallel') {
+                      return (
+                        <div key={idx} className={`space-y-2 p-3 border rounded-2xl ${activeTheme.parallelBox}`}>
+                          <p className={`reader-paragraph indent-6 text-justify font-medium ${activeTheme.bodyText}`}>{paragraphTh}</p>
+                          <p className={`text-xs opacity-75 italic border-t pt-2 ${activeTheme.parallelEn}`}>{paragraphEn}</p>
+                        </div>
+                      );
+                    }
+
+                    // Default Thai
                     return (
-                      <p key={idx} className={`reader-paragraph indent-6 text-justify ${activeTheme.bodyText}`}>
-                        {paragraphEn}
+                      <p key={idx} className={`reader-paragraph indent-6 text-justify tracking-wide ${activeTheme.bodyText}`}>
+                        {paragraphTh}
                       </p>
                     );
-                  }
-
-                  if (settings.displayMode === 'parallel') {
-                    return (
-                      <div key={idx} className={`space-y-2 p-3 border rounded-2xl ${activeTheme.parallelBox}`}>
-                        <p className={`reader-paragraph indent-6 text-justify font-medium ${activeTheme.bodyText}`}>{paragraphTh}</p>
-                        <p className={`text-xs opacity-75 italic border-t pt-2 ${activeTheme.parallelEn}`}>{paragraphEn}</p>
-                      </div>
-                    );
-                  }
-
-                  // Default Thai
-                  return (
-                    <p key={idx} className={`reader-paragraph indent-6 text-justify tracking-wide ${activeTheme.bodyText}`}>
-                      {paragraphTh}
-                    </p>
-                  );
-                })}
+                  })
+                )}
               </article>
             </section>
           );
@@ -947,13 +1269,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         )}
       </main>
 
-      {/* Fixed Bottom Reading Progress Bar (Moved from top to bottom) */}
-      <div className={`fixed bottom-0 inset-x-0 z-40 h-1 sm:h-1.5 transition-all ${activeTheme.progressTrack}`}>
-        <div
-          className={`h-full transition-all duration-150 ${activeTheme.progressBar}`}
-          style={{ width: `${scrollProgress}%` }}
-        />
-      </div>
+
 
       {/* Quick Navigation Menu (Toggled by tapping the screen) */}
       {isMenuOpen && (

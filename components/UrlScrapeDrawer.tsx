@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, ChevronDown, Tag } from 'lucide-react';
+import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, ChevronDown, Tag, Zap } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -19,6 +19,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('');
   const [mode, setMode] = useState<'auto' | 'single' | 'full_novel'>('auto');
+  const [quality, setQuality] = useState<'fast' | 'polished'>('fast');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -106,18 +107,27 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       const res = await fetch('/api/scrape-and-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), mode, category }),
+        body: JSON.stringify({ url: url.trim(), mode, category, quality }),
       });
 
-      let data;
+      let data: any = null;
+      const rawText = await res.text();
       try {
-        data = await res.json();
-      } catch (jsonErr) {
-        throw new Error(t('scrapeErrorServerDb'));
+        data = JSON.parse(rawText);
+      } catch {
+        setError(
+          !res.ok
+            ? `เซิร์ฟเวอร์ตอบกลับผิดพลาด (${res.status} ${res.statusText || ''}) กรุณาลองใหม่อีกครั้ง`
+            : t('scrapeErrorServerDb')
+        );
+        setLoading(false);
+        return;
       }
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || `${t('scrapeErrorStatusCode')}${res.status}`);
+      if (!res.ok || !data?.success) {
+        setError(data?.error || `${t('scrapeErrorStatusCode')}${res.status}`);
+        setLoading(false);
+        return;
       }
 
       // Dispatch event to refresh novels on homepage immediately
@@ -126,14 +136,19 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       }
 
       if (data.isBatch) {
-        setStatusMessage(data.message);
+        setStatusMessage(data.message || t('scrapeStatusComplete'));
         setProgressPercent(100);
         setTimeout(() => {
           setLoading(false);
           setUrl('');
           setCategory('');
           onClose();
-        }, 1200);
+          if (data.chapterId) {
+            router.push(`/reader/${data.chapterId}`);
+          } else if (data.novelId) {
+            router.push(`/novels/${data.novelId}`);
+          }
+        }, 800);
         return;
       }
 
@@ -148,7 +163,6 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         router.push(`/reader/${data.chapterId}`);
       }, 600);
     } catch (err: any) {
-      console.error(err);
       setError(err.message || t('scrapeErrorFetch'));
       setLoading(false);
     }
@@ -178,6 +192,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
           chapterTitle: pasteChapterTitle.trim(),
           text: pasteText,
           category,
+          quality,
         }),
       });
 
@@ -189,7 +204,9 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       }
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || `${t('scrapeErrorStatusCode')}${res.status}`);
+        setError(data.error || `${t('scrapeErrorStatusCode')}${res.status}`);
+        setLoading(false);
+        return;
       }
 
       if (typeof window !== 'undefined') {
@@ -207,7 +224,6 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         router.push(`/reader/${data.chapterId}`);
       }, 600);
     } catch (err: any) {
-      console.error(err);
       setError(err.message || t('scrapeErrorAddChapter'));
       setLoading(false);
     }
@@ -400,6 +416,53 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
               </div>
             </div>
 
+            {/* Translation Quality Selector (Only for non-Thai source) */}
+            {pasteText.trim().length > 0 && !/[\u0E00-\u0E7F]/.test(pasteText) && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>{t('translationQualityLabel')}</span>
+                  {quality === 'polished' && (
+                    <span className="text-[10px] text-amber-400 font-normal flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> AI Gemini
+                    </span>
+                  )}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuality('fast')}
+                    className={`flex flex-col items-start p-2.5 rounded-xl border transition-all text-left ${
+                      quality === 'fast'
+                        ? 'text-amber-300 bg-amber-500/20 border-amber-500/50 shadow-sm'
+                        : 'text-slate-400 bg-slate-950 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-semibold">
+                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{t('qualityFast')}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('qualityFastDesc')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuality('polished')}
+                    className={`flex flex-col items-start p-2.5 rounded-xl border transition-all text-left ${
+                      quality === 'polished'
+                        ? 'text-amber-300 bg-amber-500/20 border-amber-500/50 shadow-sm ring-1 ring-amber-500/30'
+                        : 'text-slate-400 bg-slate-950 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-semibold">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      <span>{t('qualityPolished')}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('qualityPolishedDesc')}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2 pt-1">
               <button
                 type="submit"
@@ -447,6 +510,51 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                   }`}
                 >
                   <BookOpen className="w-3.5 h-3.5" /> {t('scrapeSingleChapter')}
+                </button>
+              </div>
+            </div>
+
+            {/* Translation Quality Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>{t('translationQualityLabel')}</span>
+                {quality === 'polished' && (
+                  <span className="text-[10px] text-amber-400 font-normal flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> AI Gemini
+                  </span>
+                )}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuality('fast')}
+                  className={`flex flex-col items-start p-2.5 rounded-xl border transition-all text-left ${
+                    quality === 'fast'
+                      ? 'text-amber-300 bg-amber-500/20 border-amber-500/50 shadow-sm'
+                      : 'text-slate-400 bg-slate-950 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{t('qualityFast')}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-0.5">{t('qualityFastDesc')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setQuality('polished')}
+                  className={`flex flex-col items-start p-2.5 rounded-xl border transition-all text-left ${
+                    quality === 'polished'
+                      ? 'text-amber-300 bg-amber-500/20 border-amber-500/50 shadow-sm ring-1 ring-amber-500/30'
+                      : 'text-slate-400 bg-slate-950 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                    <span>{t('qualityPolished')}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-0.5">{t('qualityPolishedDesc')}</span>
                 </button>
               </div>
             </div>

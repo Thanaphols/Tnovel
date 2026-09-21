@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { translateParagraphsGoogle } from '@/lib/googleTranslate';
+import { polishParagraphs } from '@/lib/translator';
 import { recordAuditLog } from '@/lib/auditLog';
 import { isThaiText, deobfuscateThaiText } from '@/lib/scraper';
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มตอนได้' }, { status: 403 });
     }
 
-    const { novelTitle, chapterTitle, text, sourceUrl, category } = await request.json();
+    const { novelTitle, chapterTitle, text, sourceUrl, category, quality = 'fast' } = await request.json();
 
     if (!novelTitle || typeof novelTitle !== 'string' || !novelTitle.trim()) {
       return NextResponse.json({ success: false, error: 'กรุณาใส่ชื่อเรื่อง' }, { status: 400 });
@@ -90,9 +91,29 @@ export async function POST(request: Request) {
 
     if (!isThai) {
       // Title rides along as paragraph 0, same as the scraped path — one request for the lot.
-      const [transTitle, ...transBody] = await translateParagraphsGoogle([cleanChapterTitle, ...paragraphs]);
+      const enWithTitle = [cleanChapterTitle, ...paragraphs];
+      const [transTitle, ...transBody] = await translateParagraphsGoogle(enWithTitle);
       translatedTitle = transTitle || cleanChapterTitle;
       contentTh = transBody;
+
+      if (quality === 'polished' && contentTh.length > 0) {
+        if (io) {
+          io.emit('translation:progress', {
+            status: 'translating',
+            message: '✨ กำลังเกลาสำนวนวรรณกรรมด้วย Gemini AI...',
+          });
+        }
+        try {
+          const result = await polishParagraphs(enWithTitle, [translatedTitle, ...contentTh]);
+          if (result.failedBatches < result.totalBatches) {
+            const [polishedTitle, ...polishedBody] = result.paragraphs;
+            if (polishedTitle && !polishedTitle.startsWith('[')) translatedTitle = polishedTitle;
+            contentTh = polishedBody;
+          }
+        } catch (polishErr: any) {
+          console.warn('Paste chapter polish failed, keeping Google draft:', polishErr.message);
+        }
+      }
     }
 
     const chapter = await prisma.chapter.create({

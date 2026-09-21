@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const author = await prisma.author.findFirst({
-      where: { id: params.id, deletedAt: null },
+      where: { id, deletedAt: null },
       include: {
         novels: {
           where: { deletedAt: null },

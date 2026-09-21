@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { translateParagraphsGoogle } from '@/lib/googleTranslate';
-import { polishParagraphs } from '@/lib/translator';
 import { recordAuditLog } from '@/lib/auditLog';
-import { isThaiText } from '@/lib/scraper';
+import { isThaiText, scrapeNovelChapter } from '@/lib/scraper';
+import { ChapterStatus } from '@/lib/enums';
+import { getLLMProvider } from '@/lib/llm/provider';
+import { applySafeNameReplacer } from '@/lib/nameReplacer';
+import { detectEnglishLeak } from '@/lib/translation/detectEnglishLeak';
+import { acquirePriorityLease, heartbeatPriorityLease, releasePriorityLease } from '@/lib/systemLock';
+import { autoDiscoverAndSaveGlossary } from '@/lib/glossaryService';
 
-// Failed scrapes/translations are stored with these markers instead of real Thai text,
-// so they have to be detected before anything is used as a draft or written back.
 const FAILURE_PREFIXES = ['[แปลผิดพลาด', '[ยังไม่ได้ใส่', '[กำลังรอโควตา', '[แปลไม่สำเร็จ', '[แปล]', '[ต้นฉบับ]'];
 const FAILURE_RATIO = 0.3;
 
@@ -17,7 +20,8 @@ function looksFailed(paragraphs: string[]): boolean {
   return bad / paragraphs.length > FAILURE_RATIO;
 }
 
-function parseArray(json: string): string[] {
+function parseArray(json: string | null | undefined): string[] {
+  if (!json) return [];
   try {
     const parsed = JSON.parse(json);
     return Array.isArray(parsed) ? parsed : [];
@@ -26,7 +30,12 @@ function parseArray(json: string): string[] {
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  let heartbeatTimer: NodeJS.Timeout | null = null;
+  const ownerId = crypto.randomUUID();
+  let leaseAcquired = false;
+
   try {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') {
@@ -37,21 +46,75 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const engine: 'google' | 'polish' = body?.engine === 'polish' ? 'polish' : 'google';
 
     const chapter = await prisma.chapter.findFirst({
-      where: { id: params.id, deletedAt: null },
+      where: { id, deletedAt: null },
+      include: { novel: { include: { glossaries: true } } },
     });
     if (!chapter) {
       return NextResponse.json({ success: false, error: 'ไม่พบบทนิยายนี้' }, { status: 404 });
     }
 
-    const contentEn = parseArray(chapter.contentEn);
+    let contentEn = parseArray(chapter.contentEn);
+    let titleEn = chapter.titleEn;
+
+    // JIT Source Fetch: If this chapter has no English text stored yet (e.g. TOC_ONLY),
+    // automatically fetch the content from originalUrl so translation/polish works in 1 click!
     if (contentEn.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'บทนี้ไม่มีต้นฉบับเก็บไว้ แปลใหม่ไม่ได้' },
-        { status: 400 }
-      );
+      if (!chapter.originalUrl) {
+        return NextResponse.json(
+          { success: false, error: 'บทนี้ไม่มีต้นฉบับและไม่มีลิงก์เว็บต้นทาง ไม่สามารถดึงเนื้อหาได้' },
+          { status: 400 }
+        );
+      }
+
+      const io = (global as any).io;
+      if (io) {
+        io.emit('translation:progress', {
+          status: 'translating',
+          jobType: 'single_chapter',
+          initiatorUserId: session.id,
+          novelId: chapter.novelId,
+          chapterId: chapter.id,
+          novelTitle: chapter.novel?.titleTh || chapter.novel?.titleEn,
+          chapterTitle: `📥 ดึงเนื้อหา: ${chapter.titleTh || chapter.titleEn || `ตอนที่ ${chapter.chapterNumber}`}`,
+          percent: 5,
+          message: `กำลังดึงเนื้อหาจากเว็บต้นทาง...`,
+        });
+      }
+
+      try {
+        const scraped = await scrapeNovelChapter(chapter.originalUrl);
+        if (!scraped.paragraphs || scraped.paragraphs.length === 0) {
+          return NextResponse.json(
+            { success: false, error: 'ไม่พบเนื้อหาข้อความในบทนี้จากเว็บต้นทาง' },
+            { status: 404 }
+          );
+        }
+
+        contentEn = scraped.paragraphs;
+        if (scraped.title && (!titleEn || titleEn.startsWith('ตอนที่'))) {
+          titleEn = scraped.title;
+        }
+
+        // Persist fetched contentEn immediately to database
+        await prisma.chapter.update({
+          where: { id: chapter.id },
+          data: {
+            titleEn: titleEn || chapter.titleEn,
+            contentEn: JSON.stringify(contentEn),
+            status: ChapterStatus.FETCHED,
+            fetchedAt: new Date(),
+          },
+        });
+      } catch (scrapeErr: any) {
+        console.error(`[Retranslate JIT] Failed to scrape ${chapter.originalUrl}:`, scrapeErr.message || scrapeErr);
+        return NextResponse.json(
+          { success: false, error: `ดึงเนื้อหาจากเว็บต้นทางไม่สำเร็จ: ${scrapeErr.message || 'ไม่สามารถเข้าถึงหน้าเว็บต้นทางได้'}` },
+          { status: 502 }
+        );
+      }
     }
 
-    if (chapter.originalUrl.includes('dek-d.com') || isThaiText(contentEn)) {
+    if ((chapter.originalUrl && chapter.originalUrl.includes('dek-d.com')) || isThaiText(contentEn)) {
       return NextResponse.json({
         success: true,
         alreadyPolished: true,
@@ -61,22 +124,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       });
     }
 
-    // Polishing costs Gemini quota; a chapter that is already polished is served as-is.
-    if (engine === 'polish' && chapter.polishedAt) {
-      return NextResponse.json({
-        success: true,
-        engine,
-        alreadyPolished: true,
-        titleTh: chapter.titleTh,
-        contentTh: parseArray(chapter.contentTh),
-      });
-    }
-
-    // Always draft from the stored English (free, ~2s), never from stored Thai: re-polishing
-    // an already-edited text drifts further from the source every time.
+    // Always draft from the stored English (free, ~2s), never from stored Thai
     let draft: string[] | null = null;
     try {
-      const fresh = await translateParagraphsGoogle([chapter.titleEn, ...contentEn]);
+      const fresh = await translateParagraphsGoogle([titleEn || chapter.titleEn || '', ...contentEn]);
       if (!looksFailed(fresh.slice(1))) draft = fresh;
     } catch (err: any) {
       console.error('Retranslate: Google draft failed:', err.message);
@@ -96,28 +147,168 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     let translated = draft;
     let polishedAt: Date | null = null;
-    let partial = false;
+    let providerName: string | null = null;
+    let modelName: string | null = null;
+    const glossaryCount = chapter.novel?.glossaries?.length || 0;
 
     if (engine === 'polish') {
-      const result = await polishParagraphs([chapter.titleEn, ...contentEn], draft);
-      if (result.failedBatches === result.totalBatches) {
+      // Step 1: Acquire Priority Lease Lock to prevent queue workers from contending on GPU
+      leaseAcquired = await acquirePriorityLease('MANUAL_POLISH_LOCK', 60, ownerId);
+      if (leaseAcquired) {
+        heartbeatTimer = setInterval(async () => {
+          await heartbeatPriorityLease('MANUAL_POLISH_LOCK', ownerId, 60);
+        }, 15000);
+      }
+
+      const io = (global as any).io;
+      const novelName = chapter.novel?.titleTh || chapter.novel?.titleEn || 'นิยาย';
+      const chapterDisplayName = chapter.titleTh || chapter.titleEn || `ตอนที่ ${chapter.chapterNumber}`;
+
+      // Step 2: Auto-discover entities and Freeze Glossary Snapshot for consistency
+      await autoDiscoverAndSaveGlossary(chapter.novelId, contentEn);
+
+      const freshGlossaries = await prisma.novelGlossary.findMany({
+        where: { novelId: chapter.novelId },
+      });
+
+      const glossarySnapshot = freshGlossaries.map((g) => ({
+        canonicalEn: g.canonicalEn,
+        canonicalTh: g.canonicalTh,
+        entityType: g.entityType,
+        isLocked: g.isLocked,
+        category: g.category,
+      }));
+
+      const polishContext = {
+        novelTitle: novelName,
+        genre: chapter.novel?.genre || chapter.novel?.category || undefined,
+        glossary: glossarySnapshot.map((g) => ({
+          termEn: g.canonicalEn,
+          termTh: g.canonicalTh,
+          category: g.category,
+        })),
+      };
+
+      const estTotalBatches = Math.ceil(draft.length / 10);
+      if (io) {
+        io.emit('translation:progress', {
+          status: 'batch_progress',
+          jobType: 'single_chapter',
+          initiatorUserId: session.id,
+          novelId: chapter.novelId,
+          chapterId: chapter.id,
+          novelTitle: novelName,
+          chapterTitle: `✨ เกลาสำนวน: ${chapterDisplayName}`,
+          currentChapter: 1,
+          totalChapters: estTotalBatches,
+          chapterCount: 0,
+          percent: 5,
+          isPaused: false,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      const provider = getLLMProvider();
+      providerName = provider.name;
+      modelName = provider.modelName;
+
+      const polishResult = await provider.polish({
+        chapterNumber: chapter.chapterNumber,
+        titleEn: titleEn || chapter.titleEn || '',
+        titleThDraft: draft[0] || chapter.titleTh,
+        paragraphsEn: contentEn,
+        paragraphsThDraft: draft.slice(1),
+        context: polishContext,
+        onProgress: (currentBatch, totalBatches) => {
+          if (io) {
+            const pct = Math.min(95, Math.round((currentBatch / totalBatches) * 100));
+            io.emit('translation:progress', {
+              status: 'batch_progress',
+              jobType: 'single_chapter',
+              initiatorUserId: session.id,
+              novelId: chapter.novelId,
+              chapterId: chapter.id,
+              novelTitle: novelName,
+              chapterTitle: `✨ เกลาสำนวน: ${chapterDisplayName}`,
+              currentChapter: currentBatch,
+              totalChapters: totalBatches,
+              chapterCount: currentBatch,
+              percent: pct,
+              isPaused: false,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        },
+      });
+
+      // Step 3: All-or-Nothing & Last-Known-Good Invariant:
+      // If ANY batch failed, do NOT commit partial work or destroy existing polished content
+      if (polishResult.failedBatches > 0) {
+        if (io) {
+          io.emit('translation:progress', {
+            status: 'batch_cancelled',
+            jobType: 'single_chapter',
+            initiatorUserId: session.id,
+            novelTitle: novelName,
+            chapterTitle: chapterDisplayName,
+            message: `เกลาสำนวนไม่สมบูรณ์ (${polishResult.failedBatches} ชุดล้มเหลว) รักษาฉบับเดิมไว้`,
+          });
+        }
         return NextResponse.json(
-          { success: false, error: 'ระบบเกลาสำนวนไม่สำเร็จ (โควตารายวันอาจหมด) เนื้อหาเดิมยังอยู่ครบ' },
+          {
+            success: false,
+            error: `ระบบเกลาสำนวนไม่สำเร็จครบทุกย่อหน้า (${polishResult.failedBatches} ชุดล้มเหลว) เพื่อความปลอดภัยเนื้อหาเดิมยังคงอยู่ครบ`,
+          },
           { status: 502 }
         );
       }
-      translated = result.paragraphs;
-      partial = result.failedBatches > 0;
-      // Partially polished chapters stay unflagged so the reader can retry the rest later.
-      polishedAt = partial ? null : new Date();
+
+      // Step 4: Quality Safety Net (Name Replacer + English Leak Detector)
+      const afterNameReplacer = applySafeNameReplacer(polishResult.paragraphsTh, glossarySnapshot);
+      const leakCheck = detectEnglishLeak(afterNameReplacer, glossarySnapshot);
+      const finalBody = leakCheck.repairedParagraphs || afterNameReplacer;
+
+      translated = [polishResult.titleTh, ...finalBody];
+      polishedAt = new Date();
+
+      if (io) {
+        io.emit('translation:progress', {
+          status: 'batch_completed',
+          jobType: 'single_chapter',
+          initiatorUserId: session.id,
+          novelId: chapter.novelId,
+          chapterId: chapter.id,
+          novelTitle: novelName,
+          chapterTitle: chapterDisplayName,
+          percent: 100,
+          message: `✨ เกลาสำนวน "${chapterDisplayName}" เรียบร้อยแล้ว!`,
+        });
+      }
     }
 
     const [translatedTitle, ...translatedBody] = translated;
     const titleTh = translatedTitle && !translatedTitle.startsWith('[') ? translatedTitle : chapter.titleTh;
 
+    // Save to DB with metadata
     await prisma.chapter.update({
       where: { id: chapter.id },
-      data: { titleTh, contentTh: JSON.stringify(translatedBody), polishedAt },
+      data: {
+        titleEn: titleEn || chapter.titleEn,
+        titleTh,
+        contentTh: JSON.stringify(translatedBody),
+        contentThGoogle: engine === 'google' ? JSON.stringify(translatedBody) : chapter.contentThGoogle,
+        contentThPolished: engine === 'polish' ? JSON.stringify(translatedBody) : chapter.contentThPolished,
+        status: engine === 'polish' ? 'POLISHED' : 'TRANSLATED_GT',
+        polishedAt,
+        ...(engine === 'polish'
+          ? {
+              llmProvider: providerName,
+              llmModel: modelName,
+              promptVersion: 'polish-v5.2',
+              glossaryVersion: glossaryCount,
+            }
+          : {}),
+      },
     });
 
     const io = (global as any).io;
@@ -130,16 +321,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
       action: 'CHAPTER_RETRANSLATE',
       entity: 'CHAPTER',
       entityId: chapter.id,
-      details: `แปลใหม่บท "${titleTh}" (${engine === 'polish' ? 'AI เกลาสำนวน' : 'Google แปลตรง'})`,
+      details: `แปลใหม่บท "${titleTh}" (${engine === 'polish' ? `AI เกลาสำนวน (${modelName})` : 'Google แปลตรง'})`,
       request,
     });
 
-    return NextResponse.json({ success: true, engine, partial, titleTh, contentTh: translatedBody });
+    return NextResponse.json({ success: true, engine, titleTh, contentTh: translatedBody });
   } catch (err: any) {
     console.error('Retranslate error:', err);
     return NextResponse.json(
       { success: false, error: err.message || 'เกิดข้อผิดพลาดในการแปลใหม่' },
       { status: 500 }
     );
+  } finally {
+    // Release Priority Lease and clear Heartbeat timer
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+    }
+    if (leaseAcquired) {
+      await releasePriorityLease('MANUAL_POLISH_LOCK', ownerId);
+    }
   }
 }

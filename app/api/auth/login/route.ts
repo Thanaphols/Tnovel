@@ -13,13 +13,16 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const isExistingAdmin = user && user.role === 'ADMIN';
+
     // Check Whitelist & Primary Admin
     const isPrimaryAdmin = normalizedEmail === 'cupteo254504@gmail.com';
     const whitelisted = await prisma.whitelistedEmail.findUnique({
       where: { email: normalizedEmail },
     });
 
-    if (!isPrimaryAdmin && !whitelisted) {
+    if (!isPrimaryAdmin && !isExistingAdmin && !whitelisted) {
       return NextResponse.json(
         {
           success: false,
@@ -29,7 +32,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user || user.deletedAt || !user.password) {
       return NextResponse.json({ success: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, { status: 401 });
     }
@@ -39,12 +41,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, { status: 401 });
     }
 
-    const finalRole = isPrimaryAdmin ? 'ADMIN' : user.role;
-    if (isPrimaryAdmin && user.role !== 'ADMIN') {
+    // Role priority: Primary Admin > Whitelist role > Existing role
+    let finalRole = user.role;
+    if (isPrimaryAdmin) {
+      finalRole = 'ADMIN';
+    } else if (whitelisted?.role) {
+      finalRole = whitelisted.role;
+    }
+
+    if (user.role !== finalRole) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { role: 'ADMIN' },
+        data: { role: finalRole },
       });
+      user.role = finalRole;
     }
 
     const token = await signToken({

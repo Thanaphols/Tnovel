@@ -5,19 +5,21 @@ import { recordAuditLog } from '@/lib/auditLog';
 
 export const dynamic = 'force-dynamic';
 
-function safeParseArray(val: string): string[] {
+function safeParseArray(val: string | null | undefined): string[] {
+  if (!val) return [];
   try {
     const parsed = JSON.parse(val);
     return Array.isArray(parsed) ? parsed : [String(parsed)];
   } catch {
-    return val ? [val] : [];
+    return [val];
   }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const chapter = await prisma.chapter.findFirst({
-      where: { id: params.id, deletedAt: null },
+      where: { id, deletedAt: null },
       include: {
         novel: {
           include: {
@@ -63,6 +65,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
         contentEn: safeParseArray(chapter.contentEn),
         contentTh: safeParseArray(chapter.contentTh),
         originalUrl: chapter.originalUrl,
+        status: chapter.status,
+        errorCode: chapter.errorCode,
+        errorMessage: chapter.errorMessage,
         novelId: chapter.novelId,
         novelTitle: chapter.novel.titleTh || chapter.novel.titleEn,
         authorName: chapter.novel.author?.name || 'Unknown Author',
@@ -76,7 +81,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const session = await getSession();
     if (!session) {
@@ -86,9 +92,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { scrollPercent } = await request.json();
 
     await prisma.readingProgress.upsert({
-      where: { userId_chapterId: { userId: session.id, chapterId: params.id } },
+      where: { userId_chapterId: { userId: session.id, chapterId: id } },
       update: { scrollPercent: Math.min(100, Math.max(0, scrollPercent)), lastReadAt: new Date() },
-      create: { userId: session.id, chapterId: params.id, scrollPercent },
+      create: { userId: session.id, chapterId: id, scrollPercent },
     });
 
     return NextResponse.json({ success: true });
@@ -97,7 +103,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') {
@@ -105,21 +112,21 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     const updatedChapter = await prisma.chapter.update({
-      where: { id: params.id },
+      where: { id },
       data: { deletedAt: new Date() },
       select: { titleTh: true, titleEn: true, chapterNumber: true },
     });
 
     const io = (global as any).io;
     if (io) {
-      io.emit('chapter:deleted', { id: params.id });
+      io.emit('chapter:deleted', { id });
     }
 
     await recordAuditLog({
       userId: session.id,
       action: 'CHAPTER_DELETE_SOFT',
       entity: 'CHAPTER',
-      entityId: params.id,
+      entityId: id,
       details: `ย้ายบทที่ ${updatedChapter.chapterNumber} "${updatedChapter.titleTh || updatedChapter.titleEn}" ไปถังขยะ`,
       request,
     });

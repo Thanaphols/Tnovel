@@ -43,7 +43,7 @@ export async function verifyToken(token: string): Promise<UserSessionPayload | n
 }
 
 export async function getSession(): Promise<UserSessionPayload | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get('noveltrans_token')?.value;
   if (!token) return null;
   return await verifyToken(token);

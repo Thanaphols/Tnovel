@@ -6,7 +6,7 @@ import { processBatchChaptersAsync } from '@/lib/batchTranslator';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession();
@@ -17,7 +17,10 @@ export async function POST(
       );
     }
 
-    const novelId = params.id;
+    const body = await request.json().catch(() => ({}));
+    const enablePolish = body?.quality === 'polished' || Boolean(body?.enablePolish);
+
+    const { id: novelId } = await params;
     const novel = await prisma.novel.findUnique({
       where: { id: novelId, deletedAt: null },
       include: { author: true, chapters: { where: { deletedAt: null } } },
@@ -36,9 +39,18 @@ export async function POST(
     const indexData = await scrapeNovelIndex(novel.sourceUrl);
     const totalChapters = indexData.chapters.length || novel.chapters.length;
 
-    // Filter out already translated chapters
-    const existingUrls = new Set(novel.chapters.map((c) => c.originalUrl));
-    const remainingChapters = indexData.chapters.filter((c) => !existingUrls.has(c.url));
+    // Filter out already translated chapters (must genuinely have Thai content)
+    const thaiRegex = /[\u0E00-\u0E7F]/;
+    const completedUrls = new Set(
+      novel.chapters
+        .filter((c) => {
+          if (c.originalUrl.includes('dek-d.com')) return true;
+          if (!c.contentTh) return false;
+          return thaiRegex.test(c.contentTh) && !c.contentTh.includes('[แปลไม่สำเร็จ');
+        })
+        .map((c) => c.originalUrl)
+    );
+    const remainingChapters = indexData.chapters.filter((c) => !completedUrls.has(c.url));
 
     if (remainingChapters.length === 0) {
       await prisma.novel.update({
@@ -63,16 +75,16 @@ export async function POST(
     });
 
     // Start background translation process
-    processBatchChaptersAsync(novel, novel.author, indexData.chapters, io);
+    processBatchChaptersAsync(novel, novel.author, indexData.chapters, io, enablePolish, session.id);
 
     return NextResponse.json({
       success: true,
       novelId: novel.id,
       novelTitle: novel.titleTh || novel.titleEn,
       totalChapters,
-      alreadyTranslated: novel.chapters.length,
+      alreadyTranslated: completedUrls.size,
       remainingChapters: remainingChapters.length,
-      message: `เริ่มแปลต่อจากตอนที่ ${novel.chapters.length + 1} (เหลืออีก ${remainingChapters.length} ตอน)`,
+      message: `เริ่มแปลต่อ (แปลแล้ว ${completedUrls.size}/${totalChapters} ตอน, เหลืออีก ${remainingChapters.length} ตอน)`,
     });
   } catch (err: any) {
     console.error('Resume translation error:', err);

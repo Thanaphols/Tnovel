@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { MailCheck, Mail, Plus, UserCheck, Search, Trash2, Loader2, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
 
 export default function AdminWhitelistPage() {
   const { t, lang } = useLanguage();
+  const { user: currentUser } = useAuth();
   const [whitelist, setWhitelist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchWhitelist, setSearchWhitelist] = useState('');
@@ -13,9 +15,11 @@ export default function AdminWhitelistPage() {
   // Form states
   const [newEmail, setNewEmail] = useState('');
   const [newNote, setNewNote] = useState('');
+  const [newRole, setNewRole] = useState<'USER' | 'ADMIN'>('USER');
   const [addingWhitelist, setAddingWhitelist] = useState(false);
   const [whitelistMsg, setWhitelistMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [deletingWhitelistId, setDeletingWhitelistId] = useState<string | null>(null);
+  const [togglingEmail, setTogglingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWhitelist();
@@ -47,13 +51,14 @@ export default function AdminWhitelistPage() {
       const res = await fetch('/api/admin/whitelist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newEmail, note: newNote }),
+        body: JSON.stringify({ email: newEmail, note: newNote, role: newRole }),
       });
       const data = await res.json();
       if (data.success) {
         setWhitelistMsg({ type: 'success', text: data.message || t('whitelistAddSuccess') });
         setNewEmail('');
         setNewNote('');
+        setNewRole('USER');
         await fetchWhitelist();
       } else {
         setWhitelistMsg({ type: 'error', text: data.error || t('whitelistAddError') });
@@ -65,9 +70,47 @@ export default function AdminWhitelistPage() {
     }
   }
 
+  async function handleToggleWhitelistRole(email: string, currentRole: string, note?: string) {
+    if (email.toLowerCase() === 'cupteo254504@gmail.com') {
+      alert('ไม่สามารถลดสิทธิ์ของ Primary Admin ได้');
+      return;
+    }
+    if (currentUser?.email && email.toLowerCase() === currentUser.email.toLowerCase() && currentRole === 'ADMIN') {
+      alert('คุณไม่สามารถลดสิทธิ์บัญชีของตนเองได้');
+      return;
+    }
+    const targetRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
+    if (!confirm(`ต้องการเปลี่ยนสิทธิ์ของ "${email}" เป็น ${targetRole} หรือไม่?`)) {
+      return;
+    }
+
+    setTogglingEmail(email);
+    try {
+      const res = await fetch('/api/admin/whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role: targetRole, note }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchWhitelist();
+      } else {
+        alert(data.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์');
+      }
+    } catch (err: any) {
+      alert(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    } finally {
+      setTogglingEmail(null);
+    }
+  }
+
   async function handleDeleteWhitelist(id: string, email: string) {
-    if (email === 'cupteo254504@gmail.com') {
+    if (email.toLowerCase() === 'cupteo254504@gmail.com') {
       alert(t('cannotDeletePrimaryAdmin'));
+      return;
+    }
+    if (currentUser?.email && email.toLowerCase() === currentUser.email.toLowerCase()) {
+      alert('คุณไม่สามารถลบอีเมลของตนเองออกจาก Whitelist ได้');
       return;
     }
     if (!confirm(`${t('confirmDeleteWhitelistMsg')} (${email})`)) {
@@ -154,7 +197,7 @@ export default function AdminWhitelistPage() {
         )}
 
         <form onSubmit={handleAddWhitelist} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-          <div className="sm:col-span-6 space-y-1.5">
+          <div className="sm:col-span-5 space-y-1.5">
             <label className="text-xs font-semibold text-slate-300">{t('emailLabel')}</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -169,7 +212,19 @@ export default function AdminWhitelistPage() {
             </div>
           </div>
 
-          <div className="sm:col-span-4 space-y-1.5">
+          <div className="sm:col-span-3 space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300">สิทธิ์ที่จะได้รับ (Role)</label>
+            <select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as 'USER' | 'ADMIN')}
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60 font-medium"
+            >
+              <option value="USER">👤 ผู้ใช้ทั่วไป (USER)</option>
+              <option value="ADMIN">🛡️ ผู้ดูแลระบบ (ADMIN)</option>
+            </select>
+          </div>
+
+          <div className="sm:col-span-2 space-y-1.5">
             <label className="text-xs font-semibold text-slate-300">{t('emailNoteLabel')}</label>
             <input
               type="text"
@@ -236,6 +291,7 @@ export default function AdminWhitelistPage() {
                 <tr>
                   <th className="p-3 pl-4">{t('whitelistColEmail')}</th>
                   <th className="p-3">{t('whitelistColNote')}</th>
+                  <th className="p-3">{t('whitelistColRole')}</th>
                   <th className="p-3">{t('whitelistColAccountStatus')}</th>
                   <th className="p-3">{t('whitelistColDate')}</th>
                   <th className="p-3 pr-4 text-right">{t('whitelistColAction')}</th>
@@ -256,6 +312,33 @@ export default function AdminWhitelistPage() {
                     </td>
                     <td className="p-3 text-slate-400">
                       {item.note || <span className="italic text-slate-600">{t('noNote')}</span>}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
+                            (item.role || 'USER') === 'ADMIN'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}
+                        >
+                          {(item.role || 'USER') === 'ADMIN' ? '🛡️ ADMIN' : '👤 USER'}
+                        </span>
+                        {!item.isPrimaryAdmin && !(currentUser?.email && item.email.toLowerCase() === currentUser.email.toLowerCase() && (item.role || 'USER') === 'ADMIN') && (
+                          <button
+                            onClick={() => handleToggleWhitelistRole(item.email, item.role || 'USER', item.note)}
+                            disabled={togglingEmail === item.email}
+                            title={`สลับสิทธิ์เป็น ${(item.role || 'USER') === 'ADMIN' ? 'USER' : 'ADMIN'}`}
+                            className="p-1 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors disabled:opacity-50"
+                          >
+                            {togglingEmail === item.email ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                            ) : (
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3">
                       {item.user ? (
@@ -284,6 +367,8 @@ export default function AdminWhitelistPage() {
                     <td className="p-3 pr-4 text-right">
                       {item.isPrimaryAdmin ? (
                         <span className="text-[11px] text-slate-600 italic">{t('primaryAdmin')}</span>
+                      ) : currentUser?.email && item.email.toLowerCase() === currentUser.email.toLowerCase() ? (
+                        <span className="text-[11px] text-slate-500 italic">บัญชีปัจจุบัน</span>
                       ) : (
                         <button
                           onClick={() => handleDeleteWhitelist(item.id, item.email)}

@@ -34,9 +34,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'อีเมลนี้ถูกใช้งานแล้ว' }, { status: 400 });
     }
 
-    // First registered user or primary admin becomes ADMIN
+    // First registered user, primary admin, or admin-whitelisted becomes ADMIN
     const userCount = await prisma.user.count();
-    const role = isPrimaryAdmin || userCount === 0 ? 'ADMIN' : 'USER';
+    const role = isPrimaryAdmin || whitelisted?.role === 'ADMIN' || userCount === 0 ? 'ADMIN' : (whitelisted?.role || 'USER');
 
     const hashedPassword = await hashPassword(password);
     const user = await prisma.user.create({

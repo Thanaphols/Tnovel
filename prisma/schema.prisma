@@ -46,6 +46,7 @@ model Novel {
   coverUrl          String?
   sourceUrl         String
   category          String?
+  genre             String?
   totalChapters     Int               @default(0)
   translationStatus String            @default("COMPLETED")
   viewCount         Int               @default(0)
@@ -64,27 +65,74 @@ model Novel {
   reports     Report[]
   likes       NovelLike[]
   bookshelves Bookshelf[]
+  glossaries  NovelGlossary[]
 }
 
 model Chapter {
-  id            String            @id @default(uuid())
-  chapterNumber Int               @default(1)
-  titleEn       String
-  titleTh       String
-  contentEn     String
-  contentTh     String
-  polishedAt    DateTime?
-  originalUrl   String
-  deletedAt     DateTime?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id                  String            @id @default(uuid())
+  chapterNumber       Int               @default(1)
+  titleEn             String
+  titleTh             String
+  contentEn           String?
+  contentTh           String?
+  contentThGoogle     String?
+  contentThPolished   String?
+  status              String            @default("TOC_ONLY")
+  errorCode           String            @default("NONE")
+  errorMessage        String?
+  sourceHash          String?
+  originalUrl         String
 
-  novelId       String
-  novel         Novel             @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  // Observability & Metrics
+  fetchDurationMs     Int?
+  translateDurationMs Int?
+  polishDurationMs    Int?
+  translationProvider String?           @default("GOOGLE_CLOUD_API")
+  translationVersion  Int               @default(1)
+  llmProvider         String?
+  llmModel            String?
+  promptVersion       String?
+  glossaryVersion     Int?
 
-  readingProgresses ReadingProgress[]
-  reports           Report[]
-  chapterBookmarks  ChapterBookmark[]
+  fetchedAt           DateTime?
+  translatedAt        DateTime?
+  polishedAt          DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  novelId             String
+  novel               Novel             @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  jobs                ChapterJob[]
+  readingProgresses   ReadingProgress[]
+  reports             Report[]
+  chapterBookmarks    ChapterBookmark[]
+
+  @@unique([novelId, chapterNumber])
+  @@index([novelId, status])
+}
+
+model ChapterJob {
+  id             String     @id @default(uuid())
+  chapterId      String
+  jobType        String     // "FETCH_AND_TRANSLATE", "POLISH"
+  status         String     @default("PENDING") // "PENDING", "PROCESSING", "COMPLETED", "FAILED"
+  workerId       String?
+  attempts       Int        @default(0)
+  maxAttempts    Int        @default(3)
+  executionCount Int        @default(1)
+  lockedAt       DateTime?
+  lockedUntil    DateTime?
+  errorCode      String     @default("NONE")
+  errorDetail    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  chapter        Chapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, jobType])
+  @@index([status, lockedUntil])
 }
 
 model ReadingProgress {
@@ -157,6 +205,7 @@ model ChapterBookmark {
 model WhitelistedEmail {
   id        String   @id @default(uuid())
   email     String   @unique
+  role      String   @default("USER")
   note      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -178,4 +227,46 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@index([userId])
+}
+
+model NovelGlossary {
+  id               String               @id @default(uuid())
+  novelId          String
+  canonicalEn      String
+  canonicalTh      String
+  category         String?
+  entityType       String               @default("CHARACTER")
+  modelConfidence  Float                @default(1.0)
+  validationStatus String               @default("PENDING")
+  isLocked         Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  novel            Novel                @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  aliases          NovelGlossaryAlias[]
+
+  @@unique([novelId, canonicalEn])
+  @@index([novelId, entityType])
+}
+
+model NovelGlossaryAlias {
+  id          String        @id @default(uuid())
+  glossaryId String
+  aliasEn     String
+  createdAt   DateTime      @default(now())
+
+  glossary    NovelGlossary @relation(fields: [glossaryId], references: [id], onDelete: Cascade)
+
+  @@unique([glossaryId, aliasEn])
+  @@index([aliasEn])
+}
+
+model SystemLock {
+  key         String   @id
+  ownerId     String
+  lockedUntil DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lockedUntil])
 }

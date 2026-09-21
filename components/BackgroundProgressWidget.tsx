@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/authContext';
 
 export default function BackgroundProgressWidget() {
   const { t } = useLanguage();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [active, setActive] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -20,6 +20,7 @@ export default function BackgroundProgressWidget() {
   const [savedCount, setSavedCount] = useState<number>(0);
   const [percent, setPercent] = useState<number>(0);
   const [completed, setCompleted] = useState(false);
+  const [jobType, setJobType] = useState<'batch' | 'single_chapter'>('batch');
 
   const { socket } = useSocket();
 
@@ -33,6 +34,11 @@ export default function BackgroundProgressWidget() {
         const res = await fetch('/api/translation/status');
         const data = await res.json();
         if (isMounted && data.success && data.active && data.job) {
+          // UI Isolation: skip if job belongs to another user
+          if (data.job.initiatorUserId && user?.id && data.job.initiatorUserId !== user.id) {
+            return;
+          }
+
           setActive(true);
           setCompleted(false);
           setNovelTitle(data.job.novelTitle || '');
@@ -58,15 +64,21 @@ export default function BackgroundProgressWidget() {
     return () => {
       isMounted = false;
     };
-  }, [t, isAdmin]);
+  }, [t, isAdmin, user?.id]);
 
   useEffect(() => {
     if (!socket || !isAdmin) return;
 
     function handleProgress(data: any) {
+      // UI Isolation: If an initiator is specified and it is not the current user, ignore
+      if (data.initiatorUserId && user?.id && data.initiatorUserId !== user.id) {
+        return;
+      }
       if (data.status === 'batch_progress') {
         setActive(true);
         setCompleted(false);
+        const isSingle = data.jobType === 'single_chapter';
+        setJobType(isSingle ? 'single_chapter' : 'batch');
         setNovelTitle(data.novelTitle || '');
         setChapterTitle(data.chapterTitle || '');
         setCurrentChapter(data.currentChapter || 1);
@@ -74,7 +86,11 @@ export default function BackgroundProgressWidget() {
         if (typeof data.chapterCount === 'number') setSavedCount(data.chapterCount);
         setPercent(data.percent || Math.round(((data.currentChapter || 1) / (data.totalChapters || 1)) * 100));
         setIsPaused(Boolean(data.isPaused));
-        setStatus(`${t('translating')} ${t('chapterPrefix')} ${data.currentChapter}/${data.totalChapters}`);
+        if (isSingle) {
+          setStatus(`✨ กำลังเกลาสำนวน (${data.currentChapter || 1}/${data.totalChapters || 1} ชุด)`);
+        } else {
+          setStatus(`${t('translating')} ${t('chapterPrefix')} ${data.currentChapter}/${data.totalChapters}`);
+        }
       } else if (data.status === 'batch_completed') {
         setCompleted(true);
         setIsPaused(false);
@@ -148,18 +164,24 @@ export default function BackgroundProgressWidget() {
                 )}
               </div>
               <span className="text-xs font-semibold text-slate-200">
-                {isPaused ? t('widgetPaused') : `${percent}% (${currentChapter}/${totalChapters})`}
+                {isPaused
+                  ? t('widgetPaused')
+                  : jobType === 'single_chapter'
+                  ? `${percent}% (เกลาสำนวน)`
+                  : `${percent}% (${currentChapter}/${totalChapters})`}
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
-            <button
-              onClick={togglePause}
-              className="p-1.5 text-slate-300 hover:text-amber-400 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors"
-              title={isPaused ? t('widgetResume') : t('widgetPause')}
-            >
-              {isPaused ? <Play className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> : <Pause className="w-3.5 h-3.5" />}
-            </button>
+            {jobType !== 'single_chapter' && (
+              <button
+                onClick={togglePause}
+                className="p-1.5 text-slate-300 hover:text-amber-400 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors"
+                title={isPaused ? t('widgetResume') : t('widgetPause')}
+              >
+                {isPaused ? <Play className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> : <Pause className="w-3.5 h-3.5" />}
+              </button>
+            )}
           </div>
         ) : (
           /* Full Floating Card */
@@ -190,7 +212,7 @@ export default function BackgroundProgressWidget() {
               </div>
 
               <div className="flex items-center gap-1">
-                {!completed && (
+                {!completed && jobType !== 'single_chapter' && (
                   <button
                     onClick={togglePause}
                     title={isPaused ? t('widgetClickToResume') : t('widgetClickToPause')}
@@ -212,7 +234,13 @@ export default function BackgroundProgressWidget() {
                   {t('widgetMinimize')}
                 </button>
                 <button
-                  onClick={() => setShowCancelConfirm(true)}
+                  onClick={() => {
+                    if (jobType === 'single_chapter') {
+                      setActive(false);
+                    } else {
+                      setShowCancelConfirm(true);
+                    }
+                  }}
                   title={t('widgetCancel')}
                   className="p-1.5 text-slate-400 hover:text-rose-400 bg-slate-800/60 hover:bg-slate-800 rounded-lg transition-colors"
                 >
@@ -241,10 +269,17 @@ export default function BackgroundProgressWidget() {
                   style={{ width: `${percent}%` }}
                 />
               </div>
-              <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                <span className="text-emerald-400/90">{t('widgetSavedCount')}{savedCount} {t('chaptersCount')}</span>
-                <span>{t('widgetScanCount')}{currentChapter}/{totalChapters}</span>
-              </div>
+              {jobType === 'single_chapter' ? (
+                <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                  <span className="text-amber-400/90 font-sans">⚡ Qwen 2.5 (Ollama)</span>
+                  <span>ชุดที่ {currentChapter}/{totalChapters} ({percent}%)</span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                  <span className="text-emerald-400/90">{t('widgetSavedCount')}{savedCount} {t('chaptersCount')}</span>
+                  <span>{t('widgetScanCount')}{currentChapter}/{totalChapters}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

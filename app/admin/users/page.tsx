@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, RefreshCw, Loader2, Search } from 'lucide-react';
+import Link from 'next/link';
+import { Users, Shield, RefreshCw, Loader2, Search, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
 
 export default function AdminUsersPage() {
   const { t, lang } = useLanguage();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUser, setUpdatingUser] = useState<string | null>(null);
@@ -31,6 +34,16 @@ export default function AdminUsersPage() {
   }
 
   async function handleToggleRole(userId: string, currentRole: string, email: string) {
+    if (email.toLowerCase() === 'cupteo254504@gmail.com') {
+      alert('ไม่สามารถลดระดับสิทธิ์ของ Primary Admin ได้');
+      return;
+    }
+
+    if (currentUser?.id === userId && currentRole === 'ADMIN') {
+      alert('คุณไม่สามารถลดระดับสิทธิ์บัญชีของตนเองได้');
+      return;
+    }
+
     const newRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
     if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการเปลี่ยนสิทธิ์ของ "${email}" เป็น ${newRole}?`)) {
       return;
@@ -77,6 +90,13 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/whitelist"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>จัดการ Whitelist</span>
+          </Link>
           <div className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold">
             <span className="text-slate-400">ทั้งหมด: </span>
             <span className="text-amber-400 font-bold">{users.length} คน</span>
@@ -143,7 +163,19 @@ export default function AdminUsersPage() {
                             )}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-100">{u.name || t('userNoName')}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-100">{u.name || t('userNoName')}</span>
+                              {u.isPrimaryAdmin && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  Primary Admin
+                                </span>
+                              )}
+                              {currentUser?.id === u.id && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                  คุณ
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[11px] text-slate-400 font-normal font-mono">{u.email}</div>
                           </div>
                         </div>
@@ -166,17 +198,23 @@ export default function AdminUsersPage() {
                         {new Date(u.createdAt).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US')}
                       </td>
                       <td className="p-4 pr-5 text-right">
-                        <button
-                          onClick={() => handleToggleRole(u.id, u.role, u.email)}
-                          disabled={updatingUser === u.id}
-                          className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-xl transition-all disabled:opacity-50"
-                        >
-                          {updatingUser === u.id
-                            ? t('updating')
-                            : u.role === 'ADMIN'
-                            ? t('demoteToUser')
-                            : t('promoteToAdmin')}
-                        </button>
+                        {u.isPrimaryAdmin ? (
+                          <span className="text-[11px] text-slate-500 italic">Primary Admin</span>
+                        ) : currentUser?.id === u.id ? (
+                          <span className="text-[11px] text-slate-500 italic">บัญชีปัจจุบัน</span>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleRole(u.id, u.role, u.email)}
+                            disabled={updatingUser === u.id}
+                            className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-xl transition-all disabled:opacity-50"
+                          >
+                            {updatingUser === u.id
+                              ? t('updating')
+                              : u.role === 'ADMIN'
+                              ? t('demoteToUser')
+                              : t('promoteToAdmin')}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))

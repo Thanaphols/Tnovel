@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const state = searchParams.get('state');
   const errorParam = searchParams.get('error');
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const savedState = cookieStore.get('google_oauth_state')?.value;
   const savedRedirectUri = cookieStore.get('google_oauth_redirect_uri')?.value;
   const savedCallbackUrl = cookieStore.get('google_oauth_callback_url')?.value || '/';
@@ -97,7 +97,16 @@ export async function GET(request: Request) {
       where: { email },
     });
 
-    if (!isPrimaryAdmin && !whitelisted) {
+    // 3. Find or create user in DB
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [{ googleId }, { email }],
+      },
+    });
+
+    const isExistingAdmin = user && user.role === 'ADMIN';
+
+    if (!isPrimaryAdmin && !isExistingAdmin && !whitelisted) {
       const loginUrl = new URL('/login', baseUrl);
       loginUrl.searchParams.set(
         'error',
@@ -107,18 +116,13 @@ export async function GET(request: Request) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // 3. Find or create user in DB
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [{ googleId }, { email }],
-      },
-    });
-
     if (user && user.deletedAt) {
       const loginUrl = new URL('/login', baseUrl);
       loginUrl.searchParams.set('error', 'บัญชีผู้ใช้นี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
       return NextResponse.redirect(loginUrl);
     }
+
+    const assignedRole = isPrimaryAdmin || whitelisted?.role === 'ADMIN' || isExistingAdmin ? 'ADMIN' : (whitelisted?.role || 'USER');
 
     if (!user) {
       user = await prisma.user.create({
@@ -127,16 +131,16 @@ export async function GET(request: Request) {
           name,
           avatar,
           googleId,
-          role: isPrimaryAdmin ? 'ADMIN' : 'USER',
+          role: assignedRole,
         },
       });
     } else {
-      // Link googleId or update avatar/name if missing
+      // Link googleId or update avatar/name/role
       const updateData: any = {};
       if (!user.googleId) updateData.googleId = googleId;
       if (!user.avatar && avatar) updateData.avatar = avatar;
       if (!user.name && name) updateData.name = name;
-      if (isPrimaryAdmin && user.role !== 'ADMIN') updateData.role = 'ADMIN';
+      if (user.role !== assignedRole) updateData.role = assignedRole;
 
       if (Object.keys(updateData).length > 0) {
         user = await prisma.user.update({

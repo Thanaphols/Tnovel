@@ -24,7 +24,12 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ success: true, users });
+    const mappedUsers = users.map((u) => ({
+      ...u,
+      isPrimaryAdmin: u.email.toLowerCase() === 'cupteo254504@gmail.com',
+    }));
+
+    return NextResponse.json({ success: true, users: mappedUsers });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้งาน' }, { status: 500 });
   }
@@ -43,10 +48,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'ข้อมูลไม่ถูกต้อง' }, { status: 400 });
     }
 
+    // Prevent self-demotion
+    if (userId === session.id && newRole !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'คุณไม่สามารถลดระดับสิทธิ์บัญชีของตัวเองได้' },
+        { status: 400 }
+      );
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) {
+      return NextResponse.json({ success: false, error: 'ไม่พบผู้ใช้งานนี้ในระบบ' }, { status: 404 });
+    }
+
+    // Protect Primary Admin
+    if (targetUser.email === 'cupteo254504@gmail.com' && newRole !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'ไม่สามารถลดระดับสิทธิ์ของ Primary Admin ได้' },
+        { status: 400 }
+      );
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { role: newRole },
       select: { id: true, email: true, name: true, role: true },
+    });
+
+    // Synchronize role in Whitelist table
+    await prisma.whitelistedEmail.updateMany({
+      where: { email: targetUser.email },
+      data: { role: newRole },
     });
 
     await recordAuditLog({
@@ -60,6 +92,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (err: any) {
+    console.error('Update user role error:', err);
     return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์ผู้ใช้งาน' }, { status: 500 });
   }
 }

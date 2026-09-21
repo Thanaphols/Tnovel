@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    allowedDevOrigins: ['tnovel.baanfarmkhanom.shop', 'localhost:9000'],
-  },
+  allowedDevOrigins: ['tnovel.baanfarmkhanom.shop', 'localhost:9000'],
   images: {
     remotePatterns: [
       {

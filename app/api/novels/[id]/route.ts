@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const novel = await prisma.novel.findFirst({
-      where: { id: params.id, deletedAt: null },
+      where: { id, deletedAt: null },
       include: {
         author: true,
         createdBy: {
@@ -19,6 +20,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
             chapterNumber: true,
             titleEn: true,
             titleTh: true,
+            status: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -39,13 +41,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     if (session?.id) {
       const [like, bookshelfItem, progress] = await Promise.all([
         prisma.novelLike.findUnique({
-          where: { userId_novelId: { userId: session.id, novelId: params.id } },
+          where: { userId_novelId: { userId: session.id, novelId: id } },
         }),
         prisma.bookshelf.findUnique({
-          where: { userId_novelId: { userId: session.id, novelId: params.id } },
+          where: { userId_novelId: { userId: session.id, novelId: id } },
         }),
         prisma.readingProgress.findFirst({
-          where: { userId: session.id, chapter: { novelId: params.id, deletedAt: null } },
+          where: { userId: session.id, chapter: { novelId: id, deletedAt: null } },
           orderBy: { lastReadAt: 'desc' },
           include: { chapter: { select: { id: true, chapterNumber: true, titleTh: true } } },
         }),
@@ -76,14 +78,15 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') {
       return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น' }, { status: 403 });
     }
 
-    const novel = await prisma.novel.findUnique({ where: { id: params.id } });
+    const novel = await prisma.novel.findUnique({ where: { id } });
     if (!novel) {
       return NextResponse.json({ success: false, error: 'ไม่พบนิยายเรื่องนี้' }, { status: 404 });
     }
@@ -92,26 +95,26 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Soft delete Novel
     await prisma.novel.update({
-      where: { id: params.id },
+      where: { id },
       data: { deletedAt: now },
     });
 
     // Soft delete associated Chapters
     await prisma.chapter.updateMany({
-      where: { novelId: params.id },
+      where: { novelId: id },
       data: { deletedAt: now },
     });
 
     const io = (global as any).io;
     if (io) {
-      io.emit('novel:deleted', { id: params.id });
+      io.emit('novel:deleted', { id });
     }
 
     await recordAuditLog({
       userId: session.id,
       action: 'NOVEL_DELETE_SOFT',
       entity: 'NOVEL',
-      entityId: params.id,
+      entityId: id,
       details: `ย้ายนิยาย "${novel.titleTh || novel.titleEn}" ไปถังขยะ`,
       request,
     });
