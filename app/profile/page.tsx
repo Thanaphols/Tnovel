@@ -33,9 +33,18 @@ export default function ProfilePage() {
       {/* Profile Header */}
       <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4">
         <div className="flex items-center gap-4">
-          <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl">
-            <User className="w-10 h-10" />
-          </div>
+          {user.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatar}
+              alt={user.name || 'profile'}
+              className="w-[72px] h-[72px] rounded-2xl object-cover border border-amber-500/20"
+            />
+          ) : (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl">
+              <User className="w-10 h-10" />
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-100">{user.name}</h1>

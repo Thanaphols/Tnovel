@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Plus, User, Shield, LogIn, Wifi, WifiOff, Home, History, Library } from 'lucide-react';
+import { BookOpen, Plus, User, LogIn, Wifi, WifiOff, Home, History, Library, Search } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
 import UrlScrapeDrawer from './UrlScrapeDrawer';
@@ -51,6 +51,7 @@ export default function Navbar() {
   }
 
   const isHome = pathname === '/';
+  const isSearch = pathname === '/search';
   const isBookshelf = pathname === '/bookshelf';
   const isHistory = pathname === '/history';
   const isProfile = pathname === '/profile' || pathname === '/login' || pathname === '/register';
@@ -76,38 +77,45 @@ export default function Navbar() {
 
           {/* Action & Nav Icons */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Translate URL Button (Admin only) — leftmost so it fills empty space
+                on load instead of shifting the right-pinned buttons */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsScrapeOpen(true)}
+                className="hidden md:flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-amber-950 bg-amber-400 hover:bg-amber-300 active:scale-95 rounded-xl shadow-md shadow-amber-500/20 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('translateNovel')}</span>
+              </button>
+            )}
+
             {/* Online/Offline status badge (Desktop only) */}
-            <div
-              className={`hidden sm:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border ${
-                isOnline
-                  ? 'text-forest-600 dark:text-forest-400 bg-forest-500/10 border-forest-500/20'
-                  : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
-              }`}
-            >
-              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+            <div className="hidden sm:flex items-center gap-1.5 h-8 px-2.5 text-[11px] font-medium rounded-xl bg-slate-900 border border-slate-800 text-slate-400">
+              {isOnline ? (
+                <Wifi className="w-3.5 h-3.5 text-forest-500" />
+              ) : (
+                <WifiOff className="w-3.5 h-3.5 text-amber-500" />
+              )}
               <span>{isOnline ? t('online') : t('offline')}</span>
             </div>
 
-            {/* Combined Theme & Language Settings Dropdown */}
-            <SettingsDropdown />
-
             {/* Desktop Only Buttons */}
             <div className="hidden md:flex items-center gap-2">
-              {/* Translate URL Button (Admin only) */}
-              {isAdmin && (
-                <button
-                  onClick={() => setIsScrapeOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-95 rounded-xl shadow-md shadow-amber-500/20 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{t('translateNovel')}</span>
-                </button>
-              )}
+              {/* Search Link */}
+              <Link
+                href="/search"
+                className={`flex items-center justify-center h-8 w-8 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
+                  isSearch ? 'text-amber-400 border-amber-500/40 bg-amber-500/10' : ''
+                }`}
+                title={t('searchNovels')}
+              >
+                <Search className="w-4 h-4" />
+              </Link>
 
               {/* Bookshelf Link */}
               <Link
                 href="/bookshelf"
-                className={`p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
+                className={`flex items-center justify-center h-8 w-8 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
                   isBookshelf ? 'text-amber-400 border-amber-500/40 bg-amber-500/10' : ''
                 }`}
                 title={t('myBookshelf')}
@@ -118,7 +126,7 @@ export default function Navbar() {
               {/* Translation History Link */}
               <Link
                 href="/history"
-                className={`p-2 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
+                className={`flex items-center justify-center h-8 w-8 text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded-xl transition-colors ${
                   isHistory ? 'text-amber-400 border-amber-500/40 bg-amber-500/10' : ''
                 }`}
                 title={t('history')}
@@ -126,39 +134,36 @@ export default function Navbar() {
                 <History className="w-4 h-4" />
               </Link>
 
-              {/* Admin Console (If Admin) */}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded-xl transition-all shadow-sm"
-                  title={t('adminConsole')}
-                >
-                  <Shield className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden lg:inline">{t('adminConsole')}</span>
-                </Link>
-              )}
-
-              {/* User Profile / Auth */}
-              {user ? (
-                <Link
-                  href="/profile"
-                  className={`flex items-center gap-1.5 p-1.5 pl-2 text-xs font-medium text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all ${
-                    pathname === '/profile' ? 'border-amber-500/40 text-amber-300' : ''
-                  }`}
-                >
-                  <User className="w-4 h-4 text-amber-400" />
-                  <span className="max-w-[80px] truncate">{user.name}</span>
-                </Link>
-              ) : (
-                <Link
-                  href="/login"
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>{t('login')}</span>
-                </Link>
-              )}
             </div>
+
+            {/* Combined Theme & Language Settings Dropdown */}
+            <SettingsDropdown />
+
+            {/* User Profile / Auth — pinned rightmost (desktop) */}
+            {user ? (
+              <Link
+                href="/profile"
+                title={user.name || user.email}
+                className={`hidden md:flex items-center justify-center h-8 w-8 rounded-full overflow-hidden bg-slate-900 border transition-all ${
+                  pathname === '/profile' ? 'border-amber-500/60' : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {user.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatar} alt={user.name || 'profile'} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-amber-400" />
+                )}
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden md:flex items-center gap-1 h-8 px-3 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>{t('login')}</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -176,7 +181,18 @@ export default function Navbar() {
           <Home className="w-5 h-5" />
         </Link>
 
-        {/* Tab 2: Bookshelf */}
+        {/* Tab 2: Search */}
+        <Link
+          href="/search"
+          className={`p-2 rounded-2xl transition-all ${
+            isSearch ? 'text-amber-400 bg-amber-500/15 scale-110 shadow-sm' : 'text-slate-400 hover:text-slate-200 active:scale-95'
+          }`}
+          title={t('searchNovels')}
+        >
+          <Search className="w-5 h-5" />
+        </Link>
+
+        {/* Tab 3: Bookshelf */}
         <Link
           href="/bookshelf"
           className={`p-2 rounded-2xl transition-all ${
