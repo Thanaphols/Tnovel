@@ -50,6 +50,8 @@ export async function GET() {
           lastChapterTitle: chapter.titleTh || chapter.titleEn,
           scrollPercent: prog.scrollPercent,
           lastReadAt: prog.lastReadAt,
+          // Soft-deleted novel/chapter: keep in history but flag so the UI blocks reading it.
+          isDeleted: Boolean(novel.deletedAt || chapter.deletedAt),
         });
       }
     }

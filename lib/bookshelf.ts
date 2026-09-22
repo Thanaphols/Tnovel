@@ -41,6 +41,7 @@ export interface ReadingHistoryItem {
   lastChapterTitle: string;
   scrollPercent: number;
   lastReadAt: string;
+  isDeleted?: boolean;
 }
 
 export interface ChapterBookmarkItem {

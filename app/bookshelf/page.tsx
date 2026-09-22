@@ -414,9 +414,16 @@ export default function BookshelfPage() {
                           </div>
 
                           <div className="space-y-1 min-w-0">
-                            <h3 className="text-sm font-bold text-slate-100 line-clamp-1 group-hover:text-ocean-600 dark:group-hover:text-ocean-400 transition-colors">
-                              {item.novelTitle}
-                            </h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className={`text-sm font-bold line-clamp-1 transition-colors ${item.isDeleted ? 'text-slate-400' : 'text-slate-100 group-hover:text-ocean-600 dark:group-hover:text-ocean-400'}`}>
+                                {item.novelTitle}
+                              </h3>
+                              {item.isDeleted && (
+                                <span className="shrink-0 text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-1.5 py-0.5 rounded-md">
+                                  {t('novelDeletedBadge')}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-amber-400 font-semibold line-clamp-1">
                               {t('readUpTo')} {t('chapterPrefix')} {item.lastChapterNumber} • {item.lastChapterTitle}
                             </p>
@@ -438,13 +445,23 @@ export default function BookshelfPage() {
                             <Trash2 className="w-4 h-4" />
                           </button>
 
-                          <Link
-                            href={`/reader/${item.lastChapterId}`}
-                            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl shadow-md transition-all active:scale-95"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-current" />
-                            <span>{t('btnReadContinue')}</span>
-                          </Link>
+                          {item.isDeleted ? (
+                            <span
+                              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-slate-800 text-slate-500 rounded-xl cursor-not-allowed select-none"
+                              title={t('novelDeletedBadge')}
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>{t('novelDeletedUnavailable')}</span>
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/reader/${item.lastChapterId}`}
+                              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl shadow-md transition-all active:scale-95"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>{t('btnReadContinue')}</span>
+                            </Link>
+                          )}
                         </div>
                       </div>
                     ))}

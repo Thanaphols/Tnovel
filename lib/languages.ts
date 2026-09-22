@@ -67,6 +67,27 @@ export const languages = {
     categoryRequiredNotice: 'กรุณาเลือกหมวดหมู่นิยายก่อนเริ่มแปล',
     allCategories: 'ทุกหมวดหมู่',
 
+    // Search Page
+    searchNovels: 'ค้นหานิยาย',
+    searchPageSub: 'ค้นหาและกรองนิยายตามหมวดหมู่ จำนวนตอน ยอดวิว และความใหม่',
+    searchNavLabel: 'ค้นหา',
+    sortLabel: 'เรียงตาม',
+    sortLatest: 'อัปเดตล่าสุด',
+    sortNewest: 'เพิ่มใหม่ล่าสุด',
+    sortMostViewed: 'ยอดวิวสูงสุด',
+    sortMostChapters: 'ตอนเยอะสุด',
+    sortMostLiked: 'ถูกใจมากสุด',
+    searchNoResults: 'ไม่พบผลการค้นหา',
+    searchNoResultsDesc: 'ลองเปลี่ยนคำค้น หมวดหมู่ หรือเงื่อนไขการกรอง',
+    searchResultsCount: 'ผลลัพธ์',
+    addFilter: 'เพิ่มตัวกรอง',
+    clearFilters: 'ล้างตัวกรอง',
+    clearSearch: 'ล้างคำค้นหา',
+    roleChangeConfirmTitle: 'ยืนยันการเปลี่ยนสิทธิ์',
+    roleChangeConfirmMsg: 'ต้องการเปลี่ยนสิทธิ์ของ',
+    roleChangeConfirmTo: 'เป็น',
+    roleChangeConfirmBtn: 'ยืนยันการเปลี่ยน',
+
     // Novel Card
     translating: 'กำลังแปล...',
     moveToBin: 'ย้ายลงถังขยะ',
@@ -127,6 +148,7 @@ export const languages = {
     emptyBinDesc: 'ไม่มีรายการนิยายหรือบทนิยายถูกย้ายมาที่นี่',
     novelsInBin: 'นิยายในถังขยะ',
     chaptersInBin: 'บทนิยายในถังขยะ',
+    showChapters: 'ดูบทที่ลบ',
     novelStoryPrefix: 'เรื่อง:',
 
     // Confirmation Modals
@@ -176,10 +198,7 @@ export const languages = {
     qualityPolishedDesc: 'สละสลวย ภาษาวรรณกรรมลื่นไหล',
     scrapeUrlInputLabel: 'URL หน้าหลักนิยาย หรือ URL บทนิยาย',
     btnStartScrapeAndTranslate: 'เริ่มต้นดึงและนำเข้าเนื้อหา',
-    sampleUrlsLabel: 'ตัวอย่างลิงก์นิยายสำหรับทดลอง:',
-    sampleFullTitle: 'RoyalRoad (นิยายแปลอังกฤษทั้งเรื่อง)',
-    sampleDekDTitle: 'Dek-D เด็กดี (นิยายไทยทั้งเรื่อง)',
-    sampleSingleTitle: 'ตอนเฉพาะ (Single Chapter)',
+    sampleUrlsLabel: 'เว็บที่รองรับ:',
 
     // History Page
     historyTitle: 'ประวัติการแปลนิยาย',
@@ -230,6 +249,8 @@ export const languages = {
     readPercent: 'อ่านแล้ว ',
     deleteFromHistoryTooltip: 'ลบออกจากประวัติ',
     btnReadContinue: 'อ่านต่อ',
+    novelDeletedBadge: 'นิยายนี้ถูกลบแล้ว',
+    novelDeletedUnavailable: 'ไม่พร้อมอ่าน',
     bookmarksTabDesc: 'รายการบทนิยายที่คุณกดคั่นหน้าไว้ เพื่อกลับมาอ่านตอนสำคัญได้ตลอดเวลา',
     bookmarksEmptyTitle: 'ยังไม่มีบุ๊กมาร์กคั่นหน้า',
     bookmarksEmptyDesc: 'ขณะอ่านนิยาย สามารถกดปุ่มฟันเฟือง ⚙️ แล้วเลือก "คั่นหน้านี้" เพื่อบันทึกตอนที่คุณชอบไว้ที่นี่ได้',
@@ -573,6 +594,27 @@ export const languages = {
     categoryRequiredNotice: 'Please select a novel category before translating',
     allCategories: 'All Categories',
 
+    // Search Page
+    searchNovels: 'Search Novels',
+    searchPageSub: 'Search and filter novels by category, chapter count, views, and recency',
+    searchNavLabel: 'Search',
+    sortLabel: 'Sort by',
+    sortLatest: 'Recently updated',
+    sortNewest: 'Newest added',
+    sortMostViewed: 'Most viewed',
+    sortMostChapters: 'Most chapters',
+    sortMostLiked: 'Most liked',
+    searchNoResults: 'No results found',
+    searchNoResultsDesc: 'Try a different keyword, category, or filter',
+    searchResultsCount: 'results',
+    addFilter: 'Add filter',
+    clearFilters: 'Clear filters',
+    clearSearch: 'Clear search',
+    roleChangeConfirmTitle: 'Confirm role change',
+    roleChangeConfirmMsg: 'Change the role of',
+    roleChangeConfirmTo: 'to',
+    roleChangeConfirmBtn: 'Confirm change',
+
     // Novel Card
     translating: 'Translating...',
     moveToBin: 'Move to Trash',
@@ -633,6 +675,7 @@ export const languages = {
     emptyBinDesc: 'No novels or chapters in trash.',
     novelsInBin: 'Deleted Novels',
     chaptersInBin: 'Deleted Chapters',
+    showChapters: 'Show deleted chapters',
     novelStoryPrefix: 'Novel:',
 
     // Confirmation Modals
@@ -682,10 +725,7 @@ export const languages = {
     qualityPolishedDesc: 'Natural literary Thai prose',
     scrapeUrlInputLabel: 'Novel Index URL or Chapter URL',
     btnStartScrapeAndTranslate: 'Start Scraping & Importing',
-    sampleUrlsLabel: 'Sample novel links to try:',
-    sampleFullTitle: 'RoyalRoad Index (Full Novel)',
-    sampleDekDTitle: 'Dek-D (Thai Full Novel)',
-    sampleSingleTitle: 'Single Chapter',
+    sampleUrlsLabel: 'Supported sites:',
 
     // History Page
     historyTitle: 'Translation History',
@@ -732,6 +772,8 @@ export const languages = {
     btnClearHistory: 'Clear All History',
     historyEmptyTitle: 'No reading history yet',
     historyEmptyDesc: 'When you read any chapter, your progress will be saved here automatically.',
+    novelDeletedBadge: 'This novel has been deleted',
+    novelDeletedUnavailable: 'Unavailable',
     readUpTo: 'Read up to ',
     readPercent: 'Read ',
     deleteFromHistoryTooltip: 'Remove from history',
