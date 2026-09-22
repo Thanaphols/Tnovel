@@ -34,7 +34,8 @@ interface TranslationPanelProps {
   novelId: string;
   novelTitle: string;
   chapters: ChapterMeta[];
-  onChaptersUpdated?: () => void;
+  // patch present → update that one chapter's status locally (no refetch); absent → full refresh.
+  onChaptersUpdated?: (patch?: { chapterId: string; status: string }) => void;
 }
 
 export default function TranslationPanel({
@@ -151,10 +152,12 @@ export default function TranslationPanel({
             `ตอนที่ ${chap.chapterNumber} ขัดข้อง: ${data.error || 'ไม่สำเร็จ'}`,
           ]);
         } else {
-          // Update overview stats live as each chapter completes
-          if (onChaptersUpdated) {
-            onChaptersUpdated();
-          }
+          // Update overview stats live as each chapter completes — patch this one chapter's
+          // status locally instead of refetching the whole novel on every iteration.
+          onChaptersUpdated?.({
+            chapterId: chap.id,
+            status: engine === 'polish' ? 'POLISHED' : 'TRANSLATED_GT',
+          });
         }
       } catch (err: any) {
         setErrorLog((prev) => [

@@ -224,12 +224,32 @@ export default function NovelDetailPage() {
       }
     }
 
+    // A chapter finished (re)translating anywhere (reader, batch, another viewer) — patch its
+    // status live. Scoped to THIS novel by novelId; content status is global, not user-specific.
+    function handleChapterUpdated(data: any) {
+      if (data?.novelId !== id || !data?.chapterId) return;
+      setNovel((prev) =>
+        prev
+          ? {
+              ...prev,
+              chapters: prev.chapters.map((c) =>
+                c.id === data.chapterId
+                  ? { ...c, status: data.status || c.status, titleTh: data.titleTh || c.titleTh }
+                  : c
+              ),
+            }
+          : prev
+      );
+    }
+
     socket.on('chapter:created', handleChapterCreated);
     socket.on('translation:progress', handleProgress);
+    socket.on('chapter:updated', handleChapterUpdated);
 
     return () => {
       socket.off('chapter:created', handleChapterCreated);
       socket.off('translation:progress', handleProgress);
+      socket.off('chapter:updated', handleChapterUpdated);
     };
   }, [socket, id, t]);
 
@@ -441,7 +461,7 @@ export default function NovelDetailPage() {
             {t('backToHome')}
           </Link>
           <button
-            onClick={loadNovel}
+            onClick={() => loadNovel()}
             className="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all"
           >
             {t('tryAgain')}
@@ -862,7 +882,23 @@ export default function NovelDetailPage() {
             novelId={novel.id}
             novelTitle={novel.titleTh || novel.titleEn}
             chapters={novel.chapters}
-            onChaptersUpdated={() => loadNovel({ silent: true })}
+            onChaptersUpdated={(patch) => {
+              if (patch) {
+                // live per-chapter status bump, no network round-trip
+                setNovel((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        chapters: prev.chapters.map((c) =>
+                          c.id === patch.chapterId ? { ...c, status: patch.status } : c
+                        ),
+                      }
+                    : prev
+                );
+              } else {
+                loadNovel({ silent: true });
+              }
+            }}
           />
         ) : activeTab === 'glossary' ? (
           <section className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-5 sm:p-7">

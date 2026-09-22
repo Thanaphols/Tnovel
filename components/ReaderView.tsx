@@ -12,6 +12,7 @@ import { ReaderSettingsState, saveReaderSettings, getReaderSettings, saveChapter
 import { toggleChapterBookmark, recordGuestReadingHistory } from '@/lib/bookshelf';
 import { useAppTheme } from '@/lib/themeContext';
 import { useLanguage } from '@/lib/languageContext';
+import { useAuth } from '@/lib/authContext';
 import { deobfuscateThaiText } from '@/lib/thaiUtils';
 
 interface ReaderViewProps {
@@ -54,6 +55,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
   const router = useRouter();
   const { t } = useLanguage();
   const { socket } = useSocket();
+  const { user } = useAuth();
   const { theme: appTheme, setTheme: setAppTheme } = useAppTheme();
 
   // Mark document as reader-active so global light/sepia site rules don't pollute reader view
@@ -451,11 +453,24 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engine }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = { success: false, error: `เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (HTTP ${res.status})` };
+      }
       if (!res.ok || !data.success) throw new Error(data.error || `${t('retranslateFailed')} (${res.status})`);
 
+      const newStatus = data.alreadyPolished
+        ? target.status
+        : engine === 'polish'
+          ? 'POLISHED'
+          : 'TRANSLATED_GT';
       setLoadedChapters((prev) =>
-        prev.map((c) => (c.id === target.id ? { ...c, titleTh: data.titleTh, contentTh: data.contentTh } : c))
+        prev.map((c) =>
+          c.id === target.id ? { ...c, titleTh: data.titleTh, contentTh: data.contentTh, status: newStatus } : c
+        )
       );
       saveChapterOffline({
         id: target.id,
@@ -614,20 +629,47 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
               ? JSON.parse(updated.contentEn)
               : [updated.contentEn || ''];
 
-            setLoadedChapters((prev) =>
-              prev.map((c) =>
-                c.id === nextMeta.id
-                  ? {
-                      ...c,
-                      titleTh: updated.titleTh,
-                      titleEn: updated.titleEn,
-                      contentTh: parsedTh,
-                      contentEn: parsedEn,
-                      status: updated.status,
-                    }
-                  : c
-              )
-            );
+            const full = {
+              id: nextMeta.id,
+              chapterNumber: nextMeta.chapterNumber,
+              titleEn: updated.titleEn ?? '',
+              titleTh: updated.titleTh ?? nextMeta.titleTh,
+              contentEn: parsedEn,
+              contentTh: parsedTh,
+              originalUrl: updated.originalUrl ?? '',
+              novelId: chapter.novelId,
+              novelTitle: chapter.novelTitle,
+              authorName: chapter.authorName,
+              status: updated.status,
+            };
+
+            saveChapterOffline({
+              id: full.id,
+              originalUrl: full.originalUrl,
+              titleEn: full.titleEn,
+              titleTh: full.titleTh,
+              contentEn: full.contentEn,
+              contentTh: full.contentTh,
+              novelTitle: full.novelTitle,
+              chapterNumber: full.chapterNumber,
+              updatedAt: new Date().toISOString(),
+            });
+
+            // Bug fix: the old code only .map()'d an already-loaded chapter, so a freshly
+            // prefetched N+1 (not yet in loadedChapters) was silently discarded. Now append it
+            // when it directly follows the last loaded chapter so it renders ahead of the reader.
+            setLoadedChapters((prev) => {
+              if (prev.some((c) => c.id === nextMeta.id)) {
+                return prev.map((c) => (c.id === nextMeta.id ? { ...c, ...full } : c));
+              }
+              const curAll2 = allChaptersRef.current;
+              const last = prev[prev.length - 1];
+              const lastIdx = last ? curAll2.findIndex((c) => c.id === last.id) : -1;
+              if (lastIdx >= 0 && curAll2[lastIdx + 1]?.id === nextMeta.id) {
+                return [...prev, full];
+              }
+              return prev; // out of sequence: DB is warmed, loadNextChapter will render it later
+            });
           }
         })
         .catch((err) => {
@@ -650,7 +692,8 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         prefetchAbortRef.current = null;
       }
     };
-  }, [activeChapterId]);
+    // allChapters.length so the effect re-runs when N+1 arrives after mount (e.g. chapter:created socket).
+  }, [activeChapterId, allChapters.length]);
 
   // Touch gesture swipe states (Commented out: clashes with mobile system back gesture)
   // const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -730,15 +773,19 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
             body: JSON.stringify({ scrollPercent: percent }),
           }).catch(() => {});
 
-          recordGuestReadingHistory({
-            novelId: activeChapter.novelId,
-            novelTitle: activeChapter.novelTitle,
-            authorName: activeChapter.authorName,
-            chapterId: activeChapter.id,
-            chapterNumber: activeChapter.chapterNumber,
-            chapterTitle: activeChapter.titleTh || activeChapter.titleEn,
-            scrollPercent: percent,
-          });
+          // Guest history is a device-global cache; only record it when NOT logged in, else a
+          // logged-in user's reading leaks to the next account on a shared device.
+          if (!user) {
+            recordGuestReadingHistory({
+              novelId: activeChapter.novelId,
+              novelTitle: activeChapter.novelTitle,
+              authorName: activeChapter.authorName,
+              chapterId: activeChapter.id,
+              chapterNumber: activeChapter.chapterNumber,
+              chapterTitle: activeChapter.titleTh || activeChapter.titleEn,
+              scrollPercent: percent,
+            });
+          }
         }
       }, 1000);
     }
@@ -748,7 +795,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(timeoutId);
     };
-  }, [activeChapterId, loadNextChapter]);
+  }, [activeChapterId, loadNextChapter, user]);
 
   function handleUpdateSettings(newSettings: Partial<ReaderSettingsState>) {
     const updated = { ...settings, ...newSettings };

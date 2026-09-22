@@ -44,6 +44,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const body = await request.json().catch(() => ({}));
     const engine: 'google' | 'polish' = body?.engine === 'polish' ? 'polish' : 'google';
+    const providerOverride: string | undefined =
+      body?.provider === 'ollama' || body?.provider === 'gemini' ? body.provider : undefined;
 
     const chapter = await prisma.chapter.findFirst({
       where: { id, deletedAt: null },
@@ -208,7 +210,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         });
       }
 
-      const provider = getLLMProvider();
+      const provider = await getLLMProvider({ provider: providerOverride });
       providerName = provider.name;
       modelName = provider.modelName;
 
@@ -313,7 +315,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const io = (global as any).io;
     if (io) {
-      io.emit('chapter:updated', { chapterId: chapter.id, novelId: chapter.novelId, titleTh });
+      // Broadcast content-state change (not user-scoped): any viewer of this novel updates.
+      io.emit('chapter:updated', {
+        chapterId: chapter.id,
+        novelId: chapter.novelId,
+        titleTh,
+        status: engine === 'polish' ? 'POLISHED' : 'TRANSLATED_GT',
+      });
     }
 
     await recordAuditLog({
