@@ -125,3 +125,32 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการย้ายนิยายไปถังขยะ' }, { status: 500 });
   }
 }
+
+// Admin: link the novel to a fandom (shared glossary), or unlink with fandomId: null.
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session || session.role !== 'ADMIN') {
+    return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบเท่านั้น' }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+  const fandomId: string | null = typeof body?.fandomId === 'string' && body.fandomId ? body.fandomId : null;
+
+  const novel = await prisma.novel.findFirst({ where: { id, deletedAt: null }, select: { id: true, titleTh: true } });
+  if (!novel) return NextResponse.json({ success: false, error: 'ไม่พบนิยายเรื่องนี้' }, { status: 404 });
+
+  const fandom = fandomId ? await prisma.fandom.findUnique({ where: { id: fandomId } }) : null;
+  if (fandomId && !fandom) return NextResponse.json({ success: false, error: 'ไม่พบ fandom นี้' }, { status: 404 });
+
+  await prisma.novel.update({ where: { id }, data: { fandomId } });
+  await recordAuditLog({
+    userId: session.id,
+    action: 'NOVEL_UPDATE',
+    entity: 'NOVEL',
+    entityId: id,
+    details: `ตั้ง fandom ของ "${novel.titleTh}" เป็น ${fandom ? `"${fandom.name}"` : 'ไม่มี'}`,
+    request,
+  });
+  return NextResponse.json({ success: true, fandomId });
+}

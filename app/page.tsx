@@ -6,7 +6,7 @@ import NovelCardSkeleton from '@/components/NovelCardSkeleton';
 import RecentReadingPlaceholder from '@/components/RecentReadingPlaceholder';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
-import { Sparkles, BookOpen, Search, Filter } from 'lucide-react';
+import { Sparkles, BookOpen, Search, Filter, X } from 'lucide-react';
 import { NOVEL_CATEGORIES, getCategoryLabel } from '@/lib/categories';
 
 const NovelCard = dynamic(() => import('@/components/NovelCard'), {
@@ -50,6 +50,27 @@ export default function HomePage() {
   const { t, lang } = useLanguage();
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Mouse drag-to-scroll for the category pills (touch devices scroll natively)
+  const catRowRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ down: false, startX: 0, startScroll: 0, moved: false });
+  const onCatDragStart = (e: React.MouseEvent) => {
+    const el = catRowRef.current;
+    if (!el) return;
+    dragRef.current = { down: true, startX: e.pageX, startScroll: el.scrollLeft, moved: false };
+  };
+  const onCatDragMove = (e: React.MouseEvent) => {
+    const el = catRowRef.current;
+    if (!el || !dragRef.current.down) return;
+    const dx = e.pageX - dragRef.current.startX;
+    if (Math.abs(dx) > 4) dragRef.current.moved = true;
+    el.scrollLeft = dragRef.current.startScroll - dx;
+  };
+  const endCatDrag = () => { dragRef.current.down = false; };
+  // Suppress the click that follows a drag so we don't select a category by accident
+  const onCatClickCapture = (e: React.MouseEvent) => {
+    if (dragRef.current.moved) { e.stopPropagation(); e.preventDefault(); }
+  };
 
   // Initial Fetch (8 novel cards) + Auto-refresh on focus and custom refresh events
   useEffect(() => {
@@ -265,16 +286,33 @@ export default function HomePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="hero-search w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500 text-slate-100 placeholder:text-slate-500 transition-all"
+            className="hero-search w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-amber-500 text-slate-100 placeholder:text-slate-500 transition-all"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label={t('clearSearch')}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Recent Reading Row (Horizontal Scroll) */}
       <RecentReadingRow />
 
-      {/* Category Filter Pills (Horizontal Scrollable) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-xs">
+      {/* Category Filter Pills (Horizontal Scrollable + mouse drag) */}
+      <div
+        ref={catRowRef}
+        onMouseDown={onCatDragStart}
+        onMouseMove={onCatDragMove}
+        onMouseUp={endCatDrag}
+        onMouseLeave={endCatDrag}
+        onClickCapture={onCatClickCapture}
+        className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-xs cursor-grab active:cursor-grabbing select-none">
         <button
           type="button"
           onClick={() => handleCategoryChange('ALL')}

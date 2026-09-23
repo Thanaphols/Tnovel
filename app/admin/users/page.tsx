@@ -184,8 +184,8 @@ export default function AdminUsersPage() {
                         <span
                           className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
                             u.role === 'ADMIN'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                              ? 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/40'
+                              : 'bg-slate-800 text-slate-500 border-slate-700'
                           }`}
                         >
                           {u.role}
@@ -206,7 +206,11 @@ export default function AdminUsersPage() {
                           <button
                             onClick={() => handleToggleRole(u.id, u.role, u.email)}
                             disabled={updatingUser === u.id}
-                            className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-xl transition-all disabled:opacity-50"
+                            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50 ${
+                              u.role === 'ADMIN'
+                                ? 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700'
+                                : 'bg-amber-400 hover:bg-amber-300 text-amber-950 border border-amber-500 shadow-sm'
+                            }`}
                           >
                             {updatingUser === u.id
                               ? t('updating')

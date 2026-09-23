@@ -15,7 +15,8 @@ export async function GET() {
       include: {
         author: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true, email: true } },
-        _count: { select: { chapters: true, reports: true } },
+        // Count only live chapters/reports; soft-deleted ones must not inflate the totals.
+        _count: { select: { chapters: { where: { deletedAt: null } }, reports: true } },
       },
     });
 

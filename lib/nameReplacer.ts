@@ -16,25 +16,13 @@ const AMBIGUOUS_SINGLE_WORDS = new Set([
   'stone', 'wood', 'glen', 'cliff', 'ford', 'dale', 'brook', 'river'
 ]);
 
-function escapeRegex(str: string): string {
+export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Semantic-Safe Name Replacer
- * Operates on string[] (paragraphs) only.
- * Applies Longest-Match-First sorting, Word Boundary (\b), and skips ambiguous single words.
- */
-export function applySafeNameReplacer(
-  paragraphs: string[],
-  glossary: GlossaryReplaceItem[]
-): string[] {
-  if (!paragraphs || paragraphs.length === 0 || !glossary || glossary.length === 0) {
-    return paragraphs;
-  }
-
-  // Filter and sort terms: Longest Match First
-  const validTerms = glossary
+/** Terms safe to substitute blindly, longest first so "Albus Dumbledore" wins over "Dumbledore". */
+function selectSafeTerms(glossary: GlossaryReplaceItem[]): GlossaryReplaceItem[] {
+  return glossary
     .filter((g) => {
       if (!g.canonicalEn?.trim() || !g.canonicalTh?.trim()) return false;
       const termLower = g.canonicalEn.trim().toLowerCase();
@@ -52,6 +40,22 @@ export function applySafeNameReplacer(
       return termLower.length >= 3;
     })
     .sort((a, b) => b.canonicalEn.trim().length - a.canonicalEn.trim().length);
+}
+
+/**
+ * Semantic-Safe Name Replacer
+ * Operates on string[] (paragraphs) only.
+ * Applies Longest-Match-First sorting, Word Boundary (\b), and skips ambiguous single words.
+ */
+export function applySafeNameReplacer(
+  paragraphs: string[],
+  glossary: GlossaryReplaceItem[]
+): string[] {
+  if (!paragraphs || paragraphs.length === 0 || !glossary || glossary.length === 0) {
+    return paragraphs;
+  }
+
+  const validTerms = selectSafeTerms(glossary);
 
   if (validTerms.length === 0) {
     return paragraphs;
@@ -71,4 +75,40 @@ export function applySafeNameReplacer(
 
     return replaced;
   });
+}
+
+const PLACEHOLDER = /ZXQ(\d+)/g;
+
+/**
+ * Shields glossary terms from Google Translate. Thai inserted straight into the English gets
+ * rewritten by Google ("ดัมเบิลดอร์" -> "ดัมพอร์ตดอร์"), but an opaque token like ZXQ0 passes
+ * through untouched, so terms become tokens before Google and are swapped to Thai after.
+ * Same safety filter as applySafeNameReplacer (word boundary, case-sensitive, no ambiguous words).
+ */
+export function protectTerms(
+  paragraphs: string[],
+  glossary: GlossaryReplaceItem[]
+): { protectedText: string[]; restore: (translated: string[]) => string[] } {
+  const terms = selectSafeTerms(glossary).map((t) => ({
+    th: t.canonicalTh.trim(),
+    pattern: new RegExp(`\\b${escapeRegex(t.canonicalEn.trim())}\\b`, 'g'),
+  }));
+  const tokens: string[] = []; // token index -> Thai term
+
+  const protectedText = paragraphs.map((p) => {
+    let out = p;
+    for (const t of terms) {
+      out = out.replace(t.pattern, () => {
+        let i = tokens.indexOf(t.th);
+        if (i === -1) i = tokens.push(t.th) - 1;
+        return `ZXQ${i}`;
+      });
+    }
+    return out;
+  });
+
+  const restore = (translated: string[]) =>
+    translated.map((s) => s.replace(PLACEHOLDER, (m, n) => tokens[Number(n)] ?? m));
+
+  return { protectedText, restore };
 }

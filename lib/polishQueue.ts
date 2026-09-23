@@ -1,15 +1,18 @@
 import { prisma } from './prisma';
 import { JobType, JobStatus, ChapterStatus, ErrorCode } from './enums';
 import { claimChapterJob, renewJobLease, completeChapterJob, failChapterJob } from './jobQueue';
-import { getRelevantGlossary } from './glossaryService';
+import { getRelevantGlossary, toPromptGlossary } from './glossaryService';
 import { getLLMProvider } from './llm/provider';
 import { applySafeNameReplacer } from './nameReplacer';
 import { detectEnglishLeak } from './translation/detectEnglishLeak';
 import { isPriorityLeaseActive } from './systemLock';
+import { maxConcurrency } from './aiConcurrency';
+import { getAISettings } from './aiSettings';
 
-// Concurrency limiter for local GPU workers
-const MAX_GPU_CONCURRENCY = 2;
-let activeGpuWorkers = 0;
+// Background dispatch cap. The true per-provider bound lives in the shared governor
+// (aiConcurrency, applied inside polishParagraphs); this just avoids dispatching far more
+// background chapters than can run, which would hold job leases while waiting on a slot.
+let activeWorkers = 0;
 const pendingQueue: string[] = [];
 
 /**
@@ -23,14 +26,17 @@ export function enqueueChapterForPolish(chapterId: string): void {
 }
 
 async function processNextInQueue(): Promise<void> {
-  if (activeGpuWorkers >= MAX_GPU_CONCURRENCY || pendingQueue.length === 0) {
-    return;
-  }
+  if (pendingQueue.length === 0) return;
+
+  const { provider } = await getAISettings();
+  // ponytail: benign — a concurrent call could over-dispatch by ~1 across the await; the governor
+  // still hard-bounds real concurrency, so at worst one extra chapter waits on a slot.
+  if (activeWorkers >= maxConcurrency(provider)) return;
 
   // Priority check: Yield if a manual priority lease lock is currently active
   const isManualActive = await isPriorityLeaseActive('MANUAL_POLISH_LOCK');
   if (isManualActive) {
-    // Retry in 3 seconds to yield GPU resources to user-initiated tasks
+    // Retry in 3 seconds to yield resources to user-initiated tasks
     setTimeout(processNextInQueue, 3000);
     return;
   }
@@ -38,13 +44,13 @@ async function processNextInQueue(): Promise<void> {
   const chapterId = pendingQueue.shift();
   if (!chapterId) return;
 
-  activeGpuWorkers++;
+  activeWorkers++;
   try {
     await executeChapterPolish(chapterId);
   } catch (err) {
     console.error(`[PolishQueue] Error polishing chapter ${chapterId}:`, err);
   } finally {
-    activeGpuWorkers--;
+    activeWorkers--;
     // Schedule next
     setImmediate(processNextInQueue);
   }
@@ -104,15 +110,12 @@ async function executeChapterPolish(chapterId: string): Promise<void> {
 
     const polishContext = {
       novelTitle: chapter.novel?.titleTh || chapter.novel?.titleEn,
-      genre: chapter.novel?.genre || undefined,
-      glossary: glossarySnapshot.map((g) => ({
-        termEn: g.canonicalEn,
-        termTh: g.canonicalTh,
-      })),
+      genre: chapter.novel?.genre || chapter.novel?.category || undefined,
+      glossary: toPromptGlossary(relevantGlossary),
     };
 
-    // Step 2: Run AI polish via Model-Agnostic ILLMProvider
-    const provider = getLLMProvider();
+    // Step 2: Run AI polish via Model-Agnostic ILLMProvider (background = global provider setting)
+    const provider = await getLLMProvider();
     const polishResult = await provider.polish({
       chapterNumber: chapter.chapterNumber,
       titleEn: chapter.titleEn || 'Chapter',

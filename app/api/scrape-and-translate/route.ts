@@ -3,18 +3,23 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { scrapeNovelChapter, scrapeNovelIndex, isThaiText } from '@/lib/scraper';
-import { translateParagraphsGoogle, translateTitleGoogle } from '@/lib/googleTranslate';
+import { translateTitleGoogle } from '@/lib/googleTranslate';
+import { translateWithGlossary, toPromptGlossary } from '@/lib/glossaryService';
+import { applySafeNameReplacer } from '@/lib/nameReplacer';
 import { processBatchChaptersAsync } from '@/lib/batchTranslator';
 import { polishParagraphs } from '@/lib/translator';
 import { recordAuditLog } from '@/lib/auditLog';
 import { ChapterStatus } from '@/lib/enums';
 import { enqueueChapterForPolish } from '@/lib/polishQueue';
 import { inFlightLock } from '@/lib/inFlightLock';
+import { isAIProvider } from '@/lib/aiSettings';
 
 export async function POST(request: Request) {
   try {
-    const { url, mode = 'auto', category, quality = 'fast' } = await request.json();
+    const { url, mode = 'auto', category, quality = 'fast', provider, fandomId: rawFandomId } = await request.json();
+    const fandomId: string | undefined = typeof rawFandomId === 'string' && rawFandomId ? rawFandomId : undefined;
     const enablePolish = quality === 'polished';
+    const providerOverride: string | undefined = isAIProvider(provider) ? provider : undefined;
 
     if (!url || typeof url !== 'string' || !url.startsWith('http')) {
       return NextResponse.json(
@@ -89,7 +94,7 @@ export async function POST(request: Request) {
         const indexData = await scrapeNovelIndex(targetIndexUrl);
 
         if (!indexData.chapters || indexData.chapters.length === 0) {
-          return await processSingleChapter(url, session, io, category);
+          return await processSingleChapter(url, session, io, category, fandomId);
         }
 
         let author = await prisma.author.findUnique({
@@ -142,6 +147,7 @@ export async function POST(request: Request) {
               titleTh: translatedNovelTitle,
               sourceUrl: targetIndexUrl,
               category: category.trim(),
+              fandomId: fandomId ?? null,
               coverUrl: indexData.coverUrl || null,
               description: indexData.description || null,
               totalChapters: indexData.chapters.length,
@@ -178,6 +184,7 @@ export async function POST(request: Request) {
           if (category && (!novel.category || category !== novel.category)) {
             updateData.category = category.trim();
           }
+          if (fandomId) updateData.fandomId = fandomId;
           if (!novel.coverUrl && indexData.coverUrl) updateData.coverUrl = indexData.coverUrl;
           if (!novel.description && indexData.description) updateData.description = indexData.description;
           if (author.id && author.id !== novel.authorId) updateData.authorId = author.id;
@@ -205,10 +212,9 @@ export async function POST(request: Request) {
             } catch {}
             if (contentEn.length > 0) {
               try {
-                const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
-                  firstChapter.titleEn || 'ตอนที่ 1',
-                  ...contentEn,
-                ]);
+                const {
+                  draft: [translatedTitle, ...translatedBody],
+                } = await translateWithGlossary(novel.id, [firstChapter.titleEn || 'ตอนที่ 1', ...contentEn]);
                 firstChapter = await prisma.chapter.update({
                   where: { id: firstChapter.id },
                   data: {
@@ -246,16 +252,26 @@ export async function POST(request: Request) {
               if (!isChapterThai) {
                 const enWithTitle = [scrapedFirst.title || firstLink.title, ...scrapedFirst.paragraphs];
                 try {
-                  const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle(enWithTitle);
+                  const {
+                    draft: [translatedTitle, ...translatedBody],
+                    glossary,
+                  } = await translateWithGlossary(novel.id, enWithTitle);
                   if (translatedTitle && !translatedTitle.startsWith('[')) titleTh = translatedTitle;
                   contentTh = translatedBody;
 
                   // AI Polish for Chapter 1 when quality=polished
                   if (enablePolish && contentTh.length > 0) {
                     try {
-                      const result = await polishParagraphs(enWithTitle, [titleTh, ...contentTh]);
-                      if (result.failedBatches < result.totalBatches) {
-                        const [polishedTitle, ...polishedBody] = result.paragraphs;
+                      const polishContext = {
+                        novelTitle: novel.titleTh || novel.titleEn,
+                        genre: novel.genre || novel.category || undefined,
+                        glossary: toPromptGlossary(glossary),
+                      };
+                      const result = await polishParagraphs(enWithTitle, [titleTh, ...contentTh], polishContext, undefined, {
+                        provider: providerOverride,
+                      });
+                      if (result.failedBatches === 0) {
+                        const [polishedTitle, ...polishedBody] = applySafeNameReplacer(result.paragraphs, glossary);
                         if (polishedTitle && !polishedTitle.startsWith('[')) titleTh = polishedTitle;
                         contentTh = polishedBody;
                       }
@@ -336,13 +352,10 @@ export async function POST(request: Request) {
           }
         }
 
-        // Mark novel as ready with full catalog
+        // Catalog is ready; keep TRANSLATING while the background batch fills every chapter.
         await prisma.novel.update({
           where: { id: novel.id },
-          data: {
-            totalChapters: indexData.chapters.length,
-            translationStatus: 'COMPLETED',
-          },
+          data: { totalChapters: indexData.chapters.length, translationStatus: 'TRANSLATING' },
         });
 
         if (io) {
@@ -352,6 +365,18 @@ export async function POST(request: Request) {
           });
         }
 
+        // Fire-and-forget: translate the whole novel in the background (upserts the TOC_ONLY
+        // placeholders). Marks the novel COMPLETED when done; JIT fetch still covers any chapter
+        // the reader opens before the batch reaches it.
+        const chapterLinks = indexData.chapters.map((c, idx) => ({
+          chapterNumber: c.chapterNumber || idx + 1,
+          title: c.title || `Chapter ${idx + 1}`,
+          url: c.url,
+        }));
+        processBatchChaptersAsync(novel, author, chapterLinks, io, enablePolish, creatorId, providerOverride).catch(
+          (e: any) => console.error('[ScrapeRoute] background batch failed:', e?.message || e)
+        );
+
         return NextResponse.json({
           success: true,
           isBatch: true,
@@ -359,12 +384,12 @@ export async function POST(request: Request) {
           novelId: novel.id,
           novelTitle: novel.titleTh || novel.titleEn,
           totalChapters: indexData.chapters.length,
-          message: `สร้างสารบัญครบทั้ง ${indexData.chapters.length} ตอนแล้ว! สามารถกดอ่านตอนใดก็ได้ทันที (ระบบแปลให้อ่านทันใจแบบ JIT)`,
+          message: `สร้างสารบัญครบทั้ง ${indexData.chapters.length} ตอนแล้ว! กำลังแปลทั้งเรื่องอยู่เบื้องหลัง (เปิดอ่านตอนไหนก็ได้ทันทีแบบ JIT)`,
         });
       });
     }
 
-    return await processSingleChapter(url, session, io);
+    return await processSingleChapter(url, session, io, category, fandomId);
   } catch (err: any) {
     console.error('Scrape and translate error:', err);
     return NextResponse.json(
@@ -384,7 +409,7 @@ async function safeTranslateTitle(titleEn: string): Promise<string> {
   }
 }
 
-async function processSingleChapter(url: string, session: any, io: any, category?: string) {
+async function processSingleChapter(url: string, session: any, io: any, category?: string, fandomId?: string) {
   const lockKey = `single-chapter:${url}`;
   return await inFlightLock.runExclusive(lockKey, async () => {
     const existingChapter = await prisma.chapter.findFirst({
@@ -406,10 +431,9 @@ async function processSingleChapter(url: string, session: any, io: any, category
       } catch {}
       if (contentEn.length > 0) {
         try {
-          const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
-            existingChapter.titleEn || 'ตอนที่ 1',
-            ...contentEn,
-          ]);
+          const {
+            draft: [translatedTitle, ...translatedBody],
+          } = await translateWithGlossary(existingChapter.novelId, [existingChapter.titleEn || 'ตอนที่ 1', ...contentEn]);
           const updated = await prisma.chapter.update({
             where: { id: existingChapter.id },
             data: {
@@ -486,6 +510,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
         titleTh: translatedNovelTitle,
         sourceUrl: novelSourceUrl,
         category: category?.trim() || null,
+        fandomId: fandomId ?? null,
         coverUrl: scrapedData.coverUrl || null,
         authorId: author.id,
         createdById: creatorId,
@@ -499,10 +524,13 @@ async function processSingleChapter(url: string, session: any, io: any, category
         titleEn: novel.titleEn,
       });
     }
-  } else if (category && !novel.category) {
+  } else if ((category && !novel.category) || fandomId) {
     novel = await prisma.novel.update({
       where: { id: novel.id },
-      data: { category: category.trim() },
+      data: {
+        ...(category && !novel.category ? { category: category.trim() } : {}),
+        ...(fandomId ? { fandomId } : {}),
+      },
     });
   }
 
@@ -529,7 +557,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
     }
 
     titleTh = await safeTranslateTitle(scrapedData.title);
-    contentTh = await translateParagraphsGoogle(scrapedData.paragraphs, (done, total) => {
+    ({ draft: contentTh } = await translateWithGlossary(novel.id, scrapedData.paragraphs, (done, total) => {
       if (io) {
         io.emit('translation:progress', {
           status: 'translating_batch',
@@ -539,7 +567,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
           percent: Math.round((done / total) * 100),
         });
       }
-    });
+    }));
   }
 
   const currentChapterCount = await prisma.chapter.count({

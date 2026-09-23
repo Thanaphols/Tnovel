@@ -127,7 +127,7 @@ export default function AdminNovelsPage() {
         <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="text-slate-400 uppercase bg-slate-950/60 border-b border-slate-800">
+              <thead className="text-slate-400 uppercase whitespace-nowrap bg-slate-950/60 border-b border-slate-800">
                 <tr>
                   <th className="p-4 pl-5">{t('thNovel')}</th>
                   <th className="p-4">{t('thAuthor')}</th>
@@ -147,9 +147,9 @@ export default function AdminNovelsPage() {
                 ) : (
                   filteredNovels.map((novel) => (
                     <tr key={novel.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="p-4 pl-5">
-                        <div className="font-bold text-slate-100 text-sm">{novel.titleTh || novel.titleEn}</div>
-                        <div className="text-[11px] text-slate-400 truncate max-w-xs">{novel.titleEn}</div>
+                      <td className="p-4 pl-5 max-w-md">
+                        <div className="font-bold text-slate-100 text-sm line-clamp-2">{novel.titleTh || novel.titleEn}</div>
+                        <div className="text-[11px] text-slate-400 truncate">{novel.titleEn}</div>
                         <a
                           href={novel.sourceUrl}
                           target="_blank"
@@ -160,11 +160,11 @@ export default function AdminNovelsPage() {
                           <ExternalLink className="w-2.5 h-2.5" />
                         </a>
                       </td>
-                      <td className="p-4 text-slate-300">{novel.author?.name || t('unknownAuthor')}</td>
-                      <td className="p-4 font-semibold text-amber-300">
+                      <td className="p-4 text-slate-300 min-w-[8rem] max-w-[12rem] break-words">{novel.author?.name || t('unknownAuthor')}</td>
+                      <td className="p-4 font-semibold text-amber-300 whitespace-nowrap">
                         {novel._count?.chapters || 0} {t('chaptersCount')}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         {novel._count?.reports > 0 ? (
                           <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-md">
                             {novel._count.reports} {t('reportsUnit')}
@@ -173,7 +173,7 @@ export default function AdminNovelsPage() {
                           <span className="text-[11px] text-slate-500">-</span>
                         )}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         {novel.deletedAt ? (
                           <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded-md">
                             {t('statusInBin')}
@@ -184,12 +184,12 @@ export default function AdminNovelsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="p-4 pr-5 text-right">
+                      <td className="p-4 pr-5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           {novel.deletedAt ? (
                             <button
                               onClick={() => handleNovelAction('restore', novel.id)}
-                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-all"
+                              className="flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-all"
                               title={t('restore')}
                             >
                               <RotateCcw className="w-3 h-3" />

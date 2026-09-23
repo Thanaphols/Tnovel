@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { ChapterStatus, ErrorCode } from '@/lib/enums';
-import { translateParagraphsGoogle } from '@/lib/googleTranslate';
+import { translateWithGlossary } from '@/lib/glossaryService';
 import { enqueueChapterForPolish } from '@/lib/polishQueue';
 
 function sanitizeToParagraphs(rawText: string): string[] {
@@ -72,10 +72,9 @@ export async function POST(
     const titleEn = chapter.titleEn || `Chapter ${chapter.chapterNumber}`;
 
     // Fast translate with Google
-    const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
-      titleEn,
-      ...paragraphsEn,
-    ]);
+    const {
+      draft: [translatedTitle, ...translatedBody],
+    } = await translateWithGlossary(chapter.novelId, [titleEn, ...paragraphsEn]);
 
     const finalTitleTh =
       translatedTitle && !translatedTitle.startsWith('[') ? translatedTitle : chapter.titleTh;

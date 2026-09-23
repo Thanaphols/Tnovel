@@ -50,7 +50,7 @@ export default function TranslationPanel({
   // Engine selection
   const [engine, setEngine] = useState<'google' | 'polish'>('polish');
   // AI provider for polish; '' = use server global setting
-  const [provider, setProvider] = useState<'' | 'ollama' | 'gemini'>('');
+  const [provider, setProvider] = useState<'' | 'ollama' | 'gemini' | 'openrouter'>('');
 
   // Scope selection
   const [scope, setScope] = useState<'unfinished' | 'failed' | 'range' | 'all'>('unfinished');
@@ -329,10 +329,11 @@ export default function TranslationPanel({
           {engine === 'polish' && (
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-300">เครื่อง AI ที่ใช้เกลา (Provider):</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {([
                   { v: '', label: 'ค่าเริ่มต้น', Icon: Sliders },
                   { v: 'gemini', label: 'Gemini API', Icon: Cloud },
+                  { v: 'openrouter', label: 'OpenRouter', Icon: Cloud },
                   { v: 'ollama', label: 'Ollama Local', Icon: Server },
                 ] as const).map((o) => (
                   <button

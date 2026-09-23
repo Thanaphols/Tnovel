@@ -49,6 +49,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
+  // Cross-user leak guard: reading history is cached in device-global localStorage. When the
+  // account on this device changes (switch or logout), drop those caches so one user never sees
+  // another's history. Keyed by the last-seen uid; first visit just records it (no clear).
+  useEffect(() => {
+    if (loading || typeof window === 'undefined') return;
+    try {
+      const KEY = 'tnovel_last_uid';
+      const prev = localStorage.getItem(KEY);
+      const cur = user?.id || '';
+      if (prev !== null && prev !== cur) {
+        ['tnovel_cached_reading_history', 'tnovel_guest_history'].forEach((k) => localStorage.removeItem(k));
+      }
+      localStorage.setItem(KEY, cur);
+    } catch {}
+  }, [user, loading]);
+
   const isAdmin = user?.role === 'ADMIN';
 
   return (

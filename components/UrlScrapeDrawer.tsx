@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, ChevronDown, Tag, Zap } from 'lucide-react';
+import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, ChevronDown, Tag, Zap, Library } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
 import { NOVEL_CATEGORIES } from '@/lib/categories';
+import FandomSelect from '@/components/FandomSelect';
 
 interface UrlScrapeDrawerProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
   const { isAdmin } = useAuth();
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('');
+  const [fandomId, setFandomId] = useState('');
   const [mode, setMode] = useState<'auto' | 'single' | 'full_novel'>('auto');
   const [quality, setQuality] = useState<'fast' | 'polished'>('fast');
   const [loading, setLoading] = useState(false);
@@ -107,7 +109,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       const res = await fetch('/api/scrape-and-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), mode, category, quality }),
+        body: JSON.stringify({ url: url.trim(), mode, category, fandomId, quality }),
       });
 
       let data: any = null;
@@ -142,6 +144,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
           setLoading(false);
           setUrl('');
           setCategory('');
+          setFandomId('');
           onClose();
           if (data.chapterId) {
             router.push(`/reader/${data.chapterId}`);
@@ -159,6 +162,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         setLoading(false);
         setUrl('');
         setCategory('');
+        setFandomId('');
         onClose();
         router.push(`/reader/${data.chapterId}`);
       }, 600);
@@ -192,6 +196,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
           chapterTitle: pasteChapterTitle.trim(),
           text: pasteText,
           category,
+          fandomId,
           quality,
         }),
       });
@@ -220,6 +225,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         setPasteText('');
         setPasteChapterTitle('');
         setCategory('');
+        setFandomId('');
         onClose();
         router.push(`/reader/${data.chapterId}`);
       }, 600);
@@ -229,11 +235,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
     }
   }
 
-  const SAMPLE_URLS = [
-    { title: t('sampleDekDTitle'), mode: 'full_novel', url: 'https://writer.dek-d.com/sirimanee1411/writer/view.php?id=2693816' },
-    { title: t('sampleFullTitle'), mode: 'full_novel', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning' },
-    { title: t('sampleSingleTitle'), mode: 'single', url: 'https://www.royalroad.com/fiction/21220/mother-of-learning/chapter/301778/1-good-morning-brother' },
-  ];
+  const SUPPORTED_SITES = ['Dek-D', 'RoyalRoad', 'FanMTL', 'NovelLive', 'Webnovel', 'ScribbleHub'];
 
   return (
     <div
@@ -416,6 +418,19 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
               </div>
             </div>
 
+            {/* Fandom (optional): shared glossary for fanfic, used from the very first chapter */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Library className="w-3.5 h-3.5 text-amber-400" />
+                <span>Fandom (ถ้าเป็นแฟนฟิค)</span>
+              </label>
+              <FandomSelect
+                value={fandomId}
+                onChange={(id) => setFandomId(id)}
+                className="w-full px-4 py-3 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-amber-500/60 cursor-pointer"
+              />
+            </div>
+
             {/* Translation Quality Selector (Only for non-Thai source) */}
             {pasteText.trim().length > 0 && !/[\u0E00-\u0E7F]/.test(pasteText) && (
               <div className="space-y-1.5">
@@ -423,7 +438,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                   <span>{t('translationQualityLabel')}</span>
                   {quality === 'polished' && (
                     <span className="text-[10px] text-amber-400 font-normal flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> AI Gemini
+                      <Sparkles className="w-3 h-3" /> AI เกลาสำนวน
                     </span>
                   )}
                 </label>
@@ -520,7 +535,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                 <span>{t('translationQualityLabel')}</span>
                 {quality === 'polished' && (
                   <span className="text-[10px] text-amber-400 font-normal flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> AI Gemini
+                    <Sparkles className="w-3 h-3" /> AI เกลาสำนวน
                   </span>
                 )}
               </label>
@@ -616,6 +631,19 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
               </div>
             </div>
 
+            {/* Fandom (optional): shared glossary for fanfic, used from the very first chapter */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Library className="w-3.5 h-3.5 text-amber-400" />
+                <span>Fandom (ถ้าเป็นแฟนฟิค)</span>
+              </label>
+              <FandomSelect
+                value={fandomId}
+                onChange={(id) => setFandomId(id)}
+                className="w-full px-4 py-3 text-sm rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-amber-500/60 cursor-pointer"
+              />
+            </div>
+
             <div className="space-y-2 pt-1">
               <button
                 type="submit"
@@ -639,18 +667,13 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
             <div className="pt-2 border-t border-slate-800/80">
               <p className="text-[11px] text-slate-400 mb-2">{t('sampleUrlsLabel')}</p>
               <div className="flex flex-wrap gap-2">
-                {SAMPLE_URLS.map((sample, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setUrl(sample.url);
-                      setMode(sample.mode as any);
-                    }}
-                    className="text-[11px] px-2.5 py-1 text-slate-400 hover:text-slate-200 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors"
+                {SUPPORTED_SITES.map((site) => (
+                  <span
+                    key={site}
+                    className="text-[11px] px-2.5 py-1 text-slate-400 bg-slate-950 border border-slate-800 rounded-lg"
                   >
-                    {sample.title}
-                  </button>
+                    {site}
+                  </span>
                 ))}
               </div>
             </div>

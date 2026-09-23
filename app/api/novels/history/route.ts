@@ -12,10 +12,21 @@ export async function GET(request: Request) {
 
     const session = await getSession();
 
+    // Guest: no per-user server-side reading history exists.
+    if (!session) {
+      return NextResponse.json({ success: true, novels: [], counts: { all: 0, translating: 0, completed: 0 } });
+    }
+
     // Base query
     const where: any = {
       deletedAt: null,
     };
+
+    // Non-admins see only their own reading history (novels they have read); admins keep the
+    // full list for translation management. This is what makes "ประวัติการอ่าน" per-user.
+    if (session.role !== 'ADMIN') {
+      where.chapters = { some: { readingProgresses: { some: { userId: session.id } } } };
+    }
 
     if (search.trim()) {
       where.OR = [

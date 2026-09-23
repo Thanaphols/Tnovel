@@ -1,4 +1,5 @@
 import { polishParagraphs, buildPolishPrompt, PolishContext } from '../translator';
+import { resolveProvider } from '../aiSettings';
 
 export interface PolishInput {
   chapterNumber: number;
@@ -44,8 +45,10 @@ export interface ILLMProvider {
 export class OllamaProvider implements ILLMProvider {
   public readonly name = 'ollama';
 
+  constructor(private readonly _model?: string) {}
+
   public get modelName(): string {
-    return process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+    return this._model || process.env.OLLAMA_MODEL || 'qwen2.5:7b';
   }
 
   public get baseUrl(): string {
@@ -60,7 +63,8 @@ export class OllamaProvider implements ILLMProvider {
       enWithTitle,
       thWithTitle,
       input.context,
-      input.onProgress
+      input.onProgress,
+      { provider: this.name, model: this.modelName }
     );
 
     let titleTh = input.titleThDraft;
@@ -138,10 +142,12 @@ export class OllamaProvider implements ILLMProvider {
  * Gemini Provider Implementation (Cloud Fallback)
  */
 export class GeminiProvider implements ILLMProvider {
-  public readonly name = 'gemini';
+  public readonly name: string = 'gemini';
+
+  constructor(protected readonly modelOverride?: string) {}
 
   public get modelName(): string {
-    return process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    return this.modelOverride || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   }
 
   async polish(input: PolishInput): Promise<PolishResult> {
@@ -152,7 +158,8 @@ export class GeminiProvider implements ILLMProvider {
       enWithTitle,
       thWithTitle,
       input.context,
-      input.onProgress
+      input.onProgress,
+      { provider: this.name, model: this.modelName }
     );
 
     let titleTh = input.titleThDraft;
@@ -184,12 +191,32 @@ export class GeminiProvider implements ILLMProvider {
 }
 
 /**
- * Provider Factory
+ * OpenRouter Provider (OpenAI-compatible cloud API). Polishes through the same
+ * polishParagraphs pipeline as Gemini; only the model default and key check differ.
  */
-export function getLLMProvider(): ILLMProvider {
-  const provider = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
-  if (provider === 'gemini') {
-    return new GeminiProvider();
+export class OpenRouterProvider extends GeminiProvider {
+  public readonly name: string = 'openrouter';
+
+  public get modelName(): string {
+    return this.modelOverride || process.env.OPENROUTER_MODEL || 'qwen/qwen3.8-27b:free';
   }
-  return new OllamaProvider();
+
+  async healthCheck(): Promise<LLMHealth> {
+    const hasKey = Boolean(process.env.OPENROUTER_API_KEY);
+    return { online: hasKey, modelLoaded: hasKey, modelName: this.modelName };
+  }
+}
+
+/**
+ * Provider Factory. Resolves provider+model via aiSettings (override > global setting > env),
+ * so the returned instance's metadata matches the provider that will actually run the call.
+ */
+export async function getLLMProvider(override?: {
+  provider?: string;
+  model?: string;
+}): Promise<ILLMProvider> {
+  const { provider, model } = await resolveProvider(override);
+  if (provider === 'gemini') return new GeminiProvider(model);
+  if (provider === 'openrouter') return new OpenRouterProvider(model);
+  return new OllamaProvider(model);
 }

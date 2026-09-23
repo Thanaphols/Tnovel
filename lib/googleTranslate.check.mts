@@ -20,6 +20,17 @@ assert.strictEqual(withBlanks[1], '', 'blank stays blank');
 assert.strictEqual(withBlanks[2], '   ', 'whitespace-only stays untouched');
 assert.ok(isThai(withBlanks[0]) && isThai(withBlanks[3]), 'text around blanks must not shift index');
 
+// Glossary placeholders (lib/nameReplacer.ts protectTerms) must pass through Google verbatim.
+// Raw Thai does not: "ดัมเบิลดอร์" came back as "ดัมพอร์ตดอร์", which is why tokens are used.
+const tokens = await translateParagraphsGoogle([
+  '"You fool," said ZXQ0 calmly, walking through ZXQ1.',
+  'ZXQ2 used the ZXQ3 against ZXQ4, and ZXQ4 fell.',
+]);
+assert.strictEqual(tokens.length, 2, 'placeholder paragraphs stay aligned');
+for (const [i, want] of [[0, ['ZXQ0', 'ZXQ1']], [1, ['ZXQ2', 'ZXQ3', 'ZXQ4']]] as const) {
+  for (const tok of want) assert.ok(tokens[i].includes(tok), `${tok} must survive Google: ${tokens[i]}`);
+}
+
 const title = await translateTitleGoogle('The Hero Returns');
 assert.ok(isThai(title), `title should be Thai: ${title}`);
 

@@ -23,6 +23,8 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const cursor = searchParams.get('cursor');
     const categoryFilter = searchParams.get('category')?.trim();
+    const search = searchParams.get('search')?.trim();
+    const sort = searchParams.get('sort')?.trim() || 'latest';
 
     const session = await getSession();
 
@@ -30,8 +32,33 @@ export async function GET(request: Request) {
       deletedAt: null,
     };
     if (categoryFilter && categoryFilter !== 'ALL' && categoryFilter !== 'all') {
-      whereClause.category = categoryFilter;
+      // Accept one or many categories (comma-separated) so the filter UI can stack tags.
+      const cats = categoryFilter
+        .split(',')
+        .map((c) => c.trim())
+        .filter((c) => c && c !== 'ALL' && c !== 'all');
+      if (cats.length === 1) whereClause.category = cats[0];
+      else if (cats.length > 1) whereClause.category = { in: cats };
     }
+    if (search) {
+      // ponytail: SQLite `contains` is case-sensitive; good enough for now.
+      // Add a normalized lowercase column if case-insensitive search is needed.
+      whereClause.OR = [
+        { titleTh: { contains: search } },
+        { titleEn: { contains: search } },
+        { author: { name: { contains: search } } },
+      ];
+    }
+
+    // Map the sort key to a Prisma orderBy; id is the stable tiebreaker for cursor paging.
+    const orderByMap: Record<string, any[]> = {
+      latest: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      newest: [{ createdAt: 'desc' }, { id: 'desc' }],
+      views: [{ viewCount: 'desc' }, { id: 'desc' }],
+      likes: [{ likeCount: 'desc' }, { id: 'desc' }],
+      chapters: [{ chapters: { _count: 'desc' } }, { id: 'desc' }],
+    };
+    const orderBy = orderByMap[sort] || orderByMap.latest;
 
     const [totalCount, novels] = await Promise.all([
       prisma.novel.count({
@@ -42,10 +69,7 @@ export async function GET(request: Request) {
         cursor: cursor ? { id: cursor } : undefined,
         skip: cursor ? 1 : 0,
         where: whereClause,
-        orderBy: [
-          { updatedAt: 'desc' },
-          { id: 'desc' },
-        ],
+        orderBy,
         include: {
           author: {
             select: { id: true, name: true },
@@ -59,7 +83,8 @@ export async function GET(request: Request) {
             select: { id: true, chapterNumber: true, titleTh: true, titleEn: true, updatedAt: true },
           },
           _count: {
-            select: { chapters: true },
+            // Count only live chapters so cards don't show soft-deleted ones.
+            select: { chapters: { where: { deletedAt: null } } },
           },
         },
       }),

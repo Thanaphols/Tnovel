@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { translateParagraphsGoogle } from '@/lib/googleTranslate';
 import { polishParagraphs } from '@/lib/translator';
+import { translateWithGlossary, toPromptGlossary } from '@/lib/glossaryService';
+import { applySafeNameReplacer } from '@/lib/nameReplacer';
 import { recordAuditLog } from '@/lib/auditLog';
 import { isThaiText, deobfuscateThaiText } from '@/lib/scraper';
 
@@ -29,7 +30,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มตอนได้' }, { status: 403 });
     }
 
-    const { novelTitle, chapterTitle, text, sourceUrl, category, quality = 'fast' } = await request.json();
+    const { novelTitle, chapterTitle, text, sourceUrl, category, quality = 'fast', fandomId: rawFandomId } =
+      await request.json();
+    const fandomId: string | undefined = typeof rawFandomId === 'string' && rawFandomId ? rawFandomId : undefined;
 
     if (!novelTitle || typeof novelTitle !== 'string' || !novelTitle.trim()) {
       return NextResponse.json({ success: false, error: 'กรุณาใส่ชื่อเรื่อง' }, { status: 400 });
@@ -71,13 +74,17 @@ export async function POST(request: Request) {
           titleTh: cleanNovelTitle,
           sourceUrl: sourceUrl?.trim() || 'paste',
           category: category.trim(),
+          fandomId: fandomId ?? null,
           createdById: session.id,
         },
       });
-    } else if (category && !novel.category) {
+    } else if ((category && !novel.category) || fandomId) {
       novel = await prisma.novel.update({
         where: { id: novel.id },
-        data: { category: category.trim() },
+        data: {
+          ...(category && !novel.category ? { category: category.trim() } : {}),
+          ...(fandomId ? { fandomId } : {}),
+        },
       });
     }
 
@@ -92,7 +99,10 @@ export async function POST(request: Request) {
     if (!isThai) {
       // Title rides along as paragraph 0, same as the scraped path — one request for the lot.
       const enWithTitle = [cleanChapterTitle, ...paragraphs];
-      const [transTitle, ...transBody] = await translateParagraphsGoogle(enWithTitle);
+      const {
+        draft: [transTitle, ...transBody],
+        glossary,
+      } = await translateWithGlossary(novel.id, enWithTitle);
       translatedTitle = transTitle || cleanChapterTitle;
       contentTh = transBody;
 
@@ -104,9 +114,13 @@ export async function POST(request: Request) {
           });
         }
         try {
-          const result = await polishParagraphs(enWithTitle, [translatedTitle, ...contentTh]);
+          const result = await polishParagraphs(enWithTitle, [translatedTitle, ...contentTh], {
+            novelTitle: novel.titleTh || novel.titleEn,
+            genre: novel.genre || novel.category || undefined,
+            glossary: toPromptGlossary(glossary),
+          });
           if (result.failedBatches < result.totalBatches) {
-            const [polishedTitle, ...polishedBody] = result.paragraphs;
+            const [polishedTitle, ...polishedBody] = applySafeNameReplacer(result.paragraphs, glossary);
             if (polishedTitle && !polishedTitle.startsWith('[')) translatedTitle = polishedTitle;
             contentTh = polishedBody;
           }

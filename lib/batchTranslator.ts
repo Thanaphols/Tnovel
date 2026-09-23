@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { scrapeNovelChapter, isThaiText } from '@/lib/scraper';
-import { translateParagraphsGoogle } from '@/lib/googleTranslate';
 import { polishParagraphs } from '@/lib/translator';
-import { autoDiscoverAndSaveGlossary } from '@/lib/glossaryService';
+import { autoDiscoverAndSaveGlossary, translateWithGlossary, toPromptGlossary } from '@/lib/glossaryService';
+import { applySafeNameReplacer } from '@/lib/nameReplacer';
+import { ChapterStatus } from '@/lib/enums';
 
 export async function processBatchChaptersAsync(
   novel: any,
@@ -10,7 +11,8 @@ export async function processBatchChaptersAsync(
   chapterLinks: Array<{ chapterNumber: number; title: string; url: string }>,
   io: any,
   enablePolish = false,
-  initiatorUserId?: string
+  initiatorUserId?: string,
+  providerOverride?: string
 ) {
   const total = chapterLinks.length;
   let saved = 0;
@@ -37,26 +39,6 @@ export async function processBatchChaptersAsync(
     updatedAt: new Date().toISOString(),
   };
 
-  let polishContext: any = undefined;
-  if (enablePolish) {
-    try {
-      const glossaries = await prisma.novelGlossary.findMany({
-        where: { novelId: novel.id },
-        select: { canonicalEn: true, canonicalTh: true, category: true },
-      });
-      polishContext = {
-        novelTitle: novel.titleTh || novel.titleEn,
-        genre: novel.genre || novel.category || undefined,
-        glossary: glossaries.map((g) => ({
-          termEn: g.canonicalEn,
-          termTh: g.canonicalTh,
-          category: g.category,
-        })),
-      };
-    } catch (e: any) {
-      console.warn('Failed to load glossary for batch polish:', e.message);
-    }
-  }
 
   for (let i = 0; i < total; i++) {
     // Check if user paused translation
@@ -88,7 +70,7 @@ export async function processBatchChaptersAsync(
     }
 
     const link = chapterLinks[i];
-    const currentNum = i + 1;
+    const currentNum = link.chapterNumber || i + 1;
 
     try {
       const existing = await prisma.chapter.findFirst({
@@ -115,15 +97,16 @@ export async function processBatchChaptersAsync(
 
         if (contentEn.length > 0) {
           try {
-            const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
-              existing.titleEn || link.title,
-              ...contentEn,
-            ]);
+            const {
+              draft: [translatedTitle, ...translatedBody],
+            } = await translateWithGlossary(novel.id, [existing.titleEn || link.title, ...contentEn]);
             await prisma.chapter.update({
               where: { id: existing.id },
               data: {
                 titleTh: translatedTitle && !translatedTitle.startsWith('[') ? translatedTitle : existing.titleTh,
                 contentTh: JSON.stringify(translatedBody),
+                contentThGoogle: JSON.stringify(translatedBody),
+                status: ChapterStatus.TRANSLATED_GT,
               },
             });
             saved++;
@@ -179,9 +162,12 @@ export async function processBatchChaptersAsync(
       const isChapterThai = link.url.includes('dek-d.com') || isThaiText(scrapedData.paragraphs);
       let titleTh = scrapedData.title || link.title || `ตอนที่ ${currentNum}`;
       let contentTh: string[] = [];
+      let googleTh: string[] = [];
+      let status: ChapterStatus = ChapterStatus.TRANSLATED_GT;
 
       if (isChapterThai) {
         contentTh = scrapedData.paragraphs;
+        googleTh = scrapedData.paragraphs;
       } else {
         // Auto-discover candidate entities into NovelGlossary
         try {
@@ -193,11 +179,15 @@ export async function processBatchChaptersAsync(
         // ponytail: the chapter title rides along as paragraph 0, so a whole chapter is one request.
         const enWithTitle = [scrapedData.title || link.title, ...scrapedData.paragraphs];
         try {
-          const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle(enWithTitle);
+          const {
+            draft: [translatedTitle, ...translatedBody],
+            glossary,
+          } = await translateWithGlossary(novel.id, enWithTitle);
           if (translatedTitle && !translatedTitle.startsWith('[')) titleTh = translatedTitle;
           contentTh = translatedBody;
+          googleTh = translatedBody;
 
-          // AI Polish: refine Google's draft with Gemini for natural Thai prose
+          // AI Polish: refine Google's draft for natural Thai prose (all-or-nothing)
           if (enablePolish && contentTh.length > 0) {
             if (io) {
               io.emit('translation:progress', {
@@ -213,32 +203,60 @@ export async function processBatchChaptersAsync(
               });
             }
             try {
-              const result = await polishParagraphs(enWithTitle, [titleTh, ...contentTh], polishContext);
-              if (result.failedBatches < result.totalBatches) {
-                const [polishedTitle, ...polishedBody] = result.paragraphs;
+              const polishContext = {
+                novelTitle: novel.titleTh || novel.titleEn,
+                genre: novel.genre || novel.category || undefined,
+                glossary: toPromptGlossary(glossary),
+              };
+              const result = await polishParagraphs(enWithTitle, [titleTh, ...contentTh], polishContext, undefined, {
+                provider: providerOverride,
+              });
+              // All-or-Nothing: only accept polish when every batch succeeded, else keep Google draft.
+              if (result.failedBatches === 0) {
+                // Same post-polish name fix as polishQueue: LLM may still leave English names.
+                const [polishedTitle, ...polishedBody] = applySafeNameReplacer(result.paragraphs, glossary);
                 if (polishedTitle && !polishedTitle.startsWith('[')) titleTh = polishedTitle;
                 contentTh = polishedBody;
+                status = ChapterStatus.POLISHED;
               }
             } catch (polishErr: any) {
-              // Gemini failed (quota/network) — keep Google draft, don't fail the chapter
+              // LLM failed (quota/network) — keep Google draft, don't fail the chapter
               console.warn(`[Polish] chapter ${currentNum} polish failed, keeping Google draft:`, polishErr.message);
             }
           }
         } catch (err: any) {
           console.error(`Translation failed for chapter ${currentNum}:`, err.message);
           contentTh = scrapedData.paragraphs.map((p) => `[แปลไม่สำเร็จ กดแปลใหม่ได้ในหน้าอ่าน] ${p}`);
+          googleTh = contentTh;
+          status = ChapterStatus.TRANSLATE_FAILED;
         }
       }
 
-      const chapter = await prisma.chapter.create({
-        data: {
+      // upsert: fills a pre-inserted TOC_ONLY placeholder (same novelId+chapterNumber) instead of
+      // colliding on the unique constraint, and still creates fresh when no placeholder exists.
+      const polishedJson = status === ChapterStatus.POLISHED ? JSON.stringify(contentTh) : null;
+      const chapter = await prisma.chapter.upsert({
+        where: { novelId_chapterNumber: { novelId: novel.id, chapterNumber: currentNum } },
+        create: {
           novelId: novel.id,
           chapterNumber: currentNum,
           titleEn: scrapedData.title || link.title,
           titleTh,
           contentEn: JSON.stringify(scrapedData.paragraphs),
           contentTh: JSON.stringify(contentTh),
+          contentThGoogle: JSON.stringify(googleTh),
+          contentThPolished: polishedJson,
+          status,
           originalUrl: link.url,
+        },
+        update: {
+          titleEn: scrapedData.title || link.title,
+          titleTh,
+          contentEn: JSON.stringify(scrapedData.paragraphs),
+          contentTh: JSON.stringify(contentTh),
+          contentThGoogle: JSON.stringify(googleTh),
+          contentThPolished: polishedJson,
+          status,
         },
       });
 

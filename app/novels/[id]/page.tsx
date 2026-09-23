@@ -34,6 +34,7 @@ import { deobfuscateThaiText } from '@/lib/thaiUtils';
 import { getCategoryLabel, getCategoryBadgeClass } from '@/lib/categories';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import GlossaryEditor from '@/components/GlossaryEditor';
+import FandomSelect from '@/components/FandomSelect';
 import TranslationPanel from '@/components/TranslationPanel';
 
 interface ChapterItem {
@@ -54,6 +55,7 @@ interface NovelDetail {
   coverUrl?: string | null;
   sourceUrl?: string | null;
   category?: string | null;
+  fandomId?: string | null;
   totalChapters: number;
   translationStatus: string;
   viewCount: number;
@@ -82,6 +84,8 @@ export default function NovelDetailPage() {
   const { socket } = useSocket();
 
   const [novel, setNovel] = useState<NovelDetail | null>(null);
+  const [fandomName, setFandomName] = useState<string | null>(null);
+  const [savingFandom, setSavingFandom] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -902,7 +906,46 @@ export default function NovelDetailPage() {
           />
         ) : activeTab === 'glossary' ? (
           <section className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-5 sm:p-7">
-            <GlossaryEditor novelId={novel.id} novelTitle={novel.titleTh || novel.titleEn} />
+            {isAdmin && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pb-4 mb-5 border-b border-slate-800">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-slate-200">Fandom (คำศัพท์ที่ใช้ร่วมกัน)</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    นิยายจะใช้คำของ fandom ด้วย คำในเรื่องที่ล็อกไว้ชนะคำ fandom
+                  </p>
+                </div>
+                <div className="sm:w-64">
+                  <FandomSelect
+                    value={novel.fandomId || ''}
+                    disabled={savingFandom}
+                    onLoaded={(list) => setFandomName(list.find((f) => f.id === novel.fandomId)?.name ?? null)}
+                    onChange={async (fandomId, fandom) => {
+                      setSavingFandom(true);
+                      try {
+                        const res = await fetch(`/api/novels/${novel.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ fandomId: fandomId || null }),
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error);
+                        setNovel((prev) => (prev ? { ...prev, fandomId: fandomId || null } : prev));
+                        setFandomName(fandom?.name ?? null);
+                      } catch (err: any) {
+                        alert(err.message || 'บันทึก fandom ไม่สำเร็จ');
+                      } finally {
+                        setSavingFandom(false);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            <GlossaryEditor
+              novelId={novel.id}
+              novelTitle={novel.titleTh || novel.titleEn}
+              promoteToFandomName={fandomName}
+            />
           </section>
         ) : (
           /* Chapter Table of Contents Section */

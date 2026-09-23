@@ -5,7 +5,7 @@ import { ChapterStatus, JobType, ErrorCode } from '@/lib/enums';
 import { inFlightLock } from '@/lib/inFlightLock';
 import { claimChapterJob, completeChapterJob, failChapterJob, waitForJobCompletion } from '@/lib/jobQueue';
 import { scrapeNovelChapter } from '@/lib/scraper';
-import { translateParagraphsGoogle } from '@/lib/googleTranslate';
+import { translateWithGlossary } from '@/lib/glossaryService';
 import { enqueueChapterForPolish } from '@/lib/polishQueue';
 
 function calculateSourceHash(paragraphs: string[]): string {
@@ -97,10 +97,9 @@ export async function POST(
 
       // Step B: Fast Google Translation
       const translateStart = Date.now();
-      const [translatedTitle, ...translatedBody] = await translateParagraphsGoogle([
-        titleEn,
-        ...paragraphsEn,
-      ]);
+      const {
+        draft: [translatedTitle, ...translatedBody],
+      } = await translateWithGlossary(chapter.novelId, [titleEn, ...paragraphsEn]);
       const translateDurationMs = Date.now() - translateStart;
 
       const finalTitleTh = translatedTitle && !translatedTitle.startsWith('[') ? translatedTitle : chapter.titleTh || titleEn;

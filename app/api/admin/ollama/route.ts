@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบเท่านั้น' }, { status: 403 });
     }
 
-    const provider = getLLMProvider();
+    const provider = await getLLMProvider();
     const health = await provider.healthCheck();
 
     // Check if background or manual jobs are currently active

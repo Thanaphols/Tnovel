@@ -58,6 +58,17 @@ async function main() {
   console.log(`   - ${devEmail} (Role: ADMIN, Password: 123456)`);
   console.log(`   - ${primaryEmail} (Role: ADMIN, Password: 123456)`);
 
+  // 3b. Seed AI provider defaults (create-only: never clobber an admin's runtime change)
+  const aiDefaults = [
+    { key: 'ai.provider', value: 'gemini' },
+    { key: 'ai.ollamaModel', value: 'qwen2.5:7b' },
+    { key: 'ai.geminiModel', value: 'gemini-2.0-flash' },
+  ];
+  for (const s of aiDefaults) {
+    await prisma.appSetting.upsert({ where: { key: s.key }, update: {}, create: s });
+  }
+  console.log('✅ AI settings seeded (default provider: gemini)');
+
   // 4. Seed Sample Author
   const author = await prisma.author.upsert({
     where: { name: 'I Eat Tomatoes (我吃西红柿)' },

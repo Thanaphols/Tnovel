@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trash2,
   RotateCcw,
@@ -14,6 +14,8 @@ import {
   Check,
   X,
   RefreshCw,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import { useLanguage } from '@/lib/languageContext';
@@ -74,6 +76,31 @@ export default function AdminRecycleBinPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('list');
   const [selectedMap, setSelectedMap] = useState<Record<string, BinItemSelection>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  // A chapter whose parent novel is itself in the bin belongs UNDER that novel
+  // (restored/deleted together), so it shows only inside the novel's dropdown —
+  // never as its own bin item. Only chapters of still-active novels stand alone.
+  const deletedNovelIds = useMemo(() => new Set(novels.map((n) => n.id)), [novels]);
+
+  const chaptersByNovel = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const c of chapters) {
+      const k = c.novelId;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(c);
+    }
+    return m;
+  }, [chapters]);
+
+  const standaloneChapters = useMemo(
+    () => chapters.filter((c) => !deletedNovelIds.has(c.novelId)),
+    [chapters, deletedNovelIds]
+  );
+
+  function toggleGroupExpand(key: string) {
+    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   // Single action delete confirmation
   const [actionItem, setActionItem] = useState<{ type: 'novel' | 'chapter'; id: string; title: string } | null>(null);
@@ -101,7 +128,9 @@ export default function AdminRecycleBinPage() {
     }
   }
 
-  const totalItemsCount = novels.length + chapters.length;
+  // Selectable bin items = deleted novels + standalone chapters (nested chapters
+  // of a deleted novel are covered by their novel's own selection).
+  const totalItemsCount = novels.length + standaloneChapters.length;
   const selectedCount = Object.keys(selectedMap).length;
   const isAllSelected = totalItemsCount > 0 && selectedCount === totalItemsCount;
 
@@ -126,7 +155,7 @@ export default function AdminRecycleBinPage() {
       novels.forEach((n) => {
         next[`novel:${n.id}`] = { type: 'novel', id: n.id };
       });
-      chapters.forEach((c) => {
+      standaloneChapters.forEach((c) => {
         next[`chapter:${c.id}`] = { type: 'chapter', id: c.id };
       });
       setSelectedMap(next);
@@ -135,6 +164,56 @@ export default function AdminRecycleBinPage() {
 
   function clearSelection() {
     setSelectedMap({});
+  }
+
+  // Shared chapter row (used both inline for single-chapter groups and inside expanded groups).
+  function renderChapterRow(chap: any, showNovel: boolean) {
+    const isSelected = !!selectedMap[`chapter:${chap.id}`];
+    return (
+      <div
+        key={chap.id}
+        onClick={() => toggleItem('chapter', chap.id)}
+        className={`p-3 sm:p-4 bg-slate-900 border rounded-2xl flex items-center justify-between gap-3 sm:gap-4 transition-all cursor-pointer ${isSelected
+          ? 'border-amber-500/80 bg-amber-950/15 ring-1 ring-amber-500/30'
+          : 'border-slate-800 hover:border-slate-700'
+          }`}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className={`p-1 rounded-lg border transition-all flex-shrink-0 ${isSelected
+              ? 'bg-amber-400 text-slate-950 border-amber-300'
+              : 'bg-slate-950 text-slate-400 border-slate-700'
+              }`}
+          >
+            {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Square className="w-3.5 h-3.5" />}
+          </div>
+          <div className="truncate">
+            <h4 className="text-sm font-semibold text-slate-200 truncate">{chap.titleTh || chap.titleEn}</h4>
+            {showNovel && (
+              <p className="text-xs text-slate-400 truncate">
+                {t('novelStoryPrefix')} {chap.novel?.titleTh || chap.novel?.titleEn || '-'}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => handleRestoreSingle('chapter', chap.id)}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{t('restore')}</span>
+          </button>
+          <button
+            onClick={() => setActionItem({ type: 'chapter', id: chap.id, title: chap.titleTh || chap.titleEn })}
+            className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl transition-all"
+            title={t('permanentDeleteSingleTooltip')}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Single Handlers
@@ -281,9 +360,8 @@ export default function AdminRecycleBinPage() {
             <div className="flex items-center gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  viewMode === 'list' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${viewMode === 'list' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
                 title={t('viewListTooltip')}
               >
                 <ListIcon className="w-4 h-4" />
@@ -291,9 +369,8 @@ export default function AdminRecycleBinPage() {
               </button>
               <button
                 onClick={() => setViewMode('card')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  viewMode === 'card' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${viewMode === 'card' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
                 title={t('viewCardTooltip')}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -308,7 +385,7 @@ export default function AdminRecycleBinPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-950 border border-slate-800 rounded-xl transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
-            <span>{t('refresh')}</span>
+            {/* <span>{t('refresh')}</span> */}
           </button>
         </div>
       </div>
@@ -402,21 +479,19 @@ export default function AdminRecycleBinPage() {
                       <div
                         key={novel.id}
                         onClick={() => toggleItem('novel', novel.id)}
-                        className={`group relative flex flex-col bg-slate-900 border rounded-2xl overflow-hidden shadow-lg transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-amber-500/80 bg-amber-950/10 ring-2 ring-amber-500/30'
-                            : 'border-slate-800 hover:border-slate-700'
-                        }`}
+                        className={`group relative flex flex-col bg-slate-900 border rounded-2xl overflow-hidden shadow-lg transition-all cursor-pointer ${isSelected
+                          ? 'border-amber-500/80 bg-amber-950/10 ring-2 ring-amber-500/30'
+                          : 'border-slate-800 hover:border-slate-700'
+                          }`}
                       >
                         <div className="relative aspect-[4/4.5] w-full bg-slate-950 overflow-hidden">
                           <BinNovelCover coverUrl={novel.coverUrl} title={novel.titleTh || novel.titleEn} />
                           <div className="absolute top-2 left-2 z-10">
                             <div
-                              className={`p-1.5 rounded-lg backdrop-blur-md border transition-all ${
-                                isSelected
-                                  ? 'bg-amber-400 text-slate-950 border-amber-300'
-                                  : 'bg-slate-950/80 text-slate-400 border-slate-700 hover:text-white'
-                              }`}
+                              className={`p-1.5 rounded-lg backdrop-blur-md border transition-all ${isSelected
+                                ? 'bg-amber-400 text-slate-950 border-amber-300'
+                                : 'bg-slate-950/80 text-slate-400 border-slate-700 hover:text-white'
+                                }`}
                             >
                               {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Square className="w-3.5 h-3.5" />}
                             </div>
@@ -465,64 +540,98 @@ export default function AdminRecycleBinPage() {
                 <div className="space-y-2">
                   {novels.map((novel) => {
                     const isSelected = !!selectedMap[`novel:${novel.id}`];
+                    const novelChapters = chaptersByNovel.get(novel.id) || [];
+                    const expanded = !!expandedGroups[novel.id];
                     return (
                       <div
                         key={novel.id}
-                        onClick={() => toggleItem('novel', novel.id)}
-                        className={`p-3 sm:p-4 bg-slate-900 border rounded-2xl flex items-center justify-between gap-3 sm:gap-4 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-amber-500/80 bg-amber-950/15 ring-1 ring-amber-500/30'
-                            : 'border-slate-800 hover:border-slate-700'
-                        }`}
+                        className={`bg-slate-900 border rounded-2xl overflow-hidden transition-all ${isSelected
+                          ? 'border-amber-500/80 bg-amber-950/15 ring-1 ring-amber-500/30'
+                          : 'border-slate-800 hover:border-slate-700'
+                          }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`p-1 rounded-lg border transition-all flex-shrink-0 ${
-                              isSelected
+                        <div
+                          onClick={() => toggleItem('novel', novel.id)}
+                          className="p-3 sm:p-4 flex items-center justify-between gap-3 sm:gap-4 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-1 rounded-lg border transition-all flex-shrink-0 ${isSelected
                                 ? 'bg-amber-400 text-slate-950 border-amber-300'
                                 : 'bg-slate-950 text-slate-400 border-slate-700'
-                            }`}
-                          >
-                            {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Square className="w-3.5 h-3.5" />}
+                                }`}
+                            >
+                              {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Square className="w-3.5 h-3.5" />}
+                            </div>
+
+                            <BinNovelCover coverUrl={novel.coverUrl} title={novel.titleTh || novel.titleEn} isList={true} />
+
+                            <div className="truncate">
+                              <h4 className="text-sm font-bold text-slate-200 truncate">
+                                {novel.titleTh || novel.titleEn}
+                              </h4>
+                              <p className="text-xs text-slate-400 truncate flex items-center gap-1.5">
+                                <span className="truncate">
+                                  {novel.author?.name ? `${t('author')}: ${novel.author.name}` : t('unknownAuthor')}
+                                </span>
+                                {novelChapters.length > 0 && (
+                                  <span className="flex items-center gap-1 text-rose-400/90 font-semibold flex-shrink-0">
+                                    <FileText className="w-3 h-3" />
+                                    {novelChapters.length} {t('chaptersCount')}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
                           </div>
 
-                          <BinNovelCover coverUrl={novel.coverUrl} title={novel.titleTh || novel.titleEn} isList={true} />
-
-                          <div className="truncate">
-                            <h4 className="text-sm font-bold text-slate-200 truncate">
-                              {novel.titleTh || novel.titleEn}
-                            </h4>
-                            <p className="text-xs text-slate-400 truncate">
-                              {novel.author?.name ? `${t('author')}: ${novel.author.name}` : t('unknownAuthor')}
-                            </p>
+                          <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleRestoreSingle('novel', novel.id)}
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">{t('restore')}</span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setActionItem({
+                                  type: 'novel',
+                                  id: novel.id,
+                                  title: novel.titleTh || novel.titleEn,
+                                })
+                              }
+                              className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl transition-all"
+                              title={t('permanentDeleteSingleTooltip')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            {novelChapters.length > 0 && (
+                              <button
+                                onClick={() => toggleGroupExpand(novel.id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-300 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
+                                title={t('showChapters')}
+                              >
+                                {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                                {/* <span>{novelChapters.length} {t('chaptersCount')}</span> */}
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        <div
-                          className="flex items-center gap-2 flex-shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => handleRestoreSingle('novel', novel.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('restore')}</span>
-                          </button>
-                          <button
-                            onClick={() =>
-                              setActionItem({
-                                type: 'novel',
-                                id: novel.id,
-                                title: novel.titleTh || novel.titleEn,
-                              })
-                            }
-                            className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl transition-all"
-                            title={t('permanentDeleteSingleTooltip')}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {/* Chapters carried into the bin with this novel (restored/deleted together) */}
+                        {expanded && novelChapters.length > 0 && (
+                          <div className="px-3 sm:px-4 pb-3 space-y-1 border-t border-slate-800/60 pt-3 max-h-72 overflow-y-auto">
+                            {novelChapters.map((chap: any) => (
+                              <div
+                                key={chap.id}
+                                className="flex items-center gap-2 px-3 py-2 text-xs bg-slate-950/60 border border-slate-800/60 rounded-lg text-slate-300"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-rose-400/70 flex-shrink-0" />
+                                <span className="truncate">{chap.titleTh || chap.titleEn}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -531,76 +640,17 @@ export default function AdminRecycleBinPage() {
             </div>
           )}
 
-          {/* Deleted Chapters Section */}
-          {chapters.length > 0 && (
+          {/* Deleted Chapters Section — only standalone chapter deletions
+              (chapters of a deleted novel live inside that novel's dropdown). */}
+          {standaloneChapters.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                 <FileText className="w-4 h-4 text-rose-400" />
-                <span>{t('chaptersInBin')} ({chapters.length})</span>
+                <span>{t('chaptersInBin')} ({standaloneChapters.length})</span>
               </h2>
 
               <div className="space-y-2">
-                {chapters.map((chap) => {
-                  const isSelected = !!selectedMap[`chapter:${chap.id}`];
-                  return (
-                    <div
-                      key={chap.id}
-                      onClick={() => toggleItem('chapter', chap.id)}
-                      className={`p-3 sm:p-4 bg-slate-900 border rounded-2xl flex items-center justify-between gap-3 sm:gap-4 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-amber-500/80 bg-amber-950/15 ring-1 ring-amber-500/30'
-                          : 'border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`p-1 rounded-lg border transition-all flex-shrink-0 ${
-                            isSelected
-                              ? 'bg-amber-400 text-slate-950 border-amber-300'
-                              : 'bg-slate-950 text-slate-400 border-slate-700'
-                          }`}
-                        >
-                          {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Square className="w-3.5 h-3.5" />}
-                        </div>
-
-                        <div className="truncate">
-                          <h4 className="text-sm font-semibold text-slate-200 truncate">
-                            {chap.titleTh || chap.titleEn}
-                          </h4>
-                          <p className="text-xs text-slate-400 truncate">
-                            {t('novelStoryPrefix')} {chap.novel?.titleTh || chap.novel?.titleEn || '-'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        className="flex items-center gap-2 flex-shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => handleRestoreSingle('chapter', chap.id)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-xl transition-all"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">{t('restore')}</span>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setActionItem({
-                              type: 'chapter',
-                              id: chap.id,
-                              title: chap.titleTh || chap.titleEn,
-                            })
-                          }
-                          className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl transition-all"
-                          title={t('permanentDeleteSingleTooltip')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {standaloneChapters.map((chap) => renderChapterRow(chap, true))}
               </div>
             </div>
           )}

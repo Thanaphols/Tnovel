@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import { translateParagraphsGoogle } from '@/lib/googleTranslate';
 import { recordAuditLog } from '@/lib/auditLog';
 import { isThaiText, scrapeNovelChapter } from '@/lib/scraper';
 import { ChapterStatus } from '@/lib/enums';
 import { getLLMProvider } from '@/lib/llm/provider';
+import { isAIProvider } from '@/lib/aiSettings';
 import { applySafeNameReplacer } from '@/lib/nameReplacer';
 import { detectEnglishLeak } from '@/lib/translation/detectEnglishLeak';
 import { acquirePriorityLease, heartbeatPriorityLease, releasePriorityLease } from '@/lib/systemLock';
-import { autoDiscoverAndSaveGlossary } from '@/lib/glossaryService';
+import {
+  autoDiscoverAndSaveGlossary,
+  getRelevantGlossary,
+  translateWithGlossary,
+  toPromptGlossary,
+  type GlossaryTerm,
+} from '@/lib/glossaryService';
 
 const FAILURE_PREFIXES = ['[แปลผิดพลาด', '[ยังไม่ได้ใส่', '[กำลังรอโควตา', '[แปลไม่สำเร็จ', '[แปล]', '[ต้นฉบับ]'];
 const FAILURE_RATIO = 0.3;
@@ -44,8 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const body = await request.json().catch(() => ({}));
     const engine: 'google' | 'polish' = body?.engine === 'polish' ? 'polish' : 'google';
-    const providerOverride: string | undefined =
-      body?.provider === 'ollama' || body?.provider === 'gemini' ? body.provider : undefined;
+    const providerOverride: string | undefined = isAIProvider(body?.provider) ? body.provider : undefined;
 
     const chapter = await prisma.chapter.findFirst({
       where: { id, deletedAt: null },
@@ -126,11 +131,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       });
     }
 
-    // Always draft from the stored English (free, ~2s), never from stored Thai
+    // Discover new names first so the Google draft below already uses them.
+    if (engine === 'polish') await autoDiscoverAndSaveGlossary(chapter.novelId, contentEn);
+
+    // Always draft from the stored English (free, ~2s), never from stored Thai.
+    // Glossary (novel + fandom) terms are locked into the draft; the same snapshot feeds polish.
+    const enWithTitle = [titleEn || chapter.titleEn || '', ...contentEn];
     let draft: string[] | null = null;
+    let glossarySnapshot: GlossaryTerm[] = [];
     try {
-      const fresh = await translateParagraphsGoogle([titleEn || chapter.titleEn || '', ...contentEn]);
-      if (!looksFailed(fresh.slice(1))) draft = fresh;
+      const fresh = await translateWithGlossary(chapter.novelId, enWithTitle);
+      glossarySnapshot = fresh.glossary;
+      if (!looksFailed(fresh.draft.slice(1))) draft = fresh.draft;
     } catch (err: any) {
       console.error('Retranslate: Google draft failed:', err.message);
     }
@@ -138,6 +150,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!draft && engine === 'polish') {
       const stored = parseArray(chapter.contentTh);
       if (stored.length === contentEn.length && !looksFailed(stored)) draft = [chapter.titleTh, ...stored];
+      if (glossarySnapshot.length === 0) glossarySnapshot = await getRelevantGlossary(chapter.novelId, enWithTitle, 30);
     }
 
     if (!draft) {
@@ -166,29 +179,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const novelName = chapter.novel?.titleTh || chapter.novel?.titleEn || 'นิยาย';
       const chapterDisplayName = chapter.titleTh || chapter.titleEn || `ตอนที่ ${chapter.chapterNumber}`;
 
-      // Step 2: Auto-discover entities and Freeze Glossary Snapshot for consistency
-      await autoDiscoverAndSaveGlossary(chapter.novelId, contentEn);
-
-      const freshGlossaries = await prisma.novelGlossary.findMany({
-        where: { novelId: chapter.novelId },
-      });
-
-      const glossarySnapshot = freshGlossaries.map((g) => ({
-        canonicalEn: g.canonicalEn,
-        canonicalTh: g.canonicalTh,
-        entityType: g.entityType,
-        isLocked: g.isLocked,
-        category: g.category,
-      }));
-
+      // Step 2: Glossary snapshot was frozen with the draft above (only terms in this chapter)
       const polishContext = {
         novelTitle: novelName,
         genre: chapter.novel?.genre || chapter.novel?.category || undefined,
-        glossary: glossarySnapshot.map((g) => ({
-          termEn: g.canonicalEn,
-          termTh: g.canonicalTh,
-          category: g.category,
-        })),
+        glossary: toPromptGlossary(glossarySnapshot),
       };
 
       const estTotalBatches = Math.ceil(draft.length / 10);

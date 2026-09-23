@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   RefreshCw,
   HardDrive,
+  Cloud,
+  Server,
 } from 'lucide-react';
 
 interface OllamaStatus {
@@ -27,6 +29,30 @@ export default function OllamaStatusCard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
   const [confirmForce, setConfirmForce] = useState(false);
+  const [aiProvider, setAiProvider] = useState<'ollama' | 'gemini' | 'openrouter'>('gemini');
+  const [savingProvider, setSavingProvider] = useState(false);
+
+  const fetchAISettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/ai-settings');
+      const data = await res.json();
+      if (data.success && data.settings?.provider) setAiProvider(data.settings.provider);
+    } catch {}
+  }, []);
+
+  async function saveProvider(next: 'ollama' | 'gemini' | 'openrouter') {
+    setSavingProvider(true);
+    setAiProvider(next);
+    try {
+      await fetch('/api/admin/ai-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'ai.provider', value: next }),
+      });
+    } catch {} finally {
+      setSavingProvider(false);
+    }
+  }
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -50,9 +76,10 @@ export default function OllamaStatusCard() {
 
   useEffect(() => {
     fetchStatus();
+    fetchAISettings();
     const timer = setInterval(fetchStatus, 30000);
     return () => clearInterval(timer);
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchAISettings]);
 
   async function handleToggle(action: 'connect' | 'disconnect', force = false) {
     setActionLoading(true);
@@ -87,6 +114,32 @@ export default function OllamaStatusCard() {
 
   return (
     <div className="p-5 bg-slate-900 border border-slate-800 rounded-3xl shadow-lg relative overflow-hidden">
+      {/* Global AI provider selector: what background/default polish uses system-wide */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-800">
+        <div>
+          <p className="text-sm font-bold text-slate-100">เครื่อง AI เกลาสำนวน (ค่าเริ่มต้นระบบ)</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            ใช้กับงานแปลเบื้องหลังและกรณีไม่ได้เลือก provider รายครั้ง
+          </p>
+        </div>
+        <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1 self-start sm:self-center">
+          {(['gemini', 'openrouter', 'ollama'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              disabled={savingProvider}
+              onClick={() => saveProvider(p)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all disabled:opacity-50 ${
+                aiProvider === p ? 'bg-amber-400 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {p === 'ollama' ? <Server className="w-3.5 h-3.5" /> : <Cloud className="w-3.5 h-3.5" />}
+              {p === 'gemini' ? 'Gemini API' : p === 'openrouter' ? 'OpenRouter' : 'Ollama Local'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Left Side: Info */}
         <div className="flex items-start sm:items-center gap-3.5">
@@ -144,8 +197,8 @@ export default function OllamaStatusCard() {
                   </span>
                 ) : null}
                 {(status.activeJobs || 0) > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                    ⚡ มีงานค้างอยู่ {status.activeJobs} งาน
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                    <Zap className="w-3 h-3" /> มีงานค้างอยู่ {status.activeJobs} งาน
                   </span>
                 )}
               </div>

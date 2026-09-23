@@ -11,6 +11,7 @@ import {
   Tag,
   AlertCircle,
   CheckCircle2,
+  ArrowUpToLine,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -24,8 +25,13 @@ interface GlossaryItem {
 }
 
 interface GlossaryEditorProps {
-  novelId: string;
+  /** Novel mode: the novel's own terms (auto-extract, promote to fandom). */
+  novelId?: string;
   novelTitle?: string;
+  /** Novel mode: name of the linked fandom; enables "move to fandom". */
+  promoteToFandomName?: string | null;
+  /** Fandom mode: edit a fandom's shared terms instead of a novel's. */
+  fandomId?: string;
 }
 
 const CATEGORY_OPTIONS = [
@@ -37,9 +43,46 @@ const CATEGORY_OPTIONS = [
   { id: 'other', labelTh: 'คำเฉพาะอื่นๆ', labelEn: 'Other Term' },
 ];
 
-export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorProps) {
+export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomName, fandomId }: GlossaryEditorProps) {
   const { t, lang } = useLanguage();
   const { isAdmin } = useAuth();
+  const isFandom = Boolean(fandomId);
+  const endpoint = isFandom ? `/api/admin/fandoms/${fandomId}/glossary` : `/api/novels/${novelId}/glossary`;
+  const canPromote = isAdmin && !isFandom && Boolean(promoteToFandomName);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [promoting, setPromoting] = useState(false);
+
+  async function handlePromote(ids: string[]) {
+    if (ids.length === 0) return;
+    if (!confirm(`ย้าย ${ids.length} คำไปใช้ร่วมกันใน fandom "${promoteToFandomName}"?\nคำจะถูกลบออกจากนิยายเรื่องนี้ และทุกเรื่องใน fandom จะใช้คำนี้`)) return;
+    setPromoting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/novels/${novelId}/glossary/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ glossaryIds: ids }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'ย้ายคำไม่สำเร็จ');
+      setSuccess(`ย้าย ${data.count} คำไป fandom "${data.fandomName}" แล้ว`);
+      setSelected(new Set());
+      await fetchGlossary();
+    } catch (err: any) {
+      setError(err.message || 'ย้ายคำไม่สำเร็จ');
+    } finally {
+      setPromoting(false);
+    }
+  }
+
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const [glossaries, setGlossaries] = useState<GlossaryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,13 +117,14 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
   }
 
   useEffect(() => {
+    setSelected(new Set());
     fetchGlossary();
-  }, [novelId]);
+  }, [endpoint]);
 
   async function fetchGlossary() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/novels/${novelId}/glossary`);
+      const res = await fetch(endpoint);
       const data = await res.json();
       if (data.success) {
         setGlossaries(data.glossaries || []);
@@ -101,7 +145,7 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
     setSubmitting(true);
 
     try {
-      const res = await fetch(`/api/novels/${novelId}/glossary`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,7 +177,7 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
     if (!confirm(`คุณต้องการลบคำศัพท์ "${name}" หรือไม่?`)) return;
 
     try {
-      const res = await fetch(`/api/novels/${novelId}/glossary?glossaryId=${glossaryId}`, {
+      const res = await fetch(`${endpoint}?glossaryId=${glossaryId}`, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -161,7 +205,7 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
           <BookMarked className="w-5 h-5 text-amber-400" />
           <div>
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <span>พจนานุกรมคำศัพท์เฉพาะเรื่อง (Glossary)</span>
+              <span>{isFandom ? 'คำศัพท์ที่ใช้ร่วมกันใน Fandom' : 'พจนานุกรมคำศัพท์เฉพาะเรื่อง (Glossary)'}</span>
               <span className="px-2 py-0.5 text-[11px] font-mono font-semibold bg-slate-800 text-amber-400 rounded-full border border-slate-700/60">
                 {glossaries.length} คำ
               </span>
@@ -174,7 +218,19 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
 
         {/* Actions */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {isAdmin && (
+          {canPromote && selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => handlePromote([...selected])}
+              disabled={promoting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-sky-500/10 text-sky-300 border border-sky-500/30 hover:bg-sky-500/20 disabled:opacity-50 transition-all shrink-0"
+            >
+              {promoting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpToLine className="w-3.5 h-3.5" />}
+              <span>ย้าย {selected.size} คำไป fandom</span>
+            </button>
+          )}
+
+          {isAdmin && !isFandom && (
             <button
               type="button"
               onClick={handleAutoExtract}
@@ -313,6 +369,15 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
                 key={item.id}
                 className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl hover:border-slate-700 transition-all flex items-start justify-between gap-2 group"
               >
+                {canPromote && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item.id)}
+                    onChange={() => toggleSelected(item.id)}
+                    aria-label={`เลือก ${item.termEn}`}
+                    className="mt-0.5 accent-sky-400 cursor-pointer"
+                  />
+                )}
                 <div className="space-y-1 min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-bold text-slate-100 font-mono">{item.termEn}</span>
@@ -327,6 +392,17 @@ export default function GlossaryEditor({ novelId, novelTitle }: GlossaryEditorPr
                   )}
                 </div>
 
+                {canPromote && (
+                  <button
+                    type="button"
+                    disabled={promoting}
+                    onClick={() => handlePromote([item.id])}
+                    className="p-1 text-slate-500 hover:text-sky-300 hover:bg-sky-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100 disabled:opacity-30"
+                    title={`ย้ายไป fandom "${promoteToFandomName}"`}
+                  >
+                    <ArrowUpToLine className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 {isAdmin && (
                   <button
                     type="button"

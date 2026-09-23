@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { EntityType, ValidationStatus } from './enums';
 import { translateParagraphsGoogle } from './googleTranslate';
+import { escapeRegex, protectTerms } from './nameReplacer';
 
 const COMMON_PRONOUNS_AND_STOPWORDS = new Set([
   'he', 'she', 'they', 'it', 'we', 'you', 'i', 'him', 'her', 'them', 'his', 'hers',
@@ -56,53 +57,123 @@ export function validateNewEntity(entity: NewDiscoveredEntity): {
   return { isValid: true, status: ValidationStatus.REVIEW_REQUIRED };
 }
 
+/** Where a glossary comes from: a novel (plus its fandom), or a fandom alone (model-test page). */
+export type GlossarySource = string | { novelId?: string | null; fandomId?: string | null };
+
+export interface GlossaryTerm {
+  canonicalEn: string;
+  canonicalTh: string;
+  entityType: string;
+  isLocked: boolean;
+  category: string | null;
+  aliases: string[];
+  confidence: number;
+}
+
+const termKey = (t: { canonicalEn: string }) => t.canonicalEn.trim().toLowerCase();
+
 /**
- * Filter and rank relevant glossary terms that actually appear in the chapter content.
- * Caps at 20 terms to prevent LLM context explosion.
+ * Precedence: novel locked > fandom > novel unlocked. A fic can deliberately override a fandom
+ * name by locking it, but auto-discovered (unlocked) Google transliterations never beat curated
+ * fandom terms.
+ */
+export function mergeGlossary(novelTerms: GlossaryTerm[], fandomTerms: GlossaryTerm[]): GlossaryTerm[] {
+  const byKey = new Map<string, GlossaryTerm>();
+  for (const t of novelTerms) if (!t.isLocked) byKey.set(termKey(t), t);
+  for (const t of fandomTerms) byKey.set(termKey(t), t);
+  for (const t of novelTerms) if (t.isLocked) byKey.set(termKey(t), t);
+  return [...byKey.values()];
+}
+
+export async function loadGlossary(source: GlossarySource): Promise<GlossaryTerm[]> {
+  const { novelId, fandomId: explicitFandomId } = typeof source === 'string' ? { novelId: source } : source;
+  let fandomId = explicitFandomId ?? null;
+  let novelTerms: GlossaryTerm[] = [];
+
+  if (novelId) {
+    const novel = await prisma.novel.findUnique({
+      where: { id: novelId },
+      select: { fandomId: true, glossaries: { include: { aliases: true } } },
+    });
+    fandomId = fandomId ?? novel?.fandomId ?? null;
+    novelTerms = (novel?.glossaries ?? []).map((g) => ({
+      canonicalEn: g.canonicalEn,
+      canonicalTh: g.canonicalTh,
+      entityType: g.entityType,
+      isLocked: g.isLocked,
+      category: g.category,
+      aliases: g.aliases.map((a) => a.aliasEn),
+      confidence: g.modelConfidence,
+    }));
+  }
+
+  const fandomTerms: GlossaryTerm[] = fandomId
+    ? (await prisma.fandomGlossary.findMany({ where: { fandomId } })).map((g) => ({
+        canonicalEn: g.canonicalEn,
+        canonicalTh: g.canonicalTh,
+        entityType: g.entityType,
+        isLocked: true, // curated, so it ranks with locked novel terms
+        category: g.category,
+        aliases: [],
+        confidence: 1,
+      }))
+    : [];
+
+  return mergeGlossary(novelTerms, fandomTerms);
+}
+
+/**
+ * Filter and rank glossary terms (novel + its fandom) that actually appear in the chapter.
+ * Word-boundary match, so short fandom names like "Lee" or "Sai" don't hit "sleep"/"said".
+ * Caps at maxTerms to prevent LLM context explosion.
  */
 export async function getRelevantGlossary(
-  novelId: string,
+  source: GlossarySource,
   paragraphsEn: string[],
   maxTerms: number = 20
-): Promise<Array<{ canonicalEn: string; canonicalTh: string; entityType: string; isLocked: boolean }>> {
-  const allGlossaries = await prisma.novelGlossary.findMany({
-    where: { novelId },
-    include: { aliases: true },
-  });
+): Promise<GlossaryTerm[]> {
+  const all = await loadGlossary(source);
+  if (all.length === 0) return [];
 
-  if (allGlossaries.length === 0) return [];
+  const fullText = paragraphsEn.join('\n');
+  const appears = (term: string) =>
+    term.trim().length > 0 && new RegExp(`\\b${escapeRegex(term.trim())}\\b`, 'i').test(fullText);
 
-  const fullText = paragraphsEn.join(' ').toLowerCase();
+  const matched = all.filter((g) => appears(g.canonicalEn) || g.aliases.some(appears));
 
-  const matched = allGlossaries.filter((g) => {
-    const term = g.canonicalEn.trim().toLowerCase();
-    if (fullText.includes(term)) return true;
-
-    // Check aliases
-    for (const a of g.aliases) {
-      if (fullText.includes(a.aliasEn.trim().toLowerCase())) return true;
-    }
-    return false;
-  });
-
-  // Rank matches:
-  // 1. isLocked (Priority 1)
-  // 2. Multi-word (Priority 2)
-  // 3. High confidence
+  // Rank: locked/curated first, then multi-word, then confidence.
   matched.sort((a, b) => {
     if (a.isLocked !== b.isLocked) return a.isLocked ? -1 : 1;
     const aMulti = a.canonicalEn.includes(' ');
     const bMulti = b.canonicalEn.includes(' ');
     if (aMulti !== bMulti) return aMulti ? -1 : 1;
-    return b.modelConfidence - a.modelConfidence;
+    return b.confidence - a.confidence;
   });
 
-  return matched.slice(0, maxTerms).map((g) => ({
-    canonicalEn: g.canonicalEn,
-    canonicalTh: g.canonicalTh,
-    entityType: g.entityType,
-    isLocked: g.isLocked,
-  }));
+  return matched.slice(0, maxTerms);
+}
+
+/** Polish-prompt shape of a glossary. */
+export function toPromptGlossary(terms: GlossaryTerm[]) {
+  return terms.map((g) => ({ termEn: g.canonicalEn, termTh: g.canonicalTh, category: g.category }));
+}
+
+const PROMPT_TERM_CAP = 30;
+
+/**
+ * Google-translates paragraphs with every relevant glossary term locked to its Thai form, and
+ * returns the (capped) relevant glossary for the polish prompt. Only the copy sent to Google is
+ * substituted; callers keep storing the original English.
+ */
+export async function translateWithGlossary(
+  source: GlossarySource | null,
+  paragraphs: string[],
+  onChunkProgress?: (done: number, total: number) => void
+): Promise<{ draft: string[]; glossary: GlossaryTerm[] }> {
+  const relevant = source ? await getRelevantGlossary(source, paragraphs, Infinity) : [];
+  const { protectedText, restore } = protectTerms(paragraphs, relevant);
+  const draft = restore(await translateParagraphsGoogle(protectedText, onChunkProgress));
+  return { draft, glossary: relevant.slice(0, PROMPT_TERM_CAP) };
 }
 
 /**
@@ -226,11 +297,8 @@ export async function autoDiscoverAndSaveGlossary(
     const candidates = extractCandidateEntities(paragraphsEn);
     if (candidates.length === 0) return 0;
 
-    const existingGlossaries = await prisma.novelGlossary.findMany({
-      where: { novelId },
-      select: { canonicalEn: true },
-    });
-    const existingSet = new Set(existingGlossaries.map((g) => g.canonicalEn.toLowerCase()));
+    // Novel + fandom terms: never shadow a curated fandom term with a Google transliteration.
+    const existingSet = new Set((await loadGlossary(novelId)).map(termKey));
     const newCandidates = candidates.filter((c) => !existingSet.has(c.toLowerCase()));
 
     if (newCandidates.length === 0) return 0;
@@ -275,3 +343,25 @@ export async function autoDiscoverAndSaveGlossary(
   }
 }
 
+
+/**
+ * Moves novel terms into the novel's fandom (upsert; promoted spelling wins) and deletes the
+ * novel copies in one transaction, so a term lives in exactly one place. Ids not belonging to
+ * this novel are ignored. Returns the moved terms.
+ */
+export async function promoteNovelTerms(novelId: string, fandomId: string, glossaryIds: string[]) {
+  const terms = await prisma.novelGlossary.findMany({ where: { id: { in: glossaryIds }, novelId } });
+  if (terms.length === 0) return terms;
+
+  await prisma.$transaction([
+    ...terms.map((t) =>
+      prisma.fandomGlossary.upsert({
+        where: { fandomId_canonicalEn: { fandomId, canonicalEn: t.canonicalEn } },
+        create: { fandomId, canonicalEn: t.canonicalEn, canonicalTh: t.canonicalTh, category: t.category, entityType: t.entityType },
+        update: { canonicalTh: t.canonicalTh, category: t.category, entityType: t.entityType },
+      })
+    ),
+    prisma.novelGlossary.deleteMany({ where: { id: { in: terms.map((t) => t.id) } } }),
+  ]);
+  return terms;
+}

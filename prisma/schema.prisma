@@ -61,6 +61,9 @@ model Novel {
   createdById String?
   createdBy   User?     @relation("SubmittedBy", fields: [createdById], references: [id])
 
+  fandomId    String?
+  fandom      Fandom?   @relation(fields: [fandomId], references: [id], onDelete: SetNull)
+
   chapters    Chapter[]
   reports     Report[]
   likes       NovelLike[]
@@ -261,6 +264,32 @@ model NovelGlossaryAlias {
   @@index([aliasEn])
 }
 
+// Shared term table for fanfic of the same source (Naruto, Harry Potter, ...).
+// Admin-curated via "promote" from a novel glossary, so no lock/validation fields.
+model Fandom {
+  id        String           @id @default(uuid())
+  name      String           @unique
+  createdAt DateTime         @default(now())
+
+  novels    Novel[]
+  terms     FandomGlossary[]
+}
+
+model FandomGlossary {
+  id          String   @id @default(uuid())
+  fandomId    String
+  canonicalEn String
+  canonicalTh String
+  category    String?
+  entityType  String   @default("CHARACTER")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fandom      Fandom   @relation(fields: [fandomId], references: [id], onDelete: Cascade)
+
+  @@unique([fandomId, canonicalEn])
+}
+
 model SystemLock {
   key         String   @id
   ownerId     String
@@ -269,4 +298,11 @@ model SystemLock {
   updatedAt   DateTime @updatedAt
 
   @@index([lockedUntil])
+}
+
+// Runtime key-value config (e.g. ai.provider) so admin can switch AI provider without editing env.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

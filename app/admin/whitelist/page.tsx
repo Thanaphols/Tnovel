@@ -20,6 +20,10 @@ export default function AdminWhitelistPage() {
   const [whitelistMsg, setWhitelistMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [deletingWhitelistId, setDeletingWhitelistId] = useState<string | null>(null);
   const [togglingEmail, setTogglingEmail] = useState<string | null>(null);
+  // Pending role change awaiting confirmation in the modal.
+  const [pendingRole, setPendingRole] = useState<
+    { email: string; note?: string; current: string; target: 'USER' | 'ADMIN' } | null
+  >(null);
 
   useEffect(() => {
     fetchWhitelist();
@@ -70,7 +74,9 @@ export default function AdminWhitelistPage() {
     }
   }
 
-  async function handleToggleWhitelistRole(email: string, currentRole: string, note?: string) {
+  // Open the confirm modal for a role change picked from the dropdown.
+  function requestRoleChange(email: string, currentRole: string, target: 'USER' | 'ADMIN', note?: string) {
+    if (target === currentRole) return;
     if (email.toLowerCase() === 'cupteo254504@gmail.com') {
       alert('ไม่สามารถลดสิทธิ์ของ Primary Admin ได้');
       return;
@@ -79,17 +85,18 @@ export default function AdminWhitelistPage() {
       alert('คุณไม่สามารถลดสิทธิ์บัญชีของตนเองได้');
       return;
     }
-    const targetRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
-    if (!confirm(`ต้องการเปลี่ยนสิทธิ์ของ "${email}" เป็น ${targetRole} หรือไม่?`)) {
-      return;
-    }
+    setPendingRole({ email, note, current: currentRole, target });
+  }
 
+  async function confirmRoleChange() {
+    if (!pendingRole) return;
+    const { email, target, note } = pendingRole;
     setTogglingEmail(email);
     try {
       const res = await fetch('/api/admin/whitelist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role: targetRole, note }),
+        body: JSON.stringify({ email, role: target, note }),
       });
       const data = await res.json();
       if (data.success) {
@@ -101,6 +108,7 @@ export default function AdminWhitelistPage() {
       alert(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
     } finally {
       setTogglingEmail(null);
+      setPendingRole(null);
     }
   }
 
@@ -314,31 +322,37 @@ export default function AdminWhitelistPage() {
                       {item.note || <span className="italic text-slate-600">{t('noNote')}</span>}
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center gap-2">
+                      {item.isPrimaryAdmin ||
+                      (currentUser?.email &&
+                        item.email.toLowerCase() === currentUser.email.toLowerCase() &&
+                        (item.role || 'USER') === 'ADMIN') ? (
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
                             (item.role || 'USER') === 'ADMIN'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                              ? 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/40'
+                              : 'bg-slate-800 text-slate-500 border-slate-700'
                           }`}
                         >
                           {(item.role || 'USER') === 'ADMIN' ? '🛡️ ADMIN' : '👤 USER'}
                         </span>
-                        {!item.isPrimaryAdmin && !(currentUser?.email && item.email.toLowerCase() === currentUser.email.toLowerCase() && (item.role || 'USER') === 'ADMIN') && (
-                          <button
-                            onClick={() => handleToggleWhitelistRole(item.email, item.role || 'USER', item.note)}
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={item.role || 'USER'}
                             disabled={togglingEmail === item.email}
-                            title={`สลับสิทธิ์เป็น ${(item.role || 'USER') === 'ADMIN' ? 'USER' : 'ADMIN'}`}
-                            className="p-1 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors disabled:opacity-50"
+                            onChange={(e) =>
+                              requestRoleChange(item.email, item.role || 'USER', e.target.value as 'USER' | 'ADMIN', item.note)
+                            }
+                            className="px-2.5 py-1 text-xs font-bold bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-amber-500/60 disabled:opacity-50 cursor-pointer"
                           >
-                            {togglingEmail === item.email ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                            ) : (
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        )}
-                      </div>
+                            <option value="USER">👤 USER</option>
+                            <option value="ADMIN">🛡️ ADMIN</option>
+                          </select>
+                          {togglingEmail === item.email && (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="p-3">
                       {item.user ? (
@@ -391,6 +405,49 @@ export default function AdminWhitelistPage() {
           </div>
         )}
       </div>
+
+      {/* Role change confirm modal */}
+      {pendingRole && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            onClick={() => (togglingEmail ? null : setPendingRole(null))}
+          />
+          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-slate-100">{t('roleChangeConfirmTitle')}</h3>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {t('roleChangeConfirmMsg')}{' '}
+              <span className="font-mono font-semibold text-slate-200">{pendingRole.email}</span>{' '}
+              {t('roleChangeConfirmTo')}{' '}
+              <span className="font-bold text-amber-300">{pendingRole.target}</span>
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingRole(null)}
+                disabled={!!togglingEmail}
+                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-950 border border-slate-800 rounded-xl transition-all disabled:opacity-50"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmRoleChange}
+                disabled={!!togglingEmail}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md shadow-amber-500/20 disabled:opacity-50"
+              >
+                {togglingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t('roleChangeConfirmBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

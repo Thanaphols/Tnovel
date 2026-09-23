@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { resolveProvider } from './aiSettings';
+import { withAiSlot } from './aiConcurrency';
 
 // MTPE: Google Translate gives a complete, aligned Thai draft; Gemini only edits the prose.
 export interface PolishContext {
@@ -35,6 +37,7 @@ Input คือ JSON Array ของ object {"en": ต้นฉบับภา�
     for (const g of context.glossary) {
       prompt += `\n- "${g.termEn}" -> "${g.termTh}"`;
     }
+    prompt += `\nคำไทยจากตารางนี้ถูกใส่ไว้ในร่าง "th" แล้ว ให้คงไว้ตามเดิมทุกตัวอักษร ห้ามถอดเสียงหรือสะกดใหม่`;
   }
 
   return prompt;
@@ -42,6 +45,8 @@ Input คือ JSON Array ของ object {"en": ต้นฉบับภา�
 
 const BATCH_SIZE = 75;
 const OLLAMA_BATCH_SIZE = 10;
+// ponytail: 25 is a guess for mid-size free models; lower it if batches come back misaligned.
+const OPENROUTER_BATCH_SIZE = 25;
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY || '';
@@ -51,9 +56,9 @@ function getGeminiClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-async function callOllama(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callOllama(systemPrompt: string, userPrompt: string, modelOverride?: string): Promise<string> {
   const baseUrl = (process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
-  const model = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+  const model = modelOverride || process.env.OLLAMA_MODEL || 'qwen2.5:7b';
 
   try {
     const res = await fetch(`${baseUrl}/api/chat`, {
@@ -92,6 +97,43 @@ async function callOllama(systemPrompt: string, userPrompt: string): Promise<str
       throw new Error('ไม่สามารถเชื่อมต่อกับ Ollama ได้ (กรุณาเปิดโปรแกรม Ollama ในเครื่อง)');
     }
     throw err;
+  }
+}
+
+async function callOpenRouter(systemPrompt: string, userPrompt: string, model: string, maxRetries = 3): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('ยังไม่ได้ตั้งค่า OPENROUTER_API_KEY บนเซิร์ฟเวอร์');
+
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.4,
+        // Thinking was ~93% of output tokens (~40s for 4 paragraphs) and polishing doesn't need it.
+        reasoning: { enabled: false },
+      }),
+      signal: AbortSignal.timeout(180000),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content || '';
+    }
+
+    const errorText = await res.text().catch(() => '');
+    // Free models hit 429/503 often; back off briefly, same budget as the Gemini retry.
+    if ((res.status === 429 || res.status === 503) && attempt < maxRetries) {
+      console.warn(`[OpenRouter retry] ${res.status}, retrying in ${attempt * 5}s (attempt ${attempt}/${maxRetries})`);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
+      continue;
+    }
+    throw new Error(`OpenRouter Error (${res.status}): ${errorText || res.statusText}`);
   }
 }
 
@@ -271,9 +313,10 @@ export async function polishParagraphs(
   en: string[],
   thDraft: string[],
   context?: PolishContext,
-  onProgress?: (currentBatch: number, totalBatches: number) => void
-): Promise<{ paragraphs: string[]; failedBatches: number; totalBatches: number }> {
-  const provider = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
+  onProgress?: (currentBatch: number, totalBatches: number) => void,
+  opts?: { provider?: string; model?: string }
+): Promise<{ paragraphs: string[]; failedBatches: number; totalBatches: number; lastError?: string }> {
+  const { provider, model } = await resolveProvider(opts);
 
   let geminiModel: any = null;
   if (provider === 'gemini') {
@@ -281,7 +324,7 @@ export async function polishParagraphs(
     if (!genAI) throw new Error('ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์');
 
     geminiModel = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
+      model,
       generationConfig: { temperature: 0.4 },
     });
   }
@@ -289,9 +332,14 @@ export async function polishParagraphs(
   const promptHeader = buildPolishPrompt(context);
   const paragraphs: string[] = [];
   let failedBatches = 0;
-  const batchSize = provider === 'ollama' ? OLLAMA_BATCH_SIZE : BATCH_SIZE;
+  let lastError: string | undefined; // why the most recent failed batch fell back to draft
+  const batchSize =
+    provider === 'ollama' ? OLLAMA_BATCH_SIZE : provider === 'openrouter' ? OPENROUTER_BATCH_SIZE : BATCH_SIZE;
   const totalBatches = Math.ceil(thDraft.length / batchSize);
 
+  // Bound concurrency per provider (GPU slots for ollama, RPM headroom for gemini) across every
+  // caller — manual /retranslate and the background queue alike.
+  await withAiSlot(provider, async () => {
   for (let start = 0; start < thDraft.length; start += batchSize) {
     const batchIndex = Math.floor(start / batchSize) + 1;
     if (onProgress) {
@@ -307,7 +355,9 @@ export async function polishParagraphs(
     try {
       let rawText = '';
       if (provider === 'ollama') {
-        rawText = await callOllama(promptHeader, JSON.stringify(pairs));
+        rawText = await callOllama(promptHeader, JSON.stringify(pairs), model);
+      } else if (provider === 'openrouter') {
+        rawText = await callOpenRouter(promptHeader, JSON.stringify(pairs), model);
       } else {
         rawText = await callGeminiWithRetry(geminiModel, `${promptHeader}\n\n${JSON.stringify(pairs)}`);
       }
@@ -321,9 +371,11 @@ export async function polishParagraphs(
           parsedLen = Array.isArray(parsed) ? `array[${parsed.length}]` : `${typeof parsed}(keys:${Object.keys(parsed).length})`;
         } catch { parsedLen = 'invalid_json'; }
         console.warn(`[Polish] batch at ${start} misaligned: expected ${draft.length}, got ${parsedLen}. Raw[0..200]: ${rawText.substring(0, 200)}`);
+        lastError = `ผลลัพธ์ไม่ตรงรูปแบบ: expected ${draft.length}, got ${parsedLen}`;
       }
     } catch (err: any) {
       console.error(`[Polish] batch at ${start} failed (${provider}):`, err.message || err);
+      lastError = String(err.message || err);
       // If Ollama is not running, stop immediately and report error
       if (err.message?.includes('ไม่สามารถเชื่อมต่อกับ Ollama ได้')) {
         throw err;
@@ -333,6 +385,7 @@ export async function polishParagraphs(
     if (!polished) failedBatches++;
     paragraphs.push(...(polished ?? draft));
   }
+  });
 
-  return { paragraphs, failedBatches, totalBatches };
+  return { paragraphs, failedBatches, totalBatches, lastError };
 }
