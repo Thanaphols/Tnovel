@@ -147,7 +147,7 @@ export class GeminiProvider implements ILLMProvider {
   constructor(protected readonly modelOverride?: string) {}
 
   public get modelName(): string {
-    return this.modelOverride || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    return this.modelOverride || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
   }
 
   async polish(input: PolishInput): Promise<PolishResult> {

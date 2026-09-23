@@ -36,7 +36,34 @@ function parseArray(json: string | null | undefined): string[] {
   }
 }
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+// Polish can run past Cloudflare's 100s origin timeout (-> HTML error page instead of JSON).
+// Fast results keep their real status; slow ones stream whitespace heartbeats, then the JSON
+// (JSON.parse ignores leading whitespace, so callers need no change). Status is then always 200,
+// so callers must check `success` — both callers already do.
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const work = handleRetranslate(request, ctx);
+  const fast = await Promise.race([work, new Promise<null>((r) => setTimeout(() => r(null), 10_000))]);
+  if (fast) return fast;
+
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const beat = setInterval(() => controller.enqueue(enc.encode(' ')), 15_000);
+      controller.enqueue(enc.encode(' '));
+      try {
+        controller.enqueue(enc.encode(await (await work).text()));
+      } finally {
+        clearInterval(beat);
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-transform' },
+  });
+}
+
+async function handleRetranslate(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let heartbeatTimer: NodeJS.Timeout | null = null;
   const ownerId = crypto.randomUUID();
@@ -116,7 +143,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         console.error(`[Retranslate JIT] Failed to scrape ${chapter.originalUrl}:`, scrapeErr.message || scrapeErr);
         return NextResponse.json(
           { success: false, error: `ดึงเนื้อหาจากเว็บต้นทางไม่สำเร็จ: ${scrapeErr.message || 'ไม่สามารถเข้าถึงหน้าเว็บต้นทางได้'}` },
-          { status: 502 }
+          { status: 422 }
         );
       }
     }
@@ -156,7 +183,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!draft) {
       return NextResponse.json(
         { success: false, error: 'Google Translate แปลไม่สำเร็จ เนื้อหาเดิมยังอยู่ครบ' },
-        { status: 502 }
+        { status: 422 }
       );
     }
 
@@ -256,7 +283,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             success: false,
             error: `ระบบเกลาสำนวนไม่สำเร็จครบทุกย่อหน้า (${polishResult.failedBatches} ชุดล้มเหลว) เพื่อความปลอดภัยเนื้อหาเดิมยังคงอยู่ครบ`,
           },
-          { status: 502 }
+          { status: 422 }
         );
       }
 

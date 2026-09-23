@@ -25,7 +25,7 @@ function envDefaults(): ResolvedAI {
   return {
     provider: isAIProvider(provider) ? provider : 'ollama',
     ollamaModel: process.env.OLLAMA_MODEL || 'qwen2.5:7b',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
     openrouterModel: process.env.OPENROUTER_MODEL || 'qwen/qwen3.8-27b:free',
   };
 }
