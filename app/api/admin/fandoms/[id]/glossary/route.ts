@@ -80,6 +80,32 @@ async function handleDELETE(request: Request, { params }: Params) {
   return NextResponse.json({ success: true, message: 'ลบคำศัพท์เรียบร้อยแล้ว' });
 }
 
+async function handlePUT(request: Request, { params }: Params) {
+  const session = await getSession();
+  if (!session || session.role !== 'ADMIN') return forbidden();
+
+  const { id: fandomId } = await params;
+  const body = await request.json().catch(() => ({}));
+  const glossaryId = body.id || body.glossaryId;
+  const en = (body.canonicalEn || body.termEn || '').trim();
+  const th = (body.canonicalTh || body.termTh || '').trim();
+  const category = body.category?.trim() || 'name';
+
+  if (!glossaryId) return NextResponse.json({ success: false, error: 'กรุณาระบุ id' }, { status: 400 });
+  if (!en || !th) return NextResponse.json({ success: false, error: 'กรุณาระบุทั้งคำภาษาอังกฤษและคำแปลภาษาไทย' }, { status: 400 });
+
+  const existing = await prisma.fandomGlossary.findFirst({ where: { id: glossaryId, fandomId } });
+  if (!existing) return NextResponse.json({ success: false, error: 'ไม่พบคำศัพท์นี้ในระบบ' }, { status: 404 });
+
+  const updated = await prisma.fandomGlossary.update({
+    where: { id: glossaryId },
+    data: { canonicalEn: en, canonicalTh: th, category },
+  });
+
+  return NextResponse.json({ success: true, glossary: withAliases(updated) });
+}
+
 export const GET = withJsonErrors(handleGET);
 export const POST = withJsonErrors(handlePOST);
+export const PUT = withJsonErrors(handlePUT);
 export const DELETE = withJsonErrors(handleDELETE);

@@ -112,3 +112,64 @@ export function protectTerms(
 
   return { protectedText, restore };
 }
+
+/**
+ * Replace both custom mappings (e.g. old Thai term -> new Thai term) and English glossary names
+ * in a string, counting how many replacements occurred.
+ */
+export function replaceTermsInString(
+  text: string,
+  terms: GlossaryReplaceItem[],
+  customReplacements?: Array<{ from: string; to: string }>
+): { text: string; count: number } {
+  let count = 0;
+  let result = text;
+
+  // 1. Custom explicit replacements (e.g. old Thai term -> new Thai term)
+  if (customReplacements && customReplacements.length > 0) {
+    for (const cr of customReplacements) {
+      if (!cr.from || !cr.to || cr.from === cr.to) continue;
+      const pattern = new RegExp(escapeRegex(cr.from), 'g');
+      result = result.replace(pattern, () => {
+        count++;
+        return cr.to;
+      });
+    }
+  }
+
+  // 2. Glossary terms (English proper nouns -> Thai translation)
+  if (terms && terms.length > 0) {
+    const validTerms = selectSafeTerms(terms);
+    for (const item of validTerms) {
+      const en = item.canonicalEn.trim();
+      const th = item.canonicalTh.trim();
+      if (!en || !th) continue;
+
+      // Use word boundary \b for English ASCII terms
+      const pattern = new RegExp(`\\b${escapeRegex(en)}\\b`, 'g');
+      result = result.replace(pattern, () => {
+        count++;
+        return th;
+      });
+    }
+  }
+
+  return { text: result, count };
+}
+
+/**
+ * Replace terms in an array of paragraphs.
+ */
+export function replaceTermsInParagraphs(
+  paragraphs: string[],
+  terms: GlossaryReplaceItem[],
+  customReplacements?: Array<{ from: string; to: string }>
+): { paragraphs: string[]; count: number } {
+  let totalCount = 0;
+  const replaced = paragraphs.map((p) => {
+    const { text, count } = replaceTermsInString(p, terms, customReplacements);
+    totalCount += count;
+    return text;
+  });
+  return { paragraphs: replaced, count: totalCount };
+}

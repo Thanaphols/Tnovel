@@ -26,6 +26,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
+          unauthorized: true,
+          email,
           error: 'คุณไม่มีสิทธ์ใช้งานระบบได้ กรุณาติดต่อผู้ดูแลระบบในการขอสิทธ์เข้าใช้งาน',
         },
         { status: 403 }

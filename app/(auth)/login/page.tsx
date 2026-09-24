@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, Mail, Lock, BookOpen, ArrowRight, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, BookOpen, ArrowRight, AlertCircle, Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 
 export default function LoginPage() {
@@ -15,6 +15,16 @@ export default function LoginPage() {
   const [callbackUrl, setCallbackUrl] = useState('/');
   const router = useRouter();
 
+  // Invite Request States
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [inviteAvatar, setInviteAvatar] = useState('');
+  const [inviteNote, setInviteNote] = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState('');
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -23,6 +33,14 @@ export default function LoginPage() {
     if (cb && cb.startsWith('/')) {
       setCallbackUrl(cb);
     }
+
+    const emailParam = params.get('email');
+    const nameParam = params.get('name');
+    const avatarParam = params.get('avatar');
+
+    if (emailParam) setInviteEmail(emailParam);
+    if (nameParam) setInviteName(nameParam);
+    if (avatarParam) setInviteAvatar(avatarParam);
 
     let err = params.get('error');
     if (!err && window.location.search) {
@@ -38,17 +56,62 @@ export default function LoginPage() {
 
     if (err) {
       setError(err);
+      if (
+        err === 'UNAUTHORIZED_GOOGLE' ||
+        err.includes('ไม่มีสิทธ์') ||
+        err.includes('ไม่มีสิทธิ์') ||
+        emailParam
+      ) {
+        setIsUnauthorized(true);
+      }
     }
   }, []);
 
   const handleCloseErrorModal = () => {
     setError(null);
+    setIsUnauthorized(false);
+    setInviteSuccess(false);
+    setInviteMessage('');
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('error');
+      url.searchParams.delete('email');
+      url.searchParams.delete('name');
+      url.searchParams.delete('avatar');
       window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
     }
   };
+
+  async function handleSendInvite() {
+    const targetEmail = (inviteEmail || email).trim();
+    if (!targetEmail) return;
+
+    setSendingInvite(true);
+    try {
+      const res = await fetch('/api/auth/invite-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: targetEmail,
+          name: inviteName || undefined,
+          avatar: inviteAvatar || undefined,
+          note: inviteNote || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setInviteSuccess(true);
+        setInviteMessage(data.message || t('inviteRequestSuccessDesc'));
+      } else {
+        alert(data.error || 'ไม่สามารถส่งคำขอได้');
+      }
+    } catch (err: any) {
+      alert(err.message || t('networkError'));
+    } finally {
+      setSendingInvite(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +127,12 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (!data.success) {
+        if (data.unauthorized) {
+          setIsUnauthorized(true);
+          setInviteEmail(data.email || email);
+          setError(data.error || 'คุณไม่มีสิทธิ์ใช้งานระบบได้ กรุณาติดต่อผู้ดูแลระบบ');
+          return;
+        }
         throw new Error(data.error || t('networkError'));
       }
 
@@ -95,29 +164,150 @@ export default function LoginPage() {
       {error && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
           <div className="w-full max-w-sm sm:max-w-md p-6 sm:p-7 bg-slate-900 border border-slate-700/90 rounded-3xl shadow-2xl space-y-5 text-center animate-scale-up relative">
-            {/* Top Warning Icon */}
-            <div className="inline-flex p-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-2xl">
-              <AlertCircle className="w-8 h-8 sm:w-9 sm:h-9" />
-            </div>
+            {isUnauthorized ? (
+              inviteSuccess ? (
+                /* Success State */
+                <>
+                  <div className="inline-flex p-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-2xl">
+                    <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9" />
+                  </div>
 
-            {/* Modal Title & Body */}
-            <div className="space-y-2">
-              <h3 className="text-base sm:text-lg font-bold text-slate-100">
-                {t('authAlertTitle')}
-              </h3>
-              <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-300 leading-relaxed break-words text-left max-h-60 overflow-y-auto">
-                {error}
-              </div>
-            </div>
+                  <div className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-100">
+                      {t('inviteRequestSuccess')}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      {inviteMessage || t('inviteRequestSuccessDesc')}
+                    </p>
+                    {inviteEmail && (
+                      <div className="inline-block mt-2 px-3 py-1 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono text-amber-400">
+                        {inviteEmail}
+                      </div>
+                    )}
+                  </div>
 
-            {/* Action Button */}
-            <button
-              type="button"
-              onClick={handleCloseErrorModal}
-              className="w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
-            >
-              {t('btnUnderstand')}
-            </button>
+                  <button
+                    type="button"
+                    onClick={handleCloseErrorModal}
+                    className="w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    {t('btnUnderstand')}
+                  </button>
+                </>
+              ) : (
+                /* Unauthorized + Request Invite State */
+                <>
+                  <div className="inline-flex p-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-2xl">
+                    <AlertCircle className="w-8 h-8 sm:w-9 sm:h-9" />
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-100">
+                      {t('inviteRequestTitle')}
+                    </h3>
+
+                    {/* User Profile Card if available */}
+                    {(inviteEmail || inviteName || inviteAvatar) && (
+                      <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-2xl flex items-center gap-3 text-left">
+                        {inviteAvatar ? (
+                          <img
+                            src={inviteAvatar}
+                            alt="Avatar"
+                            className="w-10 h-10 rounded-full border border-slate-700 object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center flex-shrink-0 text-sm">
+                            {(inviteName || inviteEmail || 'U').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          {inviteName && (
+                            <p className="text-xs font-bold text-slate-200 truncate">{inviteName}</p>
+                          )}
+                          <p className="text-[11px] font-mono text-slate-400 truncate">{inviteEmail}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-slate-300 leading-relaxed text-left">
+                      {t('inviteRequestDesc')}
+                    </p>
+
+                    {/* Email input if missing */}
+                    {!inviteEmail && (
+                      <input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="ระบุอีเมลของคุณ..."
+                        className="w-full px-3.5 py-2 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
+                      />
+                    )}
+
+                    {/* Optional Note */}
+                    <input
+                      type="text"
+                      value={inviteNote}
+                      onChange={(e) => setInviteNote(e.target.value)}
+                      placeholder={t('inviteRequestNotePlaceholder')}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-amber-500/60"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCloseErrorModal}
+                      className="flex-1 py-2.5 px-3 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-800 rounded-xl transition-all"
+                    >
+                      {t('cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendInvite}
+                      disabled={sendingInvite || !(inviteEmail || email)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      {sendingInvite ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>{t('inviteRequestSending')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{t('inviteRequestBtn')}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )
+            ) : (
+              /* Standard Error Modal */
+              <>
+                <div className="inline-flex p-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-2xl">
+                  <AlertCircle className="w-8 h-8 sm:w-9 sm:h-9" />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-100">
+                    {t('authAlertTitle')}
+                  </h3>
+                  <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-300 leading-relaxed break-words text-left max-h-60 overflow-y-auto">
+                    {error}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseErrorModal}
+                  className="w-full py-2.5 px-4 text-xs sm:text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  {t('btnUnderstand')}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

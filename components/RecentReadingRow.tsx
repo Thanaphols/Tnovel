@@ -151,7 +151,8 @@ export default function RecentReadingRow() {
             return (
               <Link
                 key={item.id || item.novelId}
-                href={`/reader/${item.lastChapterId}?from=home`}
+                href={`/reader/${item.lastChapterId}?from=home${percent > 0 ? `&p=${percent}` : ''}`}
+                scroll={false}
                 onClick={() => {
                   try {
                     sessionStorage.setItem('tnovel_reader_return_url', '/');

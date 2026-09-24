@@ -21,6 +21,7 @@ export default function BackgroundProgressWidget() {
   const [percent, setPercent] = useState<number>(0);
   const [completed, setCompleted] = useState(false);
   const [jobType, setJobType] = useState<'batch' | 'single_chapter'>('batch');
+  const [modelName, setModelName] = useState<string>('');
 
   const { socket } = useSocket();
 
@@ -48,6 +49,8 @@ export default function BackgroundProgressWidget() {
           setSavedCount(data.job.chapterCount || 0);
           setPercent(data.job.percent || 0);
           setIsPaused(Boolean(data.job.isPaused));
+          if (data.job.modelName) setModelName(data.job.modelName);
+          if (data.job.jobType) setJobType(data.job.jobType);
           setStatus(
             data.job.currentChapter > 0
               ? `${t('translating')} ${t('chapterPrefix')} ${data.job.currentChapter}/${data.job.totalChapters}`
@@ -86,7 +89,10 @@ export default function BackgroundProgressWidget() {
         if (typeof data.chapterCount === 'number') setSavedCount(data.chapterCount);
         setPercent(data.percent || Math.round(((data.currentChapter || 1) / (data.totalChapters || 1)) * 100));
         setIsPaused(Boolean(data.isPaused));
-        if (isSingle) {
+        if (data.modelName) setModelName(data.modelName);
+        if (data.statusText) {
+          setStatus(data.statusText);
+        } else if (isSingle) {
           setStatus(`✨ กำลังเกลาสำนวน (${data.currentChapter || 1}/${data.totalChapters || 1} ชุด)`);
         } else {
           setStatus(`${t('translating')} ${t('chapterPrefix')} ${data.currentChapter}/${data.totalChapters}`);
@@ -271,7 +277,7 @@ export default function BackgroundProgressWidget() {
               </div>
               {jobType === 'single_chapter' ? (
                 <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                  <span className="text-amber-400/90 font-sans">⚡ Qwen 2.5 (Ollama)</span>
+                  <span className="text-amber-400/90 font-sans">⚡ {modelName || 'AI เกลาสำนวน'}</span>
                   <span>ชุดที่ {currentChapter}/{totalChapters} ({percent}%)</span>
                 </div>
               ) : (

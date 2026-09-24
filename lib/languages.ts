@@ -529,6 +529,19 @@ export const languages = {
     systemActor: 'ระบบ / ผู้เยี่ยมชม',
     accessDeniedTitle: 'ไม่มีสิทธิ์เข้าถึง',
     accessDeniedMsg: 'คุณไม่มีสิทธิ์เข้าถึงส่วนของผู้ดูแลระบบ (Admin Console) เฉพาะผู้ดูแลระบบเท่านั้น',
+
+    // Invite Requests
+    inviteRequestTitle: 'ไม่มีสิทธิ์เข้าใช้งานระบบ',
+    inviteRequestDesc: 'อีเมลของคุณยังไม่ได้รับสิทธิ์เข้าใช้งานระบบ กรุณากดปุ่มส่งคำขอเพื่อขอรับการอนุมัติสิทธิ์เข้าใช้งานจากผู้ดูแลระบบ',
+    inviteRequestBtn: 'ส่งคำขอเข้าใช้งาน',
+    inviteRequestSending: 'กำลังส่งคำขอ...',
+    inviteRequestSuccess: 'ส่งคำขอเข้าใช้งานเรียบร้อยแล้ว!',
+    inviteRequestSuccessDesc: 'ระบบได้บันทึกคำขอของคุณแล้ว กรุณารอผู้ดูแลระบบตรวจสอบและอนุมัติสิทธิ์เข้าใช้งาน',
+    inviteRequestNotePlaceholder: 'ข้อความเพิ่มเติมถึงผู้ดูแลระบบ (เช่น ชื่อเล่น หรือเหตุผลที่ต้องการเข้าใช้งาน)',
+    inviteRequestTabPending: 'คำขอเข้าใช้งาน',
+    inviteRequestTabWhitelist: 'รายชื่อ Whitelist',
+    inviteApproveBtn: 'อนุมัติ',
+    inviteRejectBtn: 'ปฏิเสธ',
   },
   en: {
     // Navigation & General
@@ -1058,6 +1071,19 @@ export const languages = {
     systemActor: 'System / Guest',
     accessDeniedTitle: 'Access Denied',
     accessDeniedMsg: 'You do not have permission to access the Admin Console. Admin privileges required.',
+
+    // Invite Requests
+    inviteRequestTitle: 'Access Permission Required',
+    inviteRequestDesc: 'Your email does not have access permissions yet. Please click below to send an access request to the administrator.',
+    inviteRequestBtn: 'Request Access',
+    inviteRequestSending: 'Sending Request...',
+    inviteRequestSuccess: 'Access Request Sent!',
+    inviteRequestSuccessDesc: 'Your request has been submitted. Please wait for an administrator to review and approve your access.',
+    inviteRequestNotePlaceholder: 'Note to administrator (e.g. nickname or reason - optional)',
+    inviteRequestTabPending: 'Access Requests',
+    inviteRequestTabWhitelist: 'Whitelist List',
+    inviteApproveBtn: 'Approve',
+    inviteRejectBtn: 'Reject',
   },
 } as const;
 

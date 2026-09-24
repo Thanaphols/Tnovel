@@ -12,6 +12,9 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowUpToLine,
+  Pencil,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -96,6 +99,106 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
   const [termEn, setTermEn] = useState('');
   const [termTh, setTermTh] = useState('');
   const [category, setCategory] = useState('name');
+
+  // Edit term state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTermEn, setEditTermEn] = useState('');
+  const [editTermTh, setEditTermTh] = useState('');
+  const [editCategory, setEditCategory] = useState('name');
+  const [editApplyToChapters, setEditApplyToChapters] = useState(true);
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Apply all terms state
+  const [applyingAll, setApplyingAll] = useState(false);
+
+  function startEditing(item: GlossaryItem) {
+    setEditingId(item.id);
+    setEditTermEn(item.termEn);
+    setEditTermTh(item.termTh);
+    setEditCategory(item.category || 'name');
+    setEditApplyToChapters(true);
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId || !editTermEn.trim() || !editTermTh.trim()) return;
+
+    setError(null);
+    setSuccess(null);
+    setEditSaving(true);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingId,
+          termEn: editTermEn.trim(),
+          termTh: editTermTh.trim(),
+          category: editCategory,
+          applyToChapters: !isFandom && editApplyToChapters,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'แก้ไขคำศัพท์ไม่สำเร็จ');
+      }
+
+      setEditingId(null);
+      if (data.applied && data.applied.totalReplacements > 0) {
+        setSuccess(
+          `แก้ไข "${data.glossary.termEn}" สำเร็จ และแทนที่ในเนื้อหา ${data.applied.updatedChapters} ตอน (${data.applied.totalReplacements} จุด)`
+        );
+      } else {
+        setSuccess(`แก้ไขคำศัพท์ "${data.glossary.termEn}" สำเร็จ`);
+      }
+      fetchGlossary();
+    } catch (err: any) {
+      setError(err.message || 'เกิดข้อผิดพลาดในการแก้ไขคำศัพท์');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleApplyAllToChapters() {
+    if (!novelId || isFandom || glossaries.length === 0) return;
+    if (
+      !confirm(
+        `ต้องการนำคำศัพท์ทั้งหมด (${glossaries.length} คำ) ไปแทนที่ในเนื้อหาทุกตอนที่แปลแล้วหรือไม่?\nระบบจะสแกนและอัปเดตคำในเนื้อหาทันทีโดยไม่ต้องแปลใหม่`
+      )
+    ) {
+      return;
+    }
+
+    setApplyingAll(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`/api/novels/${novelId}/glossary/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'all' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'แทนที่คำศัพท์ไม่สำเร็จ');
+      }
+
+      setSuccess(
+        `แทนที่คำศัพท์สำเร็จ: อัปเดต ${data.updatedChapters} จาก ${data.totalChapters} ตอน (แทนที่ทั้งหมด ${data.totalReplacements} จุด)`
+      );
+    } catch (err: any) {
+      setError(err.message || 'เกิดข้อผิดพลาดในการแทนที่คำศัพท์');
+    } finally {
+      setApplyingAll(false);
+    }
+  }
 
   async function handleAutoExtract() {
     setExtracting(true);
@@ -252,6 +355,28 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
             </button>
           )}
 
+          {isAdmin && !isFandom && glossaries.length > 0 && (
+            <button
+              type="button"
+              onClick={handleApplyAllToChapters}
+              disabled={applyingAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-50 transition-all shrink-0"
+              title="นำคำศัพท์ทั้งหมดไปสแกนและแทนที่ในเนื้อหาทุกตอนที่แปลแล้วโดยไม่ต้องแปลใหม่"
+            >
+              {applyingAll ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>กำลังแทนที่...</span>
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>แทนที่คำในเนื้อหาทุกตอน</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* Search */}
           <div className="relative w-full sm:w-56">
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -364,6 +489,83 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {filtered.map((item) => {
             const catInfo = CATEGORY_OPTIONS.find((c) => c.id === item.category);
+
+            if (editingId === item.id) {
+              return (
+                <form
+                  key={item.id}
+                  onSubmit={handleSaveEdit}
+                  className="p-3 bg-slate-900/90 border border-amber-500/50 rounded-xl space-y-2.5 shadow-lg"
+                >
+                  <div className="space-y-1.5">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">คำศัพท์อังกฤษ (EN)</label>
+                      <input
+                        type="text"
+                        value={editTermEn}
+                        onChange={(e) => setEditTermEn(e.target.value)}
+                        required
+                        className="w-full px-2.5 py-1 text-xs rounded-lg bg-slate-950 border border-slate-700 text-slate-100 font-mono focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">คำแปลไทย (TH)</label>
+                      <input
+                        type="text"
+                        value={editTermTh}
+                        onChange={(e) => setEditTermTh(e.target.value)}
+                        required
+                        className="w-full px-2.5 py-1 text-xs rounded-lg bg-slate-950 border border-slate-700 text-amber-400 font-semibold focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">หมวดหมู่</label>
+                      <select
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full px-2.5 py-1 text-xs rounded-lg bg-slate-950 border border-slate-700 text-slate-200 focus:outline-none focus:border-amber-400 cursor-pointer"
+                      >
+                        {CATEGORY_OPTIONS.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {lang === 'en' ? c.labelEn : c.labelTh}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {!isFandom && (
+                      <label className="flex items-center gap-1.5 pt-1 text-[11px] text-slate-300 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={editApplyToChapters}
+                          onChange={(e) => setEditApplyToChapters(e.target.checked)}
+                          className="accent-amber-400 rounded cursor-pointer"
+                        />
+                        <span>แทนที่คำนี้ในทุกตอนทันที</span>
+                      </label>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={cancelEditing}
+                      disabled={editSaving}
+                      className="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition-colors"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editSaving || !editTermEn.trim() || !editTermTh.trim()}
+                      className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {editSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      <span>บันทึก</span>
+                    </button>
+                  </div>
+                </form>
+              );
+            }
+
             return (
               <div
                 key={item.id}
@@ -392,27 +594,39 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
                   )}
                 </div>
 
-                {canPromote && (
-                  <button
-                    type="button"
-                    disabled={promoting}
-                    onClick={() => handlePromote([item.id])}
-                    className="p-1 text-slate-500 hover:text-sky-300 hover:bg-sky-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100 disabled:opacity-30"
-                    title={`ย้ายไป fandom "${promoteToFandomName}"`}
-                  >
-                    <ArrowUpToLine className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id, item.termEn)}
-                    className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100"
-                    title="ลบคำศัพท์"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-0.5">
+                  {canPromote && (
+                    <button
+                      type="button"
+                      disabled={promoting}
+                      onClick={() => handlePromote([item.id])}
+                      className="p-1 text-slate-500 hover:text-sky-300 hover:bg-sky-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100 disabled:opacity-30"
+                      title={`ย้ายไป fandom "${promoteToFandomName}"`}
+                    >
+                      <ArrowUpToLine className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => startEditing(item)}
+                      className="p-1 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100"
+                      title="แก้ไขคำศัพท์"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id, item.termEn)}
+                      className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100"
+                      title="ลบคำศัพท์"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

@@ -334,7 +334,8 @@ export default function BookshelfPage() {
                               {/* Action: Continue Reading Button */}
                               {nextTargetChapterId ? (
                                 <Link
-                                  href={`/reader/${nextTargetChapterId}`}
+                                  href={`/reader/${nextTargetChapterId}${novel.lastReadChapter?.scrollPercent ? `?p=${novel.lastReadChapter.scrollPercent}` : ''}`}
+                                  scroll={false}
                                   className="w-full flex items-center justify-center gap-1.5 py-2 px-3.5 text-xs font-bold rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
                                 >
                                   <Play className="w-3.5 h-3.5 fill-current" />
@@ -455,7 +456,8 @@ export default function BookshelfPage() {
                             </span>
                           ) : (
                             <Link
-                              href={`/reader/${item.lastChapterId}`}
+                              href={`/reader/${item.lastChapterId}${item.scrollPercent ? `?p=${item.scrollPercent}` : ''}`}
+                              scroll={false}
                               className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl shadow-md transition-all active:scale-95"
                             >
                               <Play className="w-3.5 h-3.5 fill-current" />

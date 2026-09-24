@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Sparkles,
   RotateCcw,
+  Clock,
   BookMarked,
   Languages,
 } from 'lucide-react';
@@ -101,6 +102,7 @@ export default function NovelDetailPage() {
   const [lastReadChapter, setLastReadChapter] = useState<{
     chapterId: string;
     chapterNumber: number;
+    scrollPercent?: number;
   } | null>(null);
 
   // Synopsis expansion
@@ -158,18 +160,36 @@ export default function NovelDetailPage() {
 
         // Set reading progress
         if (fetchedNovel.readingProgress) {
+          let percent = fetchedNovel.readingProgress.scrollPercent;
+          try {
+            const local = localStorage.getItem(`tnovel_progress_${fetchedNovel.readingProgress.chapterId}`);
+            if (local) {
+              const p = parseInt(local, 10);
+              if (!isNaN(p) && p > 0) percent = p;
+            }
+          } catch {}
           setLastReadChapter({
             chapterId: fetchedNovel.readingProgress.chapterId,
             chapterNumber: fetchedNovel.readingProgress.chapterNumber,
+            scrollPercent: percent,
           });
         } else {
           // Check guest reading history
           fetchReadingHistory().then(({ history }) => {
             const hist = history.find((h) => h.novelId === id);
             if (hist && hist.lastChapterId) {
+              let percent = hist.scrollPercent;
+              try {
+                const local = localStorage.getItem(`tnovel_progress_${hist.lastChapterId}`);
+                if (local) {
+                  const p = parseInt(local, 10);
+                  if (!isNaN(p) && p > 0) percent = p;
+                }
+              } catch {}
               setLastReadChapter({
                 chapterId: hist.lastChapterId,
                 chapterNumber: hist.lastChapterNumber,
+                scrollPercent: percent,
               });
             }
           });
@@ -711,7 +731,8 @@ export default function NovelDetailPage() {
                 {lastReadChapter ? (
                   <>
                     <Link
-                      href={`/reader/${lastReadChapter.chapterId}?from=novel`}
+                      href={`/reader/${lastReadChapter.chapterId}?from=novel${lastReadChapter.scrollPercent ? `&p=${lastReadChapter.scrollPercent}` : ''}`}
+                      scroll={false}
                       onClick={() => {
                         try {
                           sessionStorage.setItem('tnovel_reader_return_url', `/novels/${id}`);
@@ -722,6 +743,9 @@ export default function NovelDetailPage() {
                       <BookOpen className="w-4 h-4" />
                       <span>
                         {t('continueReadingChapter')} {t('chapterPrefix')} {lastReadChapter.chapterNumber}
+                        {typeof lastReadChapter.scrollPercent === 'number' && lastReadChapter.scrollPercent > 0 && (
+                          <span className="ml-1 text-xs opacity-90 font-bold">({lastReadChapter.scrollPercent}%)</span>
+                        )}
                       </span>
                     </Link>
 
@@ -950,115 +974,160 @@ export default function NovelDetailPage() {
         ) : (
           /* Chapter Table of Contents Section */
           <section className="space-y-4">
-          {/* Section Header & Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800/80">
-            <div className="flex items-center gap-2.5">
-              <BookOpen className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg sm:text-xl font-bold text-slate-100">
-                {t('tableOfContentsForNovel')}
-              </h2>
-              <span className="px-2.5 py-0.5 text-xs font-semibold bg-slate-800 text-amber-400/90 rounded-full font-mono border border-slate-700/40">
-                {novel.chapters?.length || 0} {t('chaptersInNovelCount')}
-              </span>
-            </div>
+            {/* Last Read Chapter Quick Resume Banner */}
+            {lastReadChapter && (
+              <div className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 shadow-sm">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-amber-400 text-slate-950 shrink-0">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="truncate">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-amber-300">{t('lastReadBadge')}</span>
+                      {typeof lastReadChapter.scrollPercent === 'number' && lastReadChapter.scrollPercent > 0 && (
+                        <span className="text-[10.5px] font-bold text-amber-200 bg-amber-400/20 px-2 py-0.5 rounded-full">
+                          {lastReadChapter.scrollPercent}%
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-200 font-semibold truncate mt-0.5">
+                      {t('chapterPrefix')} {lastReadChapter.chapterNumber}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/reader/${lastReadChapter.chapterId}?from=novel${lastReadChapter.scrollPercent ? `&p=${lastReadChapter.scrollPercent}` : ''}`}
+                  scroll={false}
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem('tnovel_reader_return_url', `/novels/${id}`);
+                    } catch {}
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 transition-all shrink-0"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>{t('continueReadingChapter')}</span>
+                </Link>
+              </div>
+            )}
 
-            {/* Filter controls */}
-            <div className="flex items-center gap-2">
-              {/* Search Chapter */}
-              <div className="relative flex-1 sm:w-60">
-                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('filterChaptersPlaceholder')}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-900 border border-slate-800 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-500/50 transition-all"
-                />
+            {/* Section Header & Filters */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800/80">
+              <div className="flex items-center gap-2.5">
+                <BookOpen className="w-5 h-5 text-amber-400" />
+                <h2 className="text-lg sm:text-xl font-bold text-slate-100">
+                  {t('tableOfContentsForNovel')}
+                </h2>
+                <span className="px-2.5 py-0.5 text-xs font-semibold bg-slate-800 text-amber-400/90 rounded-full font-mono border border-slate-700/40">
+                  {novel.chapters?.length || 0} {t('chaptersInNovelCount')}
+                </span>
               </div>
 
-              {/* Sort Order Toggle */}
-              <button
-                type="button"
-                onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
-                title={sortOrder === 'asc' ? t('sortOldestFirst') : t('sortNewestFirst')}
-              >
-                <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden md:inline">
-                  {sortOrder === 'asc' ? t('sortOldestFirst') : t('sortNewestFirst')}
-                </span>
-              </button>
+              {/* Filter controls */}
+              <div className="flex items-center gap-2">
+                {/* Search Chapter */}
+                <div className="relative flex-1 sm:w-60">
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('filterChaptersPlaceholder')}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-900 border border-slate-800 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-amber-500/50 transition-all"
+                  />
+                </div>
+
+                {/* Sort Order Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all"
+                  title={sortOrder === 'asc' ? t('sortOldestFirst') : t('sortNewestFirst')}
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden md:inline">
+                    {sortOrder === 'asc' ? t('sortOldestFirst') : t('sortNewestFirst')}
+                  </span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Chapter Grid / List */}
-          {filteredChapters.length === 0 ? (
-            <div className="py-16 text-center space-y-2 bg-slate-900/30 rounded-3xl border border-slate-800/40">
-              <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">
-                {searchQuery ? t('noChaptersFoundFilter') : t('noChaptersInSystem')}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {filteredChapters.map((chap) => {
-                const isLastRead = lastReadChapter?.chapterId === chap.id;
+            {/* Chapter Grid / List */}
+            {filteredChapters.length === 0 ? (
+              <div className="py-16 text-center space-y-2 bg-slate-900/30 rounded-3xl border border-slate-800/40">
+                <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-xs text-slate-400">
+                  {searchQuery ? t('noChaptersFoundFilter') : t('noChaptersInSystem')}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {filteredChapters.map((chap) => {
+                  const isLastRead = lastReadChapter?.chapterId === chap.id;
+                  const itemPct = isLastRead && typeof lastReadChapter?.scrollPercent === 'number' && lastReadChapter.scrollPercent > 0 ? lastReadChapter.scrollPercent : undefined;
 
-                return (
-                  <Link
-                    key={chap.id}
-                    href={`/reader/${chap.id}?from=novel`}
-                    onClick={() => {
-                      try {
-                        sessionStorage.setItem('tnovel_reader_return_url', `/novels/${id}`);
-                      } catch {}
-                    }}
-                    className={`group flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all duration-200 ${
-                      isLastRead
-                        ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
-                        : 'bg-slate-900/50 hover:bg-slate-900 border-slate-850 hover:border-amber-500/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 truncate min-w-0">
-                      {/* Chapter Number Badge */}
-                      <span
-                        className={`text-xs font-bold font-mono px-2 py-1 rounded-lg flex-shrink-0 ${
-                          isLastRead
-                            ? 'bg-amber-400 text-slate-950 shadow-sm'
-                            : 'bg-slate-800 text-slate-300 group-hover:bg-amber-500/20 group-hover:text-amber-300 transition-colors'
-                        }`}
-                      >
-                        #{chap.chapterNumber}
-                      </span>
-
-                      {/* Chapter Title */}
-                      <div className="truncate">
-                        <p
-                          className={`text-xs sm:text-sm font-medium truncate ${
+                  return (
+                    <Link
+                      key={chap.id}
+                      href={`/reader/${chap.id}?from=novel${itemPct ? `&p=${itemPct}` : ''}`}
+                      scroll={false}
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem('tnovel_reader_return_url', `/novels/${id}`);
+                        } catch {}
+                      }}
+                      className={`group flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all duration-200 ${
+                        isLastRead
+                          ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
+                          : 'bg-slate-900/50 hover:bg-slate-900 border-slate-850 hover:border-amber-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 truncate min-w-0">
+                        {/* Chapter Number Badge */}
+                        <span
+                          className={`text-xs font-bold font-mono px-2 py-1 rounded-lg flex-shrink-0 ${
                             isLastRead
-                              ? 'text-amber-200 font-bold'
-                              : 'text-slate-200 group-hover:text-amber-300 transition-colors'
+                              ? 'bg-amber-400 text-slate-950 shadow-sm'
+                              : 'bg-slate-800 text-slate-300 group-hover:bg-amber-500/20 group-hover:text-amber-300 transition-colors'
                           }`}
                         >
-                          {deobfuscateThaiText(
-                            chap.titleTh || `${t('chapterPrefix')} ${chap.chapterNumber}`
-                          )}
-                        </p>
-                        {chap.titleEn && chap.titleEn !== chap.titleTh && (
-                          <p className="text-[10px] text-slate-500 truncate group-hover:text-slate-400 transition-colors">
-                            {chap.titleEn}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right side: Last read badge or date */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {isLastRead ? (
-                        <span className="px-2 py-0.5 text-[9px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-md">
-                          {t('lastReadBadge')}
+                          #{chap.chapterNumber}
                         </span>
-                      ) : (
+
+                        {/* Chapter Title */}
+                        <div className="truncate">
+                          <p
+                            className={`text-xs sm:text-sm font-medium truncate ${
+                              isLastRead
+                                ? 'text-amber-200 font-bold'
+                                : 'text-slate-200 group-hover:text-amber-300 transition-colors'
+                            }`}
+                          >
+                            {deobfuscateThaiText(
+                              chap.titleTh || `${t('chapterPrefix')} ${chap.chapterNumber}`
+                            )}
+                          </p>
+                          {chap.titleEn && chap.titleEn !== chap.titleTh && (
+                            <p className="text-[10px] text-slate-500 truncate group-hover:text-slate-400 transition-colors">
+                              {chap.titleEn}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side: Last read badge or date */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isLastRead ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-md">
+                            <Clock className="w-3 h-3" />
+                            <span>
+                              {t('lastReadBadge')}
+                              {typeof lastReadChapter?.scrollPercent === 'number' && lastReadChapter.scrollPercent > 0
+                                ? ` (${lastReadChapter.scrollPercent}%)`
+                                : ''}
+                            </span>
+                          </span>
+                        ) : (
                         <span className="text-[10px] text-slate-500">
                           {new Date(chap.createdAt).toLocaleDateString(
                             lang === 'th' ? 'th-TH' : 'en-US',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
+import { applyGlossaryToNovelChapters } from '@/lib/glossaryService';
 
 export async function GET(
   request: Request,
@@ -218,6 +219,126 @@ export async function DELETE(
     console.error('Delete glossary error:', err);
     return NextResponse.json(
       { success: false, error: err.message || 'เกิดข้อผิดพลาดในการลบคำศัพท์' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถแก้ไขคำศัพท์ได้' },
+        { status: 403 }
+      );
+    }
+
+    const { id: novelId } = await params;
+    const body = await request.json().catch(() => ({}));
+    const glossaryId = body.id || body.glossaryId;
+    const en = (body.canonicalEn || body.termEn || '').trim();
+    const th = (body.canonicalTh || body.termTh || '').trim();
+    const category = body.category?.trim();
+    const isLocked = body.isLocked !== undefined ? !!body.isLocked : true;
+    const applyToChapters = body.applyToChapters !== false; // default true
+
+    if (!glossaryId) {
+      return NextResponse.json(
+        { success: false, error: 'กรุณาระบุ id ของคำศัพท์ที่ต้องการแก้ไข' },
+        { status: 400 }
+      );
+    }
+
+    if (!en || !th) {
+      return NextResponse.json(
+        { success: false, error: 'กรุณาระบุทั้งคำภาษาอังกฤษและคำแปลภาษาไทย' },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.novelGlossary.findFirst({
+      where: { id: glossaryId, novelId },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: 'ไม่พบคำศัพท์นี้ในระบบ' },
+        { status: 404 }
+      );
+    }
+
+    const oldTh = existing.canonicalTh;
+    const oldEn = existing.canonicalEn;
+
+    // Check conflict if canonicalEn changed
+    if (oldEn.toLowerCase() !== en.toLowerCase()) {
+      const conflict = await prisma.novelGlossary.findFirst({
+        where: { novelId, canonicalEn: en, id: { not: glossaryId } },
+      });
+      if (conflict) {
+        return NextResponse.json(
+          { success: false, error: `มีคำศัพท์ "${en}" อยู่แล้วในระบบ` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updated = await prisma.novelGlossary.update({
+      where: { id: glossaryId },
+      data: {
+        canonicalEn: en,
+        canonicalTh: th,
+        category: category || existing.category,
+        isLocked,
+      },
+    });
+
+    // If Thai translation changed, optionally save old translation as alias and replace in chapters
+    let applyResult = null;
+    if (applyToChapters) {
+      const customReplacements: Array<{ from: string; to: string }> = [];
+      if (oldTh && oldTh !== th) {
+        customReplacements.push({ from: oldTh, to: th });
+        // Save oldTh as alias
+        try {
+          await prisma.novelGlossaryAlias.upsert({
+            where: { glossaryId_aliasEn: { glossaryId, aliasEn: oldTh } },
+            create: { glossaryId, aliasEn: oldTh },
+            update: {},
+          });
+        } catch {}
+      }
+
+      applyResult = await applyGlossaryToNovelChapters({
+        novelId,
+        customReplacements,
+      });
+    }
+
+    await recordAuditLog({
+      userId: session.id,
+      action: 'GLOSSARY_EDIT',
+      entity: 'NOVEL',
+      entityId: novelId,
+      details: `แก้ไขคำศัพท์: "${oldEn}" (${oldTh}) -> "${en}" (${th})${
+        applyResult ? ` และแทนที่ในเนื้อหา ${applyResult.updatedChapters} ตอน (${applyResult.totalReplacements} จุด)` : ''
+      }`,
+      request,
+    });
+
+    return NextResponse.json({
+      success: true,
+      glossary: { ...updated, termEn: updated.canonicalEn, termTh: updated.canonicalTh },
+      applied: applyResult,
+    });
+  } catch (err: any) {
+    console.error('Update glossary error:', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'เกิดข้อผิดพลาดในการแก้ไขคำศัพท์' },
       { status: 500 }
     );
   }

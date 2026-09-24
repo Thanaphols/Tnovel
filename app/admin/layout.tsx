@@ -36,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [authLoading, setAuthLoading] = useState(true);
   const [isScrapeOpen, setIsScrapeOpen] = useState(false);
   const [pendingReportsCount, setPendingReportsCount] = useState(0);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false); // mobile drawer
 
   useEffect(() => {
@@ -59,6 +60,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
       })
       .catch(() => {});
+
+    function fetchInvites() {
+      fetch('/api/admin/invite-requests')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && typeof data.pendingCount === 'number') {
+            setPendingInvitesCount(data.pendingCount);
+          }
+        })
+        .catch(() => {});
+    }
+
+    fetchInvites();
+
+    const socketInstance = (window as any)._appSocket;
+    if (socketInstance) {
+      socketInstance.on('admin:invite_request', fetchInvites);
+      return () => {
+        socketInstance.off('admin:invite_request', fetchInvites);
+      };
+    }
   }, [router]);
 
   // Close the mobile drawer whenever the route changes.
@@ -83,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/reports', label: t('adminNavReports'), icon: AlertCircle, badge: pendingReportsCount || null },
     { href: '/admin/novels', label: t('adminNavNovels'), icon: BookOpen },
     { href: '/admin/users', label: t('adminNavUsers'), icon: Users },
-    { href: '/admin/whitelist', label: t('adminNavWhitelist'), icon: MailCheck },
+    { href: '/admin/whitelist', label: t('adminNavWhitelist'), icon: MailCheck, badge: pendingInvitesCount || null },
     { href: '/admin/fandoms', label: t('adminNavFandoms'), icon: Library },
     { href: '/admin/model-test', label: t('adminNavModelTest'), icon: FlaskConical },
     { href: '/admin/bin', label: t('adminNavBin'), icon: Trash2 },

@@ -78,6 +78,11 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
     const body = await request.json().catch(() => ({}));
     const engine: 'google' | 'polish' = body?.engine === 'polish' ? 'polish' : 'google';
     const providerOverride: string | undefined = isAIProvider(body?.provider) ? body.provider : undefined;
+    const isBatch = Boolean(body?.isBatch);
+    const batchIndex = typeof body?.batchIndex === 'number' ? body.batchIndex : 1;
+    const batchTotal = typeof body?.batchTotal === 'number' ? body.batchTotal : 1;
+    const isLastChapter = isBatch && batchIndex >= batchTotal;
+    const io = (global as any).io;
 
     const chapter = await prisma.chapter.findFirst({
       where: { id, deletedAt: null },
@@ -100,18 +105,21 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
         );
       }
 
-      const io = (global as any).io;
       if (io) {
         io.emit('translation:progress', {
-          status: 'translating',
-          jobType: 'single_chapter',
+          status: 'batch_progress',
+          jobType: isBatch ? 'batch' : 'single_chapter',
           initiatorUserId: session.id,
           novelId: chapter.novelId,
           chapterId: chapter.id,
           novelTitle: chapter.novel?.titleTh || chapter.novel?.titleEn,
           chapterTitle: `📥 ดึงเนื้อหา: ${chapter.titleTh || chapter.titleEn || `ตอนที่ ${chapter.chapterNumber}`}`,
-          percent: 5,
+          currentChapter: isBatch ? batchIndex : 1,
+          totalChapters: isBatch ? batchTotal : 1,
+          percent: isBatch ? Math.round(((batchIndex - 1) / batchTotal) * 100) : 5,
           message: `กำลังดึงเนื้อหาจากเว็บต้นทาง...`,
+          isPaused: false,
+          updatedAt: new Date().toISOString(),
         });
       }
 
@@ -155,6 +163,42 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
         message: 'นิยายเรื่องนี้เป็นภาษาไทยต้นฉบับอยู่แล้ว ไม่จำเป็นต้องแปลใหม่',
         titleTh: chapter.titleTh,
         contentTh: parseArray(chapter.contentTh),
+      });
+    }
+
+    const novelName = chapter.novel?.titleTh || chapter.novel?.titleEn || 'นิยาย';
+    const chapterDisplayName = chapter.titleTh || chapter.titleEn || `ตอนที่ ${chapter.chapterNumber}`;
+
+    if (isBatch && io) {
+      const startPct = Math.round(((batchIndex - 1) / batchTotal) * 100);
+      (global as any).activeTranslationJob = {
+        isActive: true,
+        initiatorUserId: session.id,
+        novelId: chapter.novelId,
+        novelTitle: novelName,
+        chapterTitle: `ตอนที่ ${chapter.chapterNumber}: ${chapterDisplayName}`,
+        currentChapter: batchIndex,
+        totalChapters: batchTotal,
+        percent: startPct,
+        isPaused: false,
+        updatedAt: new Date().toISOString(),
+      };
+      io.emit('translation:progress', {
+        status: 'batch_progress',
+        jobType: 'batch',
+        initiatorUserId: session.id,
+        novelId: chapter.novelId,
+        chapterId: chapter.id,
+        novelTitle: novelName,
+        chapterTitle: engine === 'polish'
+          ? `✨ เกลาสำนวน ตอนที่ ${batchIndex}/${batchTotal}: ${chapterDisplayName}`
+          : `กำลังแปลด่วน (Google) ตอนที่ ${batchIndex}/${batchTotal}: ${chapterDisplayName}`,
+        currentChapter: batchIndex,
+        totalChapters: batchTotal,
+        chapterCount: Math.max(0, batchIndex - 1),
+        percent: startPct,
+        isPaused: false,
+        updatedAt: new Date().toISOString(),
       });
     }
 
@@ -202,10 +246,6 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
         }, 15000);
       }
 
-      const io = (global as any).io;
-      const novelName = chapter.novel?.titleTh || chapter.novel?.titleEn || 'นิยาย';
-      const chapterDisplayName = chapter.titleTh || chapter.titleEn || `ตอนที่ ${chapter.chapterNumber}`;
-
       // Step 2: Glossary snapshot was frozen with the draft above (only terms in this chapter)
       const polishContext = {
         novelTitle: novelName,
@@ -214,19 +254,40 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
       };
 
       const estTotalBatches = Math.ceil(draft.length / 10);
+      const initialBatchPct = isBatch
+        ? Math.round(((batchIndex - 1) / batchTotal) * 100)
+        : 5;
+
+      if (isBatch) {
+        (global as any).activeTranslationJob = {
+          isActive: true,
+          initiatorUserId: session.id,
+          novelId: chapter.novelId,
+          novelTitle: novelName,
+          chapterTitle: `ตอนที่ ${chapter.chapterNumber}: ${chapterDisplayName}`,
+          currentChapter: batchIndex,
+          totalChapters: batchTotal,
+          percent: initialBatchPct,
+          isPaused: false,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
       if (io) {
         io.emit('translation:progress', {
           status: 'batch_progress',
-          jobType: 'single_chapter',
+          jobType: isBatch ? 'batch' : 'single_chapter',
           initiatorUserId: session.id,
           novelId: chapter.novelId,
           chapterId: chapter.id,
           novelTitle: novelName,
-          chapterTitle: `✨ เกลาสำนวน: ${chapterDisplayName}`,
-          currentChapter: 1,
-          totalChapters: estTotalBatches,
-          chapterCount: 0,
-          percent: 5,
+          chapterTitle: isBatch
+            ? `✨ เกลาสำนวน ตอนที่ ${batchIndex}/${batchTotal}: ${chapterDisplayName}`
+            : `✨ เกลาสำนวน: ${chapterDisplayName}`,
+          currentChapter: isBatch ? batchIndex : 1,
+          totalChapters: isBatch ? batchTotal : estTotalBatches,
+          chapterCount: isBatch ? Math.max(0, batchIndex - 1) : 0,
+          percent: initialBatchPct,
           isPaused: false,
           updatedAt: new Date().toISOString(),
         });
@@ -245,18 +306,41 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
         context: polishContext,
         onProgress: (currentBatch, totalBatches) => {
           if (io) {
-            const pct = Math.min(95, Math.round((currentBatch / totalBatches) * 100));
+            let pct: number;
+            let currentCh: number;
+            let totalCh: number;
+            let jobT: 'batch' | 'single_chapter';
+            let titleText: string;
+
+            if (isBatch) {
+              jobT = 'batch';
+              currentCh = batchIndex;
+              totalCh = batchTotal;
+              const chapterFraction = currentBatch / totalBatches;
+              pct = Math.min(99, Math.round((((batchIndex - 1) + chapterFraction) / batchTotal) * 100));
+              titleText = `✨ เกลาสำนวน ตอนที่ ${batchIndex}/${batchTotal}: ${chapterDisplayName} (${currentBatch}/${totalBatches})`;
+              if ((global as any).activeTranslationJob) {
+                (global as any).activeTranslationJob.percent = pct;
+              }
+            } else {
+              jobT = 'single_chapter';
+              currentCh = currentBatch;
+              totalCh = totalBatches;
+              pct = Math.min(95, Math.round((currentBatch / totalBatches) * 100));
+              titleText = `✨ เกลาสำนวน: ${chapterDisplayName}`;
+            }
+
             io.emit('translation:progress', {
               status: 'batch_progress',
-              jobType: 'single_chapter',
+              jobType: jobT,
               initiatorUserId: session.id,
               novelId: chapter.novelId,
               chapterId: chapter.id,
               novelTitle: novelName,
-              chapterTitle: `✨ เกลาสำนวน: ${chapterDisplayName}`,
-              currentChapter: currentBatch,
-              totalChapters: totalBatches,
-              chapterCount: currentBatch,
+              chapterTitle: titleText,
+              currentChapter: currentCh,
+              totalChapters: totalCh,
+              chapterCount: isBatch ? Math.max(0, batchIndex - 1) : currentBatch,
               percent: pct,
               isPaused: false,
               updatedAt: new Date().toISOString(),
@@ -268,7 +352,7 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
       // Step 3: All-or-Nothing & Last-Known-Good Invariant:
       // If ANY batch failed, do NOT commit partial work or destroy existing polished content
       if (polishResult.failedBatches > 0) {
-        if (io) {
+        if (!isBatch && io) {
           io.emit('translation:progress', {
             status: 'batch_cancelled',
             jobType: 'single_chapter',
@@ -296,17 +380,56 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
       polishedAt = new Date();
 
       if (io) {
-        io.emit('translation:progress', {
-          status: 'batch_completed',
-          jobType: 'single_chapter',
-          initiatorUserId: session.id,
-          novelId: chapter.novelId,
-          chapterId: chapter.id,
-          novelTitle: novelName,
-          chapterTitle: chapterDisplayName,
-          percent: 100,
-          message: `✨ เกลาสำนวน "${chapterDisplayName}" เรียบร้อยแล้ว!`,
-        });
+        if (isBatch) {
+          const completedPct = Math.round((batchIndex / batchTotal) * 100);
+          if (isLastChapter) {
+            (global as any).activeTranslationJob = null;
+            io.emit('translation:progress', {
+              status: 'batch_completed',
+              jobType: 'batch',
+              initiatorUserId: session.id,
+              novelId: chapter.novelId,
+              chapterId: chapter.id,
+              novelTitle: novelName,
+              chapterTitle: chapterDisplayName,
+              totalChapters: batchTotal,
+              percent: 100,
+              message: `✨ แปลและเกลาสำนวนสำเร็จครบทั้ง ${batchTotal} ตอนแล้ว!`,
+            });
+          } else {
+            if ((global as any).activeTranslationJob) {
+              (global as any).activeTranslationJob.currentChapter = batchIndex;
+              (global as any).activeTranslationJob.percent = completedPct;
+            }
+            io.emit('translation:progress', {
+              status: 'batch_progress',
+              jobType: 'batch',
+              initiatorUserId: session.id,
+              novelId: chapter.novelId,
+              chapterId: chapter.id,
+              novelTitle: novelName,
+              chapterTitle: `✨ เกลาสำนวนสำเร็จ: ${chapterDisplayName}`,
+              currentChapter: batchIndex,
+              totalChapters: batchTotal,
+              chapterCount: batchIndex,
+              percent: completedPct,
+              isPaused: false,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        } else {
+          io.emit('translation:progress', {
+            status: 'batch_completed',
+            jobType: 'single_chapter',
+            initiatorUserId: session.id,
+            novelId: chapter.novelId,
+            chapterId: chapter.id,
+            novelTitle: novelName,
+            chapterTitle: chapterDisplayName,
+            percent: 100,
+            message: `✨ เกลาสำนวน "${chapterDisplayName}" เรียบร้อยแล้ว!`,
+          });
+        }
       }
     }
 
@@ -335,7 +458,6 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
       },
     });
 
-    const io = (global as any).io;
     if (io) {
       // Broadcast content-state change (not user-scoped): any viewer of this novel updates.
       io.emit('chapter:updated', {
@@ -344,6 +466,45 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
         titleTh,
         status: engine === 'polish' ? 'POLISHED' : 'TRANSLATED_GT',
       });
+
+      if (isBatch && engine === 'google') {
+        const completedPct = Math.round((batchIndex / batchTotal) * 100);
+        if (isLastChapter) {
+          (global as any).activeTranslationJob = null;
+          io.emit('translation:progress', {
+            status: 'batch_completed',
+            jobType: 'batch',
+            initiatorUserId: session.id,
+            novelId: chapter.novelId,
+            chapterId: chapter.id,
+            novelTitle: novelName,
+            chapterTitle: chapterDisplayName,
+            totalChapters: batchTotal,
+            percent: 100,
+            message: `แปลภาษาสำเร็จครบทั้ง ${batchTotal} ตอนแล้ว!`,
+          });
+        } else {
+          if ((global as any).activeTranslationJob) {
+            (global as any).activeTranslationJob.currentChapter = batchIndex;
+            (global as any).activeTranslationJob.percent = completedPct;
+          }
+          io.emit('translation:progress', {
+            status: 'batch_progress',
+            jobType: 'batch',
+            initiatorUserId: session.id,
+            novelId: chapter.novelId,
+            chapterId: chapter.id,
+            novelTitle: novelName,
+            chapterTitle: `แปลด่วน (Google) สำเร็จ: ${chapterDisplayName}`,
+            currentChapter: batchIndex,
+            totalChapters: batchTotal,
+            chapterCount: batchIndex,
+            percent: completedPct,
+            isPaused: false,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
     }
 
     await recordAuditLog({

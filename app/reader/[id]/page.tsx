@@ -1,20 +1,30 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import ReaderView from '@/components/ReaderView';
 import { getChapterOffline } from '@/lib/db';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 
-export default function ChapterReaderPage() {
+function ChapterReaderInner() {
   const { t } = useLanguage();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
+  const pParam = searchParams?.get('p');
+  const urlProgress = pParam ? parseInt(pParam, 10) : undefined;
 
   const [chapter, setChapter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Set manual scroll restoration as early as possible
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -31,8 +41,14 @@ export default function ChapterReaderPage() {
       const data = await res.json();
 
       if (data.success && data.chapter) {
+        const finalPercent =
+          typeof urlProgress === 'number' && !isNaN(urlProgress) && urlProgress > 0
+            ? urlProgress
+            : data.chapter.savedScrollPercent;
+
         setChapter({
           ...data.chapter,
+          savedScrollPercent: finalPercent,
           allChapters: Array.isArray(data.chapter.allChapters) ? data.chapter.allChapters : [],
           contentEn: Array.isArray(data.chapter.contentEn) ? data.chapter.contentEn : [],
           contentTh: Array.isArray(data.chapter.contentTh) ? data.chapter.contentTh : [],
@@ -57,6 +73,7 @@ export default function ChapterReaderPage() {
           novelTitle: cached.novelTitle || t('offline'),
           authorName: 'Unknown',
           allChapters: [],
+          savedScrollPercent: urlProgress,
         });
       } else {
         setError(err.message || t('chapterNotFound'));
@@ -95,3 +112,18 @@ export default function ChapterReaderPage() {
 
   return <ReaderView chapter={chapter} />;
 }
+
+export default function ChapterReaderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[80vh] flex flex-col items-center justify-center space-y-3">
+          <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
+        </div>
+      }
+    >
+      <ChapterReaderInner />
+    </Suspense>
+  );
+}
+

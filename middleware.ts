@@ -27,6 +27,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/register' ||
     pathname === '/api/auth/logout' ||
+    pathname === '/api/auth/invite-request' ||
     pathname.startsWith('/api/auth/google');
 
   // 2. If already logged in and visiting /login or /register -> redirect to home

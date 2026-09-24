@@ -108,10 +108,10 @@ export async function GET(request: Request) {
 
     if (!isPrimaryAdmin && !isExistingAdmin && !whitelisted) {
       const loginUrl = new URL('/login', baseUrl);
-      loginUrl.searchParams.set(
-        'error',
-        'คุณไม่มีสิทธ์ใช้งานระบบได้ กรุณาติดต่อผู้ดูแลระบบในการขอสิทธ์เข้าใช้งาน'
-      );
+      loginUrl.searchParams.set('error', 'UNAUTHORIZED_GOOGLE');
+      loginUrl.searchParams.set('email', email);
+      if (name) loginUrl.searchParams.set('name', name);
+      if (avatar) loginUrl.searchParams.set('avatar', avatar);
       if (savedCallbackUrl !== '/') loginUrl.searchParams.set('callbackUrl', savedCallbackUrl);
       return NextResponse.redirect(loginUrl);
     }

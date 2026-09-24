@@ -1,7 +1,14 @@
 import { prisma } from './prisma';
 import { EntityType, ValidationStatus } from './enums';
 import { translateParagraphsGoogle } from './googleTranslate';
-import { escapeRegex, protectTerms } from './nameReplacer';
+import {
+  escapeRegex,
+  protectTerms,
+  replaceTermsInParagraphs,
+  replaceTermsInString,
+  type GlossaryReplaceItem,
+} from './nameReplacer';
+import { preTranslateNormalize } from './preTranslate';
 
 const COMMON_PRONOUNS_AND_STOPWORDS = new Set([
   'he', 'she', 'they', 'it', 'we', 'you', 'i', 'him', 'her', 'them', 'his', 'hers',
@@ -161,6 +168,44 @@ export function toPromptGlossary(terms: GlossaryTerm[]) {
 const PROMPT_TERM_CAP = 30;
 
 /**
+ * Post-MT Validation Step: checks alignment, placeholder zero-leakage, and anti-bot responses.
+ */
+export function validatePostMtDraft(
+  inputParagraphs: string[],
+  translatedDraft: string[]
+): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (translatedDraft.length !== inputParagraphs.length) {
+    errors.push(
+      `Paragraph count mismatch: input has ${inputParagraphs.length}, draft has ${translatedDraft.length}`
+    );
+  }
+
+  for (let i = 0; i < translatedDraft.length; i++) {
+    const text = translatedDraft[i];
+    const input = inputParagraphs[i];
+
+    // Check placeholder token leak (e.g. ZXQ0, ZXQ1)
+    if (/\bZXQ\d+\b/i.test(text)) {
+      errors.push(`Token leak detected in paragraph ${i}: placeholder remained unmasked`);
+    }
+
+    // Check anti-bot response
+    if (/(?:automated queries|unusual traffic|captcha)/i.test(text)) {
+      errors.push(`Bot block indicator detected in paragraph ${i}`);
+    }
+
+    // Check non-empty: if input had characters, output should not be empty
+    if (input && input.trim().length > 0 && (!text || text.trim().length === 0)) {
+      errors.push(`Empty translation for non-empty paragraph ${i}`);
+    }
+  }
+
+  return { isValid: errors.length === 0, errors };
+}
+
+/**
  * Google-translates paragraphs with every relevant glossary term locked to its Thai form, and
  * returns the (capped) relevant glossary for the polish prompt. Only the copy sent to Google is
  * substituted; callers keep storing the original English.
@@ -171,8 +216,31 @@ export async function translateWithGlossary(
   onChunkProgress?: (done: number, total: number) => void
 ): Promise<{ draft: string[]; glossary: GlossaryTerm[] }> {
   const relevant = source ? await getRelevantGlossary(source, paragraphs, Infinity) : [];
-  const { protectedText, restore } = protectTerms(paragraphs, relevant);
-  const draft = restore(await translateParagraphsGoogle(protectedText, onChunkProgress));
+
+  // Stage 2: Semantic Pre-translation normalization (Context Classification & Safety Gate)
+  const { normalized, summary } = preTranslateNormalize(paragraphs, relevant);
+  if (summary.normalizedCount > 0) {
+    console.log(
+      `[PreTranslate] Applied ${summary.normalizedCount} normalization(s) (${summary.normalizerVersion}):`,
+      summary.decisions.map(
+        (d) => `${d.ruleId}: "${d.originalText.slice(0, 40)}..." -> "${(d.transformedText || '').slice(0, 40)}..."`
+      )
+    );
+  }
+
+  // Stage 3: Glossary Protection (ZXQ tokens)
+  const { protectedText, restore } = protectTerms(normalized, relevant);
+
+  // Stage 4: Google Translate
+  const rawDraft = await translateParagraphsGoogle(protectedText, onChunkProgress);
+  const draft = restore(rawDraft);
+
+  // Stage 4.5: Post-MT Validation Step
+  const validation = validatePostMtDraft(paragraphs, draft);
+  if (!validation.isValid) {
+    console.warn(`[PreTranslate] Post-MT Validation warnings (${validation.errors.length}):`, validation.errors);
+  }
+
   return { draft, glossary: relevant.slice(0, PROMPT_TERM_CAP) };
 }
 
@@ -341,6 +409,187 @@ export async function autoDiscoverAndSaveGlossary(
     console.warn('[GlossaryAutoDiscover] Failed to discover entities:', err.message || err);
     return 0;
   }
+}
+
+export interface ApplyGlossaryOptions {
+  novelId: string;
+  chapterIds?: string[];
+  rangeStart?: number;
+  rangeEnd?: number;
+  customReplacements?: Array<{ from: string; to: string }>;
+  onProgress?: (processed: number, total: number, replacedCount: number) => void;
+}
+
+export interface ApplyGlossaryResult {
+  totalChapters: number;
+  updatedChapters: number;
+  totalReplacements: number;
+  details: Array<{ chapterNumber: number; titleTh: string; replacements: number }>;
+}
+
+/**
+ * Scan and replace glossary terms across translated chapters of a novel without re-translating.
+ * Updates titleTh, contentTh, contentThGoogle, and contentThPolished in place.
+ */
+export async function applyGlossaryToNovelChapters(
+  opts: ApplyGlossaryOptions
+): Promise<ApplyGlossaryResult> {
+  const { novelId, chapterIds, rangeStart, rangeEnd, customReplacements, onProgress } = opts;
+
+  // 1. Load all glossary terms (novel + fandom)
+  const allTerms = await loadGlossary(novelId);
+  const replaceTerms: GlossaryReplaceItem[] = allTerms.map((t) => ({
+    canonicalEn: t.canonicalEn,
+    canonicalTh: t.canonicalTh,
+    entityType: t.entityType,
+    isLocked: t.isLocked,
+  }));
+
+  // Build list of aliases as additional custom replacements
+  const effectiveCustomReplacements: Array<{ from: string; to: string }> = [
+    ...(customReplacements || []),
+  ];
+
+  for (const t of allTerms) {
+    if (t.aliases && t.aliases.length > 0) {
+      for (const a of t.aliases) {
+        if (a && a.trim() && a.trim() !== t.canonicalTh.trim()) {
+          effectiveCustomReplacements.push({ from: a.trim(), to: t.canonicalTh.trim() });
+        }
+      }
+    }
+  }
+
+  // 2. Fetch target chapters
+  const whereClause: any = {
+    novelId,
+    deletedAt: null,
+    contentTh: { not: null },
+  };
+
+  if (chapterIds && chapterIds.length > 0) {
+    whereClause.id = { in: chapterIds };
+  } else if (rangeStart !== undefined && rangeEnd !== undefined) {
+    whereClause.chapterNumber = { gte: rangeStart, lte: rangeEnd };
+  }
+
+  const chapters = await prisma.chapter.findMany({
+    where: whereClause,
+    orderBy: { chapterNumber: 'asc' },
+    select: {
+      id: true,
+      chapterNumber: true,
+      titleTh: true,
+      contentTh: true,
+      contentThGoogle: true,
+      contentThPolished: true,
+      status: true,
+    },
+  });
+
+  const details: Array<{ chapterNumber: number; titleTh: string; replacements: number }> = [];
+  let updatedChapters = 0;
+  let totalReplacements = 0;
+
+  for (let i = 0; i < chapters.length; i++) {
+    const chap = chapters[i];
+    let chapReplacements = 0;
+
+    // A. Replace in titleTh
+    let newTitleTh = chap.titleTh;
+    if (chap.titleTh) {
+      const res = replaceTermsInString(chap.titleTh, replaceTerms, effectiveCustomReplacements);
+      newTitleTh = res.text;
+      chapReplacements += res.count;
+    }
+
+    // B. Replace in contentTh
+    let newContentThJson = chap.contentTh;
+    if (chap.contentTh) {
+      try {
+        const paras: string[] = JSON.parse(chap.contentTh);
+        if (Array.isArray(paras) && paras.length > 0) {
+          const res = replaceTermsInParagraphs(paras, replaceTerms, effectiveCustomReplacements);
+          if (res.count > 0) {
+            newContentThJson = JSON.stringify(res.paragraphs);
+            chapReplacements += res.count;
+          }
+        }
+      } catch {}
+    }
+
+    // C. Replace in contentThGoogle
+    let newContentThGoogleJson = chap.contentThGoogle;
+    if (chap.contentThGoogle) {
+      try {
+        const paras: string[] = JSON.parse(chap.contentThGoogle);
+        if (Array.isArray(paras) && paras.length > 0) {
+          const res = replaceTermsInParagraphs(paras, replaceTerms, effectiveCustomReplacements);
+          if (res.count > 0) {
+            newContentThGoogleJson = JSON.stringify(res.paragraphs);
+            chapReplacements += res.count;
+          }
+        }
+      } catch {}
+    }
+
+    // D. Replace in contentThPolished
+    let newContentThPolishedJson = chap.contentThPolished;
+    if (chap.contentThPolished) {
+      try {
+        const paras: string[] = JSON.parse(chap.contentThPolished);
+        if (Array.isArray(paras) && paras.length > 0) {
+          const res = replaceTermsInParagraphs(paras, replaceTerms, effectiveCustomReplacements);
+          if (res.count > 0) {
+            newContentThPolishedJson = JSON.stringify(res.paragraphs);
+            chapReplacements += res.count;
+          }
+        }
+      } catch {}
+    }
+
+    if (chapReplacements > 0) {
+      await prisma.chapter.update({
+        where: { id: chap.id },
+        data: {
+          titleTh: newTitleTh,
+          contentTh: newContentThJson,
+          contentThGoogle: newContentThGoogleJson,
+          contentThPolished: newContentThPolishedJson,
+        },
+      });
+
+      updatedChapters++;
+      totalReplacements += chapReplacements;
+
+      const io = (global as any).io;
+      if (io) {
+        io.emit('chapter:updated', {
+          chapterId: chap.id,
+          novelId,
+          titleTh: newTitleTh,
+          status: chap.status,
+        });
+      }
+    }
+
+    details.push({
+      chapterNumber: chap.chapterNumber,
+      titleTh: newTitleTh,
+      replacements: chapReplacements,
+    });
+
+    if (onProgress) {
+      onProgress(i + 1, chapters.length, totalReplacements);
+    }
+  }
+
+  return {
+    totalChapters: chapters.length,
+    updatedChapters,
+    totalReplacements,
+    details,
+  };
 }
 
 

@@ -51,6 +51,29 @@ interface LoadedChapter {
   errorMessage?: string;
 }
 
+function getSavedProgress(chapId: string, serverPercent?: number): number {
+  if (typeof serverPercent === 'number' && serverPercent > 0) return serverPercent;
+  if (typeof window === 'undefined') return 0;
+  try {
+    const local = localStorage.getItem(`tnovel_progress_${chapId}`);
+    if (local) {
+      const p = parseInt(local, 10);
+      if (!isNaN(p) && p > 0) return p;
+    }
+  } catch {}
+  try {
+    const guest = localStorage.getItem('tnovel_guest_history');
+    if (guest) {
+      const list = JSON.parse(guest);
+      const item = list.find((h: any) => h.lastChapterId === chapId);
+      if (item?.scrollPercent && item.scrollPercent > 0) {
+        return item.scrollPercent;
+      }
+    }
+  } catch {}
+  return 0;
+}
+
 export default function ReaderView({ chapter }: ReaderViewProps) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -83,6 +106,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
   const [isRetranslating, setIsRetranslating] = useState(false);
   const [retranslateToast, setRetranslateToast] = useState<{ ok: boolean; message: string } | null>(null);
   const [isCurrentChapterBookmarked, setIsCurrentChapterBookmarked] = useState(false);
+  const [resumeToast, setResumeToast] = useState<number | null>(null);
 
   // Smart back navigation: return to referrer (e.g. index '/' vs novel overview '/novels/[id]')
   const [backUrl, setBackUrl] = useState<string>(() => {
@@ -728,20 +752,198 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
     });
   }, [chapter]);
 
+  const hasRestoredScrollRef = useRef(false);
+  const lastRestoredChapterIdRef = useRef<string | null>(null);
+  const isUserScrollingRef = useRef(false);
+
+  // Set browser scroll restoration to manual so browser/Next.js doesn't reset scroll to top
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+      const prev = history.scrollRestoration;
+      history.scrollRestoration = 'manual';
+      return () => {
+        history.scrollRestoration = prev;
+      };
+    }
+  }, []);
+
+  // Track real user interaction (wheel, touch, key, pointer) to avoid synthetic scroll to 0
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      isUserScrollingRef.current = true;
+    };
+
+    window.addEventListener('wheel', handleUserInteraction, { passive: true });
+    window.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    window.addEventListener('touchmove', handleUserInteraction, { passive: true });
+    window.addEventListener('pointerdown', handleUserInteraction, { passive: true });
+    window.addEventListener('keydown', handleUserInteraction, { passive: true });
+
+    return () => {
+      window.removeEventListener('wheel', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('touchmove', handleUserInteraction);
+      window.removeEventListener('pointerdown', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, []);
+
+  // Helper to persist progress instantly (Local, Server, Guest)
+  const saveProgress = useCallback((targetChapter: LoadedChapter, pct: number) => {
+    if (!targetChapter?.id) return;
+
+    // Safety guard: never overwrite with 0% unless user actively scrolled to 0
+    if (pct === 0 && !isUserScrollingRef.current) return;
+
+    try {
+      localStorage.setItem(`tnovel_progress_${targetChapter.id}`, pct.toString());
+    } catch {}
+
+    fetch(`/api/chapters/${targetChapter.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scrollPercent: pct }),
+      keepalive: true,
+    }).catch(() => {});
+
+    if (!user) {
+      recordGuestReadingHistory({
+        novelId: targetChapter.novelId,
+        novelTitle: targetChapter.novelTitle,
+        authorName: targetChapter.authorName,
+        chapterId: targetChapter.id,
+        chapterNumber: targetChapter.chapterNumber,
+        chapterTitle: targetChapter.titleTh || targetChapter.titleEn,
+        scrollPercent: pct,
+      });
+    }
+  }, [user]);
+
+  // Restore saved scroll position on initial chapter mount or navigation
+  useEffect(() => {
+    if (lastRestoredChapterIdRef.current !== chapter.id) {
+      lastRestoredChapterIdRef.current = chapter.id;
+      hasRestoredScrollRef.current = false;
+      isUserScrollingRef.current = false;
+    }
+
+    if (hasRestoredScrollRef.current) return;
+
+    const targetPercent = getSavedProgress(chapter.id, chapter.savedScrollPercent);
+    if (!targetPercent || targetPercent <= 0) {
+      hasRestoredScrollRef.current = true;
+      return;
+    }
+
+    // Immediately reflect the saved progress in the top progress bar and show toast
+    setScrollProgress(targetPercent);
+    setResumeToast(targetPercent);
+    const toastTimer = setTimeout(() => {
+      setResumeToast(null);
+    }, 2800);
+
+    let elapsed = 0;
+    const interval = 60;
+    const maxDuration = 1800; // Keep enforcing for 1.8s against Next.js router/browser scroll-to-0
+
+    const timer = setInterval(() => {
+      elapsed += interval;
+
+      // Yield immediately if user is actively interacting
+      if (isUserScrollingRef.current) {
+        clearInterval(timer);
+        hasRestoredScrollRef.current = true;
+        return;
+      }
+
+      const section = document.querySelector(`section[data-chapter-id="${chapter.id}"]`) as HTMLElement | null;
+      if (!section) return;
+
+      const paras = section.querySelectorAll('[data-para-idx]');
+      const totalParas = paras.length;
+      let targetY = 0;
+
+      if (totalParas > 0) {
+        const targetIdx = Math.min(
+          totalParas - 1,
+          Math.max(0, Math.floor((targetPercent / 100) * (totalParas - 1)))
+        );
+        const targetEl = paras[targetIdx] as HTMLElement;
+        if (targetEl) {
+          const rect = targetEl.getBoundingClientRect();
+          const currentScroll = window.scrollY || document.documentElement.scrollTop;
+          targetY = Math.max(0, Math.round(rect.top + currentScroll - 110));
+        }
+      }
+
+      if (targetY === 0) {
+        const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (totalHeight > 300) {
+          const sectionTop = section.offsetTop;
+          const sectionScrollable = Math.max(0, section.offsetHeight - window.innerHeight);
+          targetY = sectionScrollable > 0
+            ? Math.round(sectionTop + (targetPercent / 100) * sectionScrollable)
+            : Math.round((targetPercent / 100) * totalHeight);
+        }
+      }
+
+      if (targetY > 0) {
+        const currentY = window.scrollY || document.documentElement.scrollTop;
+        // If current scroll was yanked back near top or drifting, snap it to target
+        if (currentY < 60 || Math.abs(currentY - targetY) > 80) {
+          window.scrollTo({ top: targetY, behavior: 'instant' });
+          document.documentElement.scrollTop = targetY;
+          document.body.scrollTop = targetY;
+        }
+      }
+
+      if (elapsed >= maxDuration) {
+        clearInterval(timer);
+        hasRestoredScrollRef.current = true;
+      }
+    }, interval);
+
+    return () => {
+      clearInterval(timer);
+      clearTimeout(toastTimer);
+    };
+  }, [chapter.id, chapter.savedScrollPercent]);
+
+  // Flush progress when closing or hiding tab
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (activeChapterId && scrollProgress > 0) {
+        saveProgress(activeChapter, scrollProgress);
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && activeChapterId && scrollProgress > 0) {
+        saveProgress(activeChapter, scrollProgress);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeChapterId, scrollProgress, activeChapter, saveProgress]);
+
   // Scroll listener for reading progress bar (%), active chapter detection & auto-load trigger
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
     function handleScroll() {
+      // Ignore synthetic reset scroll events until restoration finishes or user scrolls
+      if (!hasRestoredScrollRef.current && !isUserScrollingRef.current) return;
+
       // 1. Calculate reading progress
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (totalHeight <= 0) return;
-      const currentScroll = window.scrollY;
-      const percent = Math.min(100, Math.round((currentScroll / totalHeight) * 100));
-      setScrollProgress(percent);
+      const currentScroll = window.scrollY || document.documentElement.scrollTop;
 
       // 2. Preload next chapter when user is near the bottom
-      const scrollBottom = document.documentElement.scrollHeight - window.innerHeight - currentScroll;
+      const scrollBottom = totalHeight - currentScroll;
       if (scrollBottom < 500) {
         loadNextChapter();
       }
@@ -763,31 +965,46 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         window.history.replaceState(null, '', `/reader/${currentId}`);
       }
 
-      // 4. Debounce saving progress to server for active chapter
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (currentId) {
-          fetch(`/api/chapters/${currentId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scrollPercent: percent }),
-          }).catch(() => {});
-
-          // Guest history is a device-global cache; only record it when NOT logged in, else a
-          // logged-in user's reading leaks to the next account on a shared device.
-          if (!user) {
-            recordGuestReadingHistory({
-              novelId: activeChapter.novelId,
-              novelTitle: activeChapter.novelTitle,
-              authorName: activeChapter.authorName,
-              chapterId: activeChapter.id,
-              chapterNumber: activeChapter.chapterNumber,
-              chapterTitle: activeChapter.titleTh || activeChapter.titleEn,
-              scrollPercent: percent,
-            });
+      // 4. Calculate progress specifically for active chapter section based on paragraphs or scroll
+      const activeSection = document.querySelector(`section[data-chapter-id="${currentId}"]`) as HTMLElement | null;
+      let percent = 0;
+      if (activeSection) {
+        const paras = activeSection.querySelectorAll('[data-para-idx]');
+        if (paras.length > 1) {
+          let currentParaIdx = 0;
+          paras.forEach((p, idx) => {
+            const r = p.getBoundingClientRect();
+            if (r.top <= window.innerHeight * 0.4) {
+              currentParaIdx = idx;
+            }
+          });
+          percent = Math.min(100, Math.max(0, Math.round((currentParaIdx / (paras.length - 1)) * 100)));
+        } else {
+          const sectionTop = activeSection.offsetTop;
+          const sectionScrollable = activeSection.offsetHeight - window.innerHeight;
+          if (sectionScrollable > 0) {
+            percent = Math.min(100, Math.max(0, Math.round(((currentScroll - sectionTop) / sectionScrollable) * 100)));
+          } else {
+            percent = 100;
           }
         }
-      }, 1000);
+      } else {
+        percent = Math.min(100, Math.round((currentScroll / totalHeight) * 100));
+      }
+      setScrollProgress(percent);
+
+      try {
+        localStorage.setItem(`tnovel_progress_${currentId}`, percent.toString());
+      } catch {}
+
+      // 5. Debounce saving progress to server and guest history (only when user is interacting)
+      if (isUserScrollingRef.current) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          const targetChapter = loadedChapters.find((c) => c.id === currentId) || activeChapter;
+          saveProgress(targetChapter, percent);
+        }, 800);
+      }
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -795,7 +1012,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(timeoutId);
     };
-  }, [activeChapterId, loadNextChapter, user]);
+  }, [activeChapterId, loadNextChapter, activeChapter, loadedChapters, saveProgress]);
 
   function handleUpdateSettings(newSettings: Partial<ReaderSettingsState>) {
     const updated = { ...settings, ...newSettings };
@@ -1046,6 +1263,16 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
         transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none',
       }} */
     >
+      {/* Quick Resume Toast Pill */}
+      {resumeToast !== null && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-fade-in">
+          <div className="px-4 py-2 rounded-full bg-amber-500 text-slate-950 text-xs font-bold shadow-2xl backdrop-blur-md flex items-center gap-2 border border-amber-300/40">
+            <Bookmark className="w-3.5 h-3.5 fill-current" />
+            <span>อ่านต่อจากตำแหน่งเดิม {resumeToast}%</span>
+          </div>
+        </div>
+      )}
+
       {/* Floating Swipe Hint Toast / Indicator (Commented out)
       {swipeHint && (
         <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border text-xs font-bold rounded-full shadow-2xl backdrop-blur-md transition-all animate-fade-in pointer-events-none flex items-center gap-2 ${activeTheme.swipeToast}`}>
@@ -1252,7 +1479,12 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
 
                     if (settings.displayMode === 'en') {
                       return (
-                        <p key={idx} className={`reader-paragraph indent-6 text-justify ${activeTheme.bodyText}`}>
+                        <p
+                          key={idx}
+                          data-para-idx={idx}
+                          id={`chap-${chap.id}-p-${idx}`}
+                          className={`reader-paragraph indent-6 text-justify ${activeTheme.bodyText}`}
+                        >
                           {paragraphEn}
                         </p>
                       );
@@ -1260,8 +1492,13 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
 
                     if (settings.displayMode === 'parallel') {
                       return (
-                        <div key={idx} className={`space-y-2 p-3 border rounded-2xl ${activeTheme.parallelBox}`}>
-                          <p className={`reader-paragraph indent-6 text-justify font-medium ${activeTheme.bodyText}`}>{paragraphTh}</p>
+                        <div
+                          key={idx}
+                          data-para-idx={idx}
+                          id={`chap-${chap.id}-p-${idx}`}
+                          className={`reader-paragraph space-y-2 p-3 border rounded-2xl ${activeTheme.parallelBox}`}
+                        >
+                          <p className={`indent-6 text-justify font-medium ${activeTheme.bodyText}`}>{paragraphTh}</p>
                           <p className={`text-xs opacity-75 italic border-t pt-2 ${activeTheme.parallelEn}`}>{paragraphEn}</p>
                         </div>
                       );
@@ -1269,7 +1506,12 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
 
                     // Default Thai
                     return (
-                      <p key={idx} className={`reader-paragraph indent-6 text-justify tracking-wide ${activeTheme.bodyText}`}>
+                      <p
+                        key={idx}
+                        data-para-idx={idx}
+                        id={`chap-${chap.id}-p-${idx}`}
+                        className={`reader-paragraph indent-6 text-justify tracking-wide ${activeTheme.bodyText}`}
+                      >
                         {paragraphTh}
                       </p>
                     );

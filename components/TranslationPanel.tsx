@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Languages,
   Sparkles,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
+import { useSocket } from '@/lib/socket';
 import { deobfuscateThaiText } from '@/lib/thaiUtils';
 
 interface ChapterMeta {
@@ -48,7 +49,7 @@ export default function TranslationPanel({
   const { isAdmin } = useAuth();
 
   // Engine selection
-  const [engine, setEngine] = useState<'google' | 'polish'>('polish');
+  const [engine, setEngine] = useState<'google' | 'polish' | 'glossary_replace'>('polish');
   // AI provider for polish; '' = use server global setting
   const [provider, setProvider] = useState<'' | 'ollama' | 'gemini' | 'openrouter'>('');
 
@@ -64,6 +65,23 @@ export default function TranslationPanel({
   const [currentProcessingTitle, setCurrentProcessingTitle] = useState('');
   const [errorLog, setErrorLog] = useState<string[]>([]);
   const isCancelledRef = useRef(false);
+
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+    function handleState(data: any) {
+      if (data.isCancelled) {
+        isCancelledRef.current = true;
+        setIsRunning(false);
+        setCurrentProcessingTitle('');
+      }
+    }
+    socket.on('translation:state', handleState);
+    return () => {
+      socket.off('translation:state', handleState);
+    };
+  }, [socket]);
 
   // Status breakdown
   const stats = useMemo(() => {
@@ -123,41 +141,76 @@ export default function TranslationPanel({
 
       const chap = targetChapters[i];
       const isTocOnly = chap.status === 'TOC_ONLY';
-      const actionText = isTocOnly
-        ? 'กำลังดึงเนื้อหาและแปล...'
-        : engine === 'polish'
-        ? 'กำลังเกลาสำนวน (AI)...'
-        : 'กำลังแปลด่วน (Google)...';
+      const actionText =
+        engine === 'glossary_replace'
+          ? 'กำลังแทนที่คำศัพท์ตาม Glossary...'
+          : isTocOnly
+          ? 'กำลังดึงเนื้อหาและแปล...'
+          : engine === 'polish'
+          ? 'กำลังเกลาสำนวน (AI)...'
+          : 'กำลังแปลด่วน (Google)...';
       setCurrentProcessingTitle(`ตอนที่ ${chap.chapterNumber}: ${chap.titleTh || chap.titleEn} (${actionText})`);
 
       try {
-        const res = await fetch(`/api/chapters/${chap.id}/retranslate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ engine, ...(engine === 'polish' && provider ? { provider } : {}) }),
-        });
-
-        // Server can hand back an HTML page (dev overlay / restart / gateway) instead of JSON;
-        // parse defensively so the report shows a readable reason, not "Unexpected token '<'".
-        const raw = await res.text();
-        let data: any = null;
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          data = { success: false, error: `เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (HTTP ${res.status})` };
-        }
-        if (!res.ok || !data.success) {
-          setErrorLog((prev) => [
-            ...prev,
-            `ตอนที่ ${chap.chapterNumber} ขัดข้อง: ${data.error || 'ไม่สำเร็จ'}`,
-          ]);
-        } else {
-          // Update overview stats live as each chapter completes — patch this one chapter's
-          // status locally instead of refetching the whole novel on every iteration.
-          onChaptersUpdated?.({
-            chapterId: chap.id,
-            status: engine === 'polish' ? 'POLISHED' : 'TRANSLATED_GT',
+        if (engine === 'glossary_replace') {
+          const res = await fetch(`/api/novels/${novelId}/glossary/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chapterId: chap.id,
+              isBatch: true,
+              batchIndex: i + 1,
+              batchTotal: targetChapters.length,
+            }),
           });
+          const raw = await res.text();
+          let data: any = null;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            data = { success: false, error: `เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (HTTP ${res.status})` };
+          }
+          if (!res.ok || !data.success) {
+            setErrorLog((prev) => [
+              ...prev,
+              `ตอนที่ ${chap.chapterNumber} ขัดข้อง: ${data.error || 'ไม่สำเร็จ'}`,
+            ]);
+          }
+        } else {
+          const res = await fetch(`/api/chapters/${chap.id}/retranslate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              engine,
+              isBatch: true,
+              batchIndex: i + 1,
+              batchTotal: targetChapters.length,
+              ...(engine === 'polish' && provider ? { provider } : {}),
+            }),
+          });
+
+          // Server can hand back an HTML page (dev overlay / restart / gateway) instead of JSON;
+          // parse defensively so the report shows a readable reason, not "Unexpected token '<'".
+          const raw = await res.text();
+          let data: any = null;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            data = { success: false, error: `เซิร์ฟเวอร์ตอบกลับไม่ใช่ JSON (HTTP ${res.status})` };
+          }
+          if (!res.ok || !data.success) {
+            setErrorLog((prev) => [
+              ...prev,
+              `ตอนที่ ${chap.chapterNumber} ขัดข้อง: ${data.error || 'ไม่สำเร็จ'}`,
+            ]);
+          } else {
+            // Update overview stats live as each chapter completes — patch this one chapter's
+            // status locally instead of refetching the whole novel on every iteration.
+            onChaptersUpdated?.({
+              chapterId: chap.id,
+              status: engine === 'polish' ? 'POLISHED' : 'TRANSLATED_GT',
+            });
+          }
         }
       } catch (err: any) {
         setErrorLog((prev) => [
@@ -176,9 +229,16 @@ export default function TranslationPanel({
     }
   }
 
-  function handleCancelBatch() {
+  async function handleCancelBatch() {
     isCancelledRef.current = true;
     setIsRunning(false);
+    setCurrentProcessingTitle('');
+    if (socket) {
+      socket.emit('translation:cancel');
+    }
+    try {
+      await fetch('/api/translation/cancel', { method: 'POST' });
+    } catch {}
   }
 
   return (
@@ -284,7 +344,7 @@ export default function TranslationPanel({
           {/* Engine Choice */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-300">เลือกโหมดการแปล (Engine):</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 disabled={isRunning}
@@ -319,6 +379,25 @@ export default function TranslationPanel({
                   <p className="text-xs font-bold text-slate-200">แปลเร็ว (Google Translate)</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     แปลตรงความหมายจากภาษาอังกฤษทันที พร้อมผูกคำจากตาราง Glossary (ความเร็วสูง)
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={() => setEngine('glossary_replace')}
+                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                  engine === 'glossary_replace'
+                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-300'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <RotateCcw className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-slate-200">แทนที่คำตาม Glossary</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    สแกนและแทนที่คำจาก Glossary ลงในเนื้อหาทันที เหมาะสำหรับอัปเดตคำโดยไม่ต้องแปลใหม่
                   </p>
                 </div>
               </button>
@@ -481,10 +560,22 @@ export default function TranslationPanel({
                   type="button"
                   onClick={handleStartBatch}
                   disabled={targetChapters.length === 0}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+                  className={`flex items-center gap-2 px-5 py-2.5 active:scale-95 text-xs font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 ${
+                    engine === 'glossary_replace'
+                      ? 'bg-emerald-400 hover:bg-emerald-300 text-slate-950 shadow-emerald-500/20'
+                      : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-500/20'
+                  }`}
                 >
-                  <Play className="w-4 h-4 fill-slate-950" />
-                  <span>เริ่มแปล {targetChapters.length} ตอน</span>
+                  {engine === 'glossary_replace' ? (
+                    <RotateCcw className="w-4 h-4" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-slate-950" />
+                  )}
+                  <span>
+                    {engine === 'glossary_replace'
+                      ? `เริ่มแทนที่คำศัพท์ ${targetChapters.length} ตอน`
+                      : `เริ่มแปล ${targetChapters.length} ตอน`}
+                  </span>
                 </button>
               </div>
             )}

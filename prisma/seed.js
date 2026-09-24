@@ -62,7 +62,7 @@ async function main() {
   const aiDefaults = [
     { key: 'ai.provider', value: 'gemini' },
     { key: 'ai.ollamaModel', value: 'qwen2.5:7b' },
-    { key: 'ai.geminiModel', value: 'gemini-2.0-flash' },
+    { key: 'ai.geminiModel', value: 'gemini-3.6-flash' },
   ];
   for (const s of aiDefaults) {
     await prisma.appSetting.upsert({ where: { key: s.key }, update: {}, create: s });

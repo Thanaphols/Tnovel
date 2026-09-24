@@ -214,6 +214,20 @@ model WhitelistedEmail {
   updatedAt DateTime @updatedAt
 }
 
+model InviteRequest {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  note      String?
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
 model AuditLog {
   id        String   @id @default(uuid())
   action    String
