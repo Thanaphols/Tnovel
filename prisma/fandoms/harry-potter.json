@@ -1,0 +1,399 @@
+{
+  "name": "Harry Potter",
+  "terms": {
+    "name": {
+      "Harry": {
+        "th": "แฮร์รี่",
+        "aliases": {
+          "Harry Potter": "แฮร์รี่ พอตเตอร์"
+        }
+      },
+      "Potter": "พอตเตอร์",
+      "Hermione": {
+        "th": "เฮอร์ไมโอนี่",
+        "aliases": {
+          "Hermione Granger": "เฮอร์ไมโอนี่ เกรนเจอร์"
+        }
+      },
+      "Granger": "เกรนเจอร์",
+      "Ron": {
+        "th": "รอน",
+        "aliases": {
+          "Ron Weasley": "รอน วีสลีย์"
+        }
+      },
+      "Weasley": {
+        "th": "วีสลีย์",
+        "aliases": {
+          "Weasleys": "ครอบครัววีสลีย์"
+        }
+      },
+      "Ginny": {
+        "th": "จินนี่",
+        "aliases": {
+          "Ginny Weasley": "จินนี่ วีสลีย์"
+        }
+      },
+      "Fred": "เฟร็ด",
+      "George": "จอร์จ",
+      "Percy": "เพอร์ซี่",
+      "Molly Weasley": "มอลลี่ วีสลีย์",
+      "Arthur Weasley": "อาเธอร์ วีสลีย์",
+      "Dumbledore": {
+        "th": "ดัมเบิลดอร์",
+        "aliases": {
+          "Albus Dumbledore": "อัลบัส ดัมเบิลดอร์"
+        }
+      },
+      "Snape": {
+        "th": "สเนป",
+        "aliases": {
+          "Severus Snape": "เซเวอรัส สเนป"
+        }
+      },
+      "McGonagall": {
+        "th": "มักกอนนากัล",
+        "aliases": {
+          "Minerva McGonagall": "มิเนอร์วา มักกอนนากัล"
+        }
+      },
+      "Hagrid": {
+        "th": "แฮกริด",
+        "aliases": {
+          "Rubeus Hagrid": "รูเบอัส แฮกริด"
+        }
+      },
+      "Voldemort": {
+        "th": "โวลเดอมอร์",
+        "aliases": {
+          "Lord Voldemort": "ลอร์ดโวลเดอมอร์",
+          "Tom Riddle": "ทอม ริดเดิ้ล",
+          "Tom Marvolo Riddle": "ทอม มาร์โวโล ริดเดิ้ล",
+          "You-Know-Who": "คนที่คุณก็รู้ว่าใคร",
+          "He-Who-Must-Not-Be-Named": "คนที่ไม่ควรเอ่ยนาม"
+        }
+      },
+      "Draco": {
+        "th": "เดรโก",
+        "aliases": {
+          "Draco Malfoy": "เดรโก มัลฟอย"
+        }
+      },
+      "Malfoy": "มัลฟอย",
+      "Lucius Malfoy": "ลูเซียส มัลฟอย",
+      "Narcissa Malfoy": "นาร์ซิสซา มัลฟอย",
+      "Sirius": {
+        "th": "ซีเรียส",
+        "aliases": {
+          "Sirius Black": "ซีเรียส แบล็ก"
+        }
+      },
+      "Lupin": {
+        "th": "ลูปิน",
+        "aliases": {
+          "Remus Lupin": "รีมัส ลูปิน"
+        }
+      },
+      "Pettigrew": {
+        "th": "เพ็ตติกรูว์",
+        "aliases": {
+          "Peter Pettigrew": "ปีเตอร์ เพ็ตติกรูว์",
+          "Wormtail": "หางหนอน"
+        }
+      },
+      "James Potter": "เจมส์ พอตเตอร์",
+      "Lily Potter": "ลิลี่ พอตเตอร์",
+      "Neville": {
+        "th": "เนวิลล์",
+        "aliases": {
+          "Neville Longbottom": "เนวิลล์ ลองบัตท่อม"
+        }
+      },
+      "Luna": {
+        "th": "ลูน่า",
+        "aliases": {
+          "Luna Lovegood": "ลูน่า เลิฟกู๊ด"
+        }
+      },
+      "Cho Chang": "โช แชง",
+      "Cedric": {
+        "th": "เซดริก",
+        "aliases": {
+          "Cedric Diggory": "เซดริก ดิกกอรี่"
+        }
+      },
+      "Dobby": "ด็อบบี้",
+      "Kreacher": "ครีเชอร์",
+      "Bellatrix": {
+        "th": "เบลลาทริกซ์",
+        "aliases": {
+          "Bellatrix Lestrange": "เบลลาทริกซ์ เลสแตรงจ์"
+        }
+      },
+      "Umbridge": {
+        "th": "อัมบริดจ์",
+        "aliases": {
+          "Dolores Umbridge": "โดโลเรส อัมบริดจ์"
+        }
+      },
+      "Lockhart": {
+        "th": "ล็อกฮาร์ต",
+        "aliases": {
+          "Gilderoy Lockhart": "กิลเดอรอย ล็อกฮาร์ต"
+        }
+      },
+      "Quirrell": "ควีเรลล์",
+      "Filch": {
+        "th": "ฟิลช์",
+        "aliases": {
+          "Argus Filch": "อาร์กัส ฟิลช์"
+        }
+      },
+      "Vernon Dursley": "เวอร์นอน เดอร์สลีย์",
+      "Petunia Dursley": "เพ็ตทูเนีย เดอร์สลีย์",
+      "Dudley": {
+        "th": "ดัดลีย์",
+        "aliases": {
+          "Dudley Dursley": "ดัดลีย์ เดอร์สลีย์"
+        }
+      },
+      "Dursley": {
+        "th": "เดอร์สลีย์",
+        "aliases": {
+          "Dursleys": "ครอบครัวเดอร์สลีย์"
+        }
+      },
+      "Grindelwald": {
+        "th": "กรินเดลวัลด์",
+        "aliases": {
+          "Gellert Grindelwald": "เกลเลิร์ต กรินเดลวัลด์"
+        }
+      },
+      "Moody": {
+        "th": "มู้ดดี้",
+        "aliases": {
+          "Mad-Eye Moody": "แม้ด-อาย มู้ดดี้",
+          "Alastor Moody": "อลาสเตอร์ มู้ดดี้"
+        }
+      },
+      "Cornelius Fudge": "คอร์นีเลียส ฟัดจ์",
+      "Kingsley Shacklebolt": "คิงส์ลีย์ ชัคเคิลโบลต์",
+      "Tonks": {
+        "th": "ท็องส์",
+        "aliases": {
+          "Nymphadora Tonks": "นิมฟาดอรา ท็องส์"
+        }
+      },
+      "Slughorn": {
+        "th": "สลักฮอร์น",
+        "aliases": {
+          "Horace Slughorn": "ฮอเรซ สลักฮอร์น"
+        }
+      },
+      "Flitwick": "ฟลิตวิก",
+      "Professor Sprout": "ศาสตราจารย์สเปราต์",
+      "Madam Pomfrey": "มาดามพอมฟรีย์",
+      "Madam Hooch": "มาดามฮูช",
+      "Trelawney": "ทรีลอว์นีย์",
+      "Viktor Krum": "วิกเตอร์ ครัม",
+      "Fleur Delacour": "เฟลอร์ เดอลากูร์",
+      "Hedwig": "เฮดวิก",
+      "Fawkes": "ฟอกส์",
+      "Buckbeak": "บั๊กบีก",
+      "Crookshanks": "ครุกแชงค์ส",
+      "Scabbers": "สแคบเบอร์ส",
+      "Nagini": "นากีนี"
+    },
+    "place": {
+      "Hogwarts": {
+        "th": "ฮอกวอตส์",
+        "aliases": {
+          "Hogwarts School of Witchcraft and Wizardry": "โรงเรียนคาถาพ่อมดแม่มดและเวทมนตร์ศาสตร์ฮอกวอตส์"
+        }
+      },
+      "Diagon Alley": "ตรอกไดแอกอน",
+      "Knockturn Alley": "ตรอกน็อคเทิร์น",
+      "Hogsmeade": "ฮอกส์มี้ด",
+      "Azkaban": "อัซคาบัน",
+      "Gringotts": "กริงกอตส์",
+      "Leaky Cauldron": "ร้านหม้อใหญ่รั่ว",
+      "The Burrow": "บ้านโพรงกระต่าย",
+      "Privet Drive": "ซอยพรีเว็ต",
+      "Forbidden Forest": "ป่าต้องห้าม",
+      "Great Hall": "ห้องโถงใหญ่",
+      "Platform Nine and Three-Quarters": "ชานชาลาที่เก้าเศษสามส่วนสี่",
+      "Godric's Hollow": "ก็อดดริกส์ฮอลโลว์",
+      "Grimmauld Place": "จัตุรัสกริมโมลด์",
+      "Shrieking Shack": "บ้านเสียงโหยหวน",
+      "Room of Requirement": "ห้องต้องประสงค์",
+      "Chamber of Secrets": "ห้องแห่งความลับ",
+      "Honeydukes": "ร้านฮันนี่ดุ๊กส์",
+      "Three Broomsticks": "ร้านไม้กวาดสามอัน",
+      "St Mungo's": "โรงพยาบาลเซนต์มังโก",
+      "Durmstrang": "เดิร์มสแตรง",
+      "Beauxbatons": "โบซ์บาตง"
+    },
+    "org": {
+      "Gryffindor": "กริฟฟินดอร์",
+      "Slytherin": "สลิธีริน",
+      "Ravenclaw": "เรเวนคลอ",
+      "Hufflepuff": "ฮัฟเฟิลพัฟ",
+      "Ministry of Magic": "กระทรวงเวทมนตร์",
+      "Death Eaters": {
+        "th": "ผู้เสพความตาย",
+        "aliases": {
+          "Death Eater": "ผู้เสพความตาย"
+        }
+      },
+      "Order of the Phoenix": "ภาคีนกฟีนิกซ์",
+      "Dumbledore's Army": "กองทัพดัมเบิลดอร์",
+      "Daily Prophet": "เดลี่พรอเฟ็ต"
+    },
+    "title": {
+      "Auror": {
+        "th": "มือปราบมาร",
+        "aliases": {
+          "Aurors": "มือปราบมาร"
+        }
+      },
+      "Minister for Magic": "รัฐมนตรีกระทรวงเวทมนตร์",
+      "Head Boy": "หัวหน้านักเรียนชาย",
+      "Head Girl": "หัวหน้านักเรียนหญิง",
+      "Prefect": {
+        "th": "พรีเฟ็ค",
+        "aliases": {
+          "Prefects": "พรีเฟ็ค"
+        }
+      }
+    },
+    "skill": {
+      "Expelliarmus": "เอ็กซ์เปลลิอาร์มัส",
+      "Avada Kedavra": "อะวาดา เคดาฟรา",
+      "Crucio": "ครูซิโอ",
+      "Imperio": "อิมเพริโอ",
+      "Unforgivable Curses": "คำสาปที่ไม่อาจให้อภัยได้",
+      "Expecto Patronum": "เอ็กซ์เปกโต พาโตรนุม",
+      "Lumos": "ลูมอส",
+      "Accio": "แอคซิโอ",
+      "Alohomora": "อะโลโฮโมรา",
+      "Wingardium Leviosa": "วินการ์เดียม เลวิโอซ่า",
+      "Stupefy": "สตูเปฟาย",
+      "Petrificus Totalus": "เพทริฟิคัส โททาลัส",
+      "Obliviate": "ออบลิวิเอต",
+      "Sectumsempra": "เซกทัมเซมปรา",
+      "Riddikulus": "ริดดิคูลัส",
+      "Occlumency": "วิชาป้องกันจิตใจ",
+      "Legilimency": "วิชาสะกดใจ",
+      "Parseltongue": "ภาษาพาร์เซล",
+      "Animagus": "แอนิเมจัส",
+      "Apparate": "หายตัว",
+      "Apparition": "การหายตัว"
+    },
+    "item": {
+      "Horcrux": {
+        "th": "ฮอร์ครักซ์",
+        "aliases": {
+          "Horcruxes": "ฮอร์ครักซ์"
+        }
+      },
+      "Deathly Hallows": "เครื่องรางยมทูต",
+      "Elder Wand": "ไม้กายสิทธิ์เอลเดอร์",
+      "Resurrection Stone": "ศิลาชุบชีวิต",
+      "Invisibility Cloak": "ผ้าคลุมล่องหน",
+      "Philosopher's Stone": {
+        "th": "ศิลาอาถรรพ์",
+        "aliases": {
+          "Sorcerer's Stone": "ศิลาอาถรรพ์"
+        }
+      },
+      "Marauder's Map": "แผนที่ตัวกวน",
+      "Sorting Hat": "หมวกคัดสรร",
+      "Time-Turner": "เครื่องย้อนเวลา",
+      "Pensieve": "เพนซีฟ",
+      "Floo Powder": "ผงฟลู",
+      "Polyjuice Potion": "น้ำยาสรรพรส",
+      "Felix Felicis": "เฟลิกซ์ เฟลิซิส",
+      "Butterbeer": "บัตเตอร์เบียร์",
+      "Firebolt": "ไฟร์โบลต์",
+      "Nimbus Two Thousand": "นิมบัสสองพัน",
+      "Hogwarts Express": "รถด่วนฮอกวอตส์",
+      "Snitch": {
+        "th": "ลูกสนิช",
+        "aliases": {
+          "Golden Snitch": "ลูกสนิชสีทอง"
+        }
+      },
+      "Quaffle": "ลูกควัฟเฟิล",
+      "Bludger": {
+        "th": "ลูกบลัดเจอร์",
+        "aliases": {
+          "Bludgers": "ลูกบลัดเจอร์"
+        }
+      },
+      "Galleon": {
+        "th": "เกลเลียน",
+        "aliases": {
+          "Galleons": "เกลเลียน"
+        }
+      }
+    },
+    "other": {
+      "Muggle": {
+        "th": "มักเกิ้ล",
+        "aliases": {
+          "Muggles": "มักเกิ้ล"
+        }
+      },
+      "Muggle-born": "เกิดจากมักเกิ้ล",
+      "Mudblood": "เลือดสีโคลน",
+      "Squib": "สควิบ",
+      "Pure-blood": "เลือดบริสุทธิ์",
+      "Half-blood": "เลือดผสม",
+      "Quidditch": "ควิดดิช",
+      "Seeker": "ซีกเกอร์",
+      "Patronus": "ผู้พิทักษ์",
+      "Dementor": {
+        "th": "ผู้คุมวิญญาณ",
+        "aliases": {
+          "Dementors": "ผู้คุมวิญญาณ"
+        }
+      },
+      "Basilisk": "บาซิลิสก์",
+      "Hippogriff": "ฮิปโปกริฟฟ์",
+      "Thestral": {
+        "th": "เธสตรัล",
+        "aliases": {
+          "Thestrals": "เธสตรัล"
+        }
+      },
+      "House-elf": {
+        "th": "เอลฟ์ประจำบ้าน",
+        "aliases": {
+          "House-elves": "เอลฟ์ประจำบ้าน"
+        }
+      },
+      "Boggart": "ปีศาจกระบอก",
+      "Inferi": "อินเฟอไร",
+      "Triwizard Tournament": "การประลองเวทไตรภาคี",
+      "O.W.L.s": "ว.พ.ร.ส.",
+      "N.E.W.T.s": "ส.ป.อ.ร."
+    }
+  },
+  "review": [
+    "Platform Nine and Three-Quarters",
+    "Godric's Hollow",
+    "Occlumency",
+    "Legilimency",
+    "Boggart",
+    "Inferi",
+    "Prefect",
+    "O.W.L.s",
+    "N.E.W.T.s",
+    "Nimbus Two Thousand",
+    "Fleur Delacour",
+    "Beauxbatons",
+    "Felix Felicis",
+    "Resurrection Stone",
+    "Seeker"
+  ]
+}

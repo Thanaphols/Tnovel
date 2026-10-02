@@ -1,0 +1,306 @@
+{
+  "name": "Pokémon",
+  "terms": {
+    "name": {
+      "Ash": {
+        "th": "ซาโตชิ",
+        "aliases": {
+          "Ash Ketchum": "ซาโตชิ",
+          "Satoshi": "ซาโตชิ"
+        }
+      },
+      "Misty": {
+        "th": "คาสึมิ",
+        "aliases": {
+          "Kasumi": "คาสึมิ"
+        }
+      },
+      "Brock": {
+        "th": "ทาเคชิ",
+        "aliases": {
+          "Takeshi": "ทาเคชิ"
+        }
+      },
+      "Gary": {
+        "th": "ชิเงรุ",
+        "aliases": {
+          "Gary Oak": "ชิเงรุ",
+          "Shigeru": "ชิเงรุ"
+        }
+      },
+      "Professor Oak": {
+        "th": "ศาสตราจารย์โอคิโด",
+        "aliases": {
+          "Oak": "โอคิโด"
+        }
+      },
+      "Jessie": {
+        "th": "มุซาชิ",
+        "aliases": {
+          "Musashi": "มุซาชิ"
+        }
+      },
+      "James": {
+        "th": "โคจิโร่",
+        "aliases": {
+          "Kojiro": "โคจิโร่"
+        }
+      },
+      "Giovanni": {
+        "th": "ซาคากิ",
+        "aliases": {
+          "Sakaki": "ซาคากิ"
+        }
+      },
+      "Nurse Joy": "คุณจอย",
+      "Officer Jenny": "คุณจุนซา",
+      "Red": "เรด",
+      "Blue": "บลู",
+      "May": {
+        "th": "ฮารุกะ",
+        "aliases": {
+          "Haruka": "ฮารุกะ"
+        }
+      },
+      "Max": {
+        "th": "มาซาโตะ",
+        "aliases": {
+          "Masato": "มาซาโตะ"
+        }
+      },
+      "Dawn": {
+        "th": "ฮิคาริ",
+        "aliases": {
+          "Hikari": "ฮิคาริ"
+        }
+      },
+      "Serena": "เซเรน่า",
+      "Iris": "ไอริส",
+      "Cynthia": {
+        "th": "ชิโรนะ",
+        "aliases": {
+          "Shirona": "ชิโรนะ"
+        }
+      },
+      "Lance": {
+        "th": "วาตารุ",
+        "aliases": {
+          "Wataru": "วาตารุ"
+        }
+      },
+      "Leon": {
+        "th": "ดันเดะ",
+        "aliases": {
+          "Dande": "ดันเดะ"
+        }
+      },
+      "Pikachu": "ปิกาจู",
+      "Raichu": "ไรชู",
+      "Pichu": "พิชู",
+      "Bulbasaur": "ฟุชิงิดาเนะ",
+      "Ivysaur": "ฟุชิงิโซ",
+      "Venusaur": "ฟุชิงิบานะ",
+      "Charmander": "ฮิโตคาเงะ",
+      "Charmeleon": "ลิซาร์โด",
+      "Charizard": "ลิซาร์ดอน",
+      "Squirtle": "เซนิงาเมะ",
+      "Wartortle": "คาเมล",
+      "Blastoise": "คาเม็กซ์",
+      "Eevee": "อีวุย",
+      "Vaporeon": "ชาวเวอร์ส",
+      "Jolteon": "ธันเดอร์ส",
+      "Flareon": "บูสเตอร์",
+      "Espeon": "เอฟี",
+      "Umbreon": "แบล็คกี้",
+      "Sylveon": "นิมเฟีย",
+      "Jigglypuff": "พูริน",
+      "Meowth": "เนียส",
+      "Psyduck": "โคดัก",
+      "Snorlax": "คาบิก้อน",
+      "Gengar": "เก็นการ์",
+      "Onix": "อิวาร์ค",
+      "Gyarados": "เกียราดอส",
+      "Magikarp": "คอยคิง",
+      "Lapras": "ลาพลาซ",
+      "Dragonite": "ไคริว",
+      "Mewtwo": "มิวทู",
+      "Mew": "มิว",
+      "Lucario": "ลูคาริโอ",
+      "Greninja": "เก็คโคกะ",
+      "Rayquaza": "เร็คควอซา",
+      "Arceus": "อาร์เซอุส",
+      "Togepi": "โทเกปี้",
+      "Wobbuffet": "โซนาโนะ",
+      "Ekans": "อาร์โบ",
+      "Koffing": "โดกาส"
+    },
+    "place": {
+      "Kanto": "คันโต",
+      "Johto": "โจโต",
+      "Hoenn": "โฮเอ็น",
+      "Sinnoh": "ชินโอ",
+      "Unova": "อิชชู",
+      "Kalos": "คาลอส",
+      "Alola": "อโลลา",
+      "Galar": "กาลาร์",
+      "Paldea": "พัลเดีย",
+      "Pallet Town": "หมู่บ้านมาซาระ",
+      "Viridian City": "เมืองโทคิวะ",
+      "Pewter City": "เมืองนิบิ",
+      "Cerulean City": "เมืองฮานาดะ",
+      "Vermilion City": "เมืองคุจิบะ",
+      "Celadon City": "เมืองทามามุชิ",
+      "Saffron City": "เมืองยามาบุกิ",
+      "Viridian Forest": "ป่าโทคิวะ",
+      "Indigo Plateau": "ที่ราบสูงเซคิเอ",
+      "Pokémon Center": {
+        "th": "โปเกมอนเซ็นเตอร์",
+        "aliases": {
+          "Pokemon Center": "โปเกมอนเซ็นเตอร์"
+        }
+      },
+      "Safari Zone": "ซาฟารีโซน",
+      "Gym": "ยิม"
+    },
+    "org": {
+      "Team Rocket": "แก๊งร็อคเก็ต",
+      "Team Magma": "แก๊งแม็กม่า",
+      "Team Aqua": "แก๊งอควา",
+      "Team Galactic": "แก๊งกาแลคติก",
+      "Team Plasma": "แก๊งพลาสม่า",
+      "Team Flare": "แก๊งแฟลร์",
+      "Team Skull": "แก๊งสกัล",
+      "Elite Four": "จตุรเทพ",
+      "Pokémon League": {
+        "th": "โปเกมอนลีก",
+        "aliases": {
+          "Pokemon League": "โปเกมอนลีก"
+        }
+      }
+    },
+    "title": {
+      "Pokémon Trainer": {
+        "th": "เทรนเนอร์โปเกมอน",
+        "aliases": {
+          "Trainer": "เทรนเนอร์",
+          "Pokemon Trainer": "เทรนเนอร์โปเกมอน"
+        }
+      },
+      "Gym Leader": "หัวหน้ายิม",
+      "Champion": "แชมเปี้ยน",
+      "Pokémon Master": {
+        "th": "โปเกมอนมาสเตอร์",
+        "aliases": {
+          "Pokemon Master": "โปเกมอนมาสเตอร์"
+        }
+      },
+      "Professor": "ศาสตราจารย์",
+      "Breeder": "บรีดเดอร์",
+      "Coordinator": "คอร์ดิเนเตอร์",
+      "Legendary Pokémon": "โปเกมอนในตำนาน",
+      "Mythical Pokémon": "โปเกมอนมายา"
+    },
+    "skill": {
+      "Thunderbolt": "ทันเดอร์โบลต์",
+      "Thunder": "ทันเดอร์",
+      "Thunder Shock": "ไฟฟ้าช็อต",
+      "Quick Attack": "ความเร็วแสง",
+      "Iron Tail": "หางเหล็ก",
+      "Flamethrower": "พ่นไฟ",
+      "Ember": "ประกายไฟ",
+      "Water Gun": "ปืนฉีดน้ำ",
+      "Hydro Pump": "ไฮโดรปั๊ม",
+      "Vine Whip": "แส้เถาวัลย์",
+      "Razor Leaf": "ใบมีด",
+      "Solar Beam": "โซลาร์บีม",
+      "Hyper Beam": "ไฮเปอร์บีม",
+      "Tackle": "พุ่งชน",
+      "Psychic": "ไซโคคิเนซิส",
+      "Hypnosis": "สะกดจิต",
+      "Splash": "กระเด็น",
+      "Mega Evolution": "เมก้าวิวัฒนาการ",
+      "Z-Move": "Z-ท่าไม้ตาย",
+      "Dynamax": "ไดแมกซ์",
+      "Gigantamax": "คิโอไดแมกซ์",
+      "Terastallize": "เทราสตัล",
+      "Evolve": {
+        "th": "วิวัฒนาการ",
+        "aliases": {
+          "Evolution": "วิวัฒนาการ"
+        }
+      }
+    },
+    "item": {
+      "Poké Ball": {
+        "th": "มอนสเตอร์บอล",
+        "aliases": {
+          "Pokeball": "มอนสเตอร์บอล",
+          "Poke Ball": "มอนสเตอร์บอล"
+        }
+      },
+      "Great Ball": "ซูเปอร์บอล",
+      "Ultra Ball": "ไฮเปอร์บอล",
+      "Master Ball": "มาสเตอร์บอล",
+      "Pokédex": {
+        "th": "โปเกเด็กซ์",
+        "aliases": {
+          "Pokedex": "โปเกเด็กซ์"
+        }
+      },
+      "Potion": "ยาฟื้นฟู",
+      "Rare Candy": "ลูกอมวิเศษ",
+      "Thunder Stone": "หินสายฟ้า",
+      "Fire Stone": "หินไฟ",
+      "Water Stone": "หินน้ำ",
+      "Moon Stone": "หินดวงจันทร์",
+      "Badge": "เข็มกลัด",
+      "Mega Stone": "เมก้าสโตน",
+      "Z-Ring": "Z-ริง"
+    },
+    "other": {
+      "Pokémon": {
+        "th": "โปเกมอน",
+        "aliases": {
+          "Pokemon": "โปเกมอน"
+        }
+      },
+      "Pokémon Battle": "การต่อสู้โปเกมอน",
+      "Gym Battle": "การท้าชิงยิม",
+      "Wild Pokémon": "โปเกมอนป่า",
+      "Shiny": "ไชนี่",
+      "Starter Pokémon": "โปเกมอนตัวแรก",
+      "Type advantage": "ความได้เปรียบของธาตุ",
+      "Fainted": "หมดสภาพการต่อสู้",
+      "Gotta catch 'em all": "ต้องจับให้ได้หมด"
+    }
+  },
+  "review": [
+    "Ash",
+    "Misty",
+    "Brock",
+    "Gary",
+    "Jessie",
+    "James",
+    "Professor Oak",
+    "Officer Jenny",
+    "Wobbuffet",
+    "Ekans",
+    "Koffing",
+    "Charmeleon",
+    "Wartortle",
+    "Blastoise",
+    "Indigo Plateau",
+    "Elite Four",
+    "Mythical Pokémon",
+    "Thunder Shock",
+    "Razor Leaf",
+    "Splash",
+    "Psychic",
+    "Great Ball",
+    "Ultra Ball",
+    "Rare Candy",
+    "Badge",
+    "Gigantamax",
+    "Gotta catch 'em all"
+  ]
+}

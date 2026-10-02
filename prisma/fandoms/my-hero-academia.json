@@ -1,0 +1,311 @@
+{
+  "name": "My Hero Academia",
+  "terms": {
+    "name": {
+      "Izuku": {
+        "th": "อิซึคุ",
+        "aliases": {
+          "Izuku Midoriya": "มิโดริยะ อิซึคุ",
+          "Deku": "เดกุ"
+        }
+      },
+      "Midoriya": "มิโดริยะ",
+      "Bakugo": {
+        "th": "บาคุโก",
+        "aliases": {
+          "Katsuki Bakugo": "บาคุโก คัตสึกิ",
+          "Katsuki": "คัตสึกิ",
+          "Kacchan": "คัจจัง",
+          "Bakugou": "บาคุโก",
+          "Dynamight": "ไดนาไมท์"
+        }
+      },
+      "Todoroki": {
+        "th": "โทโดโรกิ",
+        "aliases": {
+          "Shoto Todoroki": "โทโดโรกิ โชโตะ",
+          "Shoto": "โชโตะ"
+        }
+      },
+      "Uraraka": {
+        "th": "อุรารากะ",
+        "aliases": {
+          "Ochaco Uraraka": "อุรารากะ โอชาโกะ",
+          "Ochaco": "โอชาโกะ",
+          "Uravity": "ยูราวิตี้"
+        }
+      },
+      "Iida": {
+        "th": "อีดะ",
+        "aliases": {
+          "Tenya Iida": "อีดะ เท็นยะ",
+          "Tenya": "เท็นยะ",
+          "Ingenium": "อินเจเนียม"
+        }
+      },
+      "Kirishima": {
+        "th": "คิริชิมะ",
+        "aliases": {
+          "Eijiro Kirishima": "คิริชิมะ เอย์จิโร่",
+          "Red Riot": "เรดไรออต"
+        }
+      },
+      "Kaminari": {
+        "th": "คามินาริ",
+        "aliases": {
+          "Denki Kaminari": "คามินาริ เด็นกิ",
+          "Chargebolt": "ชาร์จโบลต์"
+        }
+      },
+      "Tsuyu": {
+        "th": "สึยุ",
+        "aliases": {
+          "Tsuyu Asui": "อาซุย สึยุ",
+          "Froppy": "ฟร็อปปี้"
+        }
+      },
+      "Yaoyorozu": {
+        "th": "ยาโอโยโรซุ",
+        "aliases": {
+          "Momo Yaoyorozu": "ยาโอโยโรซุ โมโมะ",
+          "Momo": "โมโมะ",
+          "Creati": "ครีเอตี้"
+        }
+      },
+      "Tokoyami": {
+        "th": "โทโคยามิ",
+        "aliases": {
+          "Fumikage Tokoyami": "โทโคยามิ ฟุมิคาเงะ",
+          "Tsukuyomi": "สึคุโยมิ"
+        }
+      },
+      "Jiro": {
+        "th": "จิโร่",
+        "aliases": {
+          "Kyoka Jiro": "จิโร่ เคียวกะ",
+          "Earphone Jack": "เอียร์โฟนแจ็ก"
+        }
+      },
+      "Mineta": "มิเนตะ",
+      "Sero": "เซโระ",
+      "Ashido": {
+        "th": "อาชิโดะ",
+        "aliases": {
+          "Mina Ashido": "อาชิโดะ มินะ"
+        }
+      },
+      "Hagakure": "ฮากาคุเระ",
+      "Ojiro": "โอจิโร่",
+      "Shoji": "โชจิ",
+      "Koda": "โคดะ",
+      "Sato": "ซาโต้",
+      "Aoyama": "อาโอยามะ",
+      "Shinso": {
+        "th": "ชินโซ",
+        "aliases": {
+          "Hitoshi Shinso": "ชินโซ ฮิโตชิ"
+        }
+      },
+      "Monoma": "โมโนมะ",
+      "Mirio": {
+        "th": "มิริโอะ",
+        "aliases": {
+          "Mirio Togata": "โทงาตะ มิริโอะ",
+          "Lemillion": "เลมิลเลียน"
+        }
+      },
+      "Tamaki Amajiki": "อามาจิกิ ทามากิ",
+      "Nejire Hado": "ฮาโดะ เนจิเระ",
+      "Eri": "เอริ",
+      "All Might": {
+        "th": "ออลไมท์",
+        "aliases": {
+          "Toshinori Yagi": "ยางิ โทชิโนริ",
+          "Yagi": "ยางิ"
+        }
+      },
+      "Aizawa": {
+        "th": "ไอซาวะ",
+        "aliases": {
+          "Shota Aizawa": "ไอซาวะ โชตะ",
+          "Eraser Head": "อีเรเซอร์เฮด",
+          "Eraserhead": "อีเรเซอร์เฮด"
+        }
+      },
+      "Present Mic": "เพรเซนต์ไมค์",
+      "Midnight": "มิดไนท์",
+      "Nezu": "เนซึ",
+      "Recovery Girl": "รีคัฟเวอรี่เกิร์ล",
+      "Endeavor": {
+        "th": "เอ็นเดเวอร์",
+        "aliases": {
+          "Enji Todoroki": "โทโดโรกิ เอ็นจิ"
+        }
+      },
+      "Hawks": "ฮอว์คส์",
+      "Best Jeanist": "เบสต์จีนนิสต์",
+      "Mirko": "มิรุโกะ",
+      "Gran Torino": "กรานโตริโน่",
+      "Sir Nighteye": "เซอร์ไนท์อาย",
+      "Fat Gum": "แฟตกัม",
+      "Mt. Lady": "เมาท์เลดี้",
+      "Star and Stripe": "สตาร์แอนด์สไตรป์",
+      "Shigaraki": {
+        "th": "ชิการากิ",
+        "aliases": {
+          "Tomura Shigaraki": "ชิการากิ โทมุระ",
+          "Tenko Shimura": "ชิมูระ เท็นโกะ"
+        }
+      },
+      "All For One": "ออลฟอร์วัน",
+      "Dabi": {
+        "th": "ดาบิ",
+        "aliases": {
+          "Toya Todoroki": "โทโดโรกิ โทยะ"
+        }
+      },
+      "Toga": {
+        "th": "โทกะ",
+        "aliases": {
+          "Himiko Toga": "โทกะ ฮิมิโกะ"
+        }
+      },
+      "Twice": "ทไวซ์",
+      "Mr. Compress": "มิสเตอร์คอมเพรส",
+      "Spinner": "สปินเนอร์",
+      "Kurogiri": "คุโรกิริ",
+      "Stain": {
+        "th": "สเตน",
+        "aliases": {
+          "Hero Killer": "นักฆ่าฮีโร่"
+        }
+      },
+      "Overhaul": {
+        "th": "โอเวอร์ฮอล",
+        "aliases": {
+          "Kai Chisaki": "ชิซากิ ไค"
+        }
+      },
+      "Gentle Criminal": "เจนเทิลคริมินัล",
+      "Nana Shimura": "ชิมูระ นานะ",
+      "Inko Midoriya": "มิโดริยะ อินโกะ"
+    },
+    "place": {
+      "U.A. High School": {
+        "th": "โรงเรียนยูเอ",
+        "aliases": {
+          "U.A.": "ยูเอ",
+          "UA": "ยูเอ"
+        }
+      },
+      "Shiketsu High": "โรงเรียนชิเคตสึ",
+      "Musutafu": "มุสึตาฟุ",
+      "Kamino Ward": "เขตคามิโนะ",
+      "Hosu": "โฮสุ",
+      "Jaku City": "เมืองจาคุ",
+      "Heights Alliance": "หอพักไฮท์สอัลไลแอนซ์",
+      "Tartarus": "ทาร์ทารัส",
+      "Ground Beta": "กราวด์เบต้า",
+      "USJ": "USJ"
+    },
+    "org": {
+      "Class 1-A": "ห้อง 1-A",
+      "Class 1-B": "ห้อง 1-B",
+      "Big Three": "บิ๊กทรี",
+      "League of Villains": "สหพันธ์วายร้าย",
+      "Paranormal Liberation Front": "แนวร่วมปลดปล่อยเหนือธรรมชาติ",
+      "Meta Liberation Army": "กองทัพปลดปล่อยเมต้า",
+      "Shie Hassaikai": "ชิเอะ ฮัสไซไค",
+      "Hero Public Safety Commission": "คณะกรรมการความปลอดภัยสาธารณะของฮีโร่",
+      "Vanguard Action Squad": "หน่วยจู่โจมแนวหน้า",
+      "Nomu": "โนมุ"
+    },
+    "title": {
+      "Pro Hero": "ฮีโร่มืออาชีพ",
+      "Hero": "ฮีโร่",
+      "Villain": "วายร้าย",
+      "Vigilante": "ศาลเตี้ย",
+      "Sidekick": "ไซด์คิก",
+      "Number One Hero": "ฮีโร่อันดับหนึ่ง",
+      "Symbol of Peace": "สัญลักษณ์แห่งสันติภาพ",
+      "Hero name": "ชื่อฮีโร่",
+      "Provisional Hero License": "ใบอนุญาตฮีโร่ชั่วคราว",
+      "Homeroom teacher": "ครูประจำชั้น",
+      "Principal": "ครูใหญ่"
+    },
+    "skill": {
+      "Quirk": {
+        "th": "อัตลักษณ์",
+        "aliases": {
+          "Quirks": "อัตลักษณ์",
+          "Quirkless": "ไร้อัตลักษณ์"
+        }
+      },
+      "One For All": "วันฟอร์ออล",
+      "Detroit Smash": "ดีทรอยต์สแมช",
+      "Delaware Smash": "เดลาแวร์สแมช",
+      "Texas Smash": "เท็กซัสสแมช",
+      "St. Louis Smash": "เซนต์หลุยส์สแมช",
+      "Full Cowling": "ฟูลคาวลิ่ง",
+      "Blackwhip": "แบล็กวิป",
+      "Danger Sense": "สัมผัสภยันตราย",
+      "Float": "ลอยตัว",
+      "Smokescreen": "ม่านควัน",
+      "Explosion": "ระเบิด",
+      "AP Shot": "AP ช็อต",
+      "Howitzer Impact": "ฮาวอิตเซอร์อิมแพกต์",
+      "Half-Cold Half-Hot": "ครึ่งเย็นครึ่งร้อน",
+      "Flashfire Fist": "หมัดเพลิงพิโรธ",
+      "Hellflame": "เพลิงนรก",
+      "Zero Gravity": "ไร้แรงโน้มถ่วง",
+      "Engine": "เครื่องยนต์",
+      "Recipro Burst": "รีซิโปรเบิร์สต์",
+      "Hardening": "ทำให้แข็ง",
+      "Erasure": "ลบล้าง",
+      "Decay": "ผุสลาย",
+      "Brainwashing": "ล้างสมอง",
+      "Dark Shadow": "ดาร์กแชโดว์",
+      "Permeation": "ทะลุผ่าน",
+      "Rewind": "ย้อนกลับ",
+      "Super Moves": "ท่าไม้ตาย"
+    },
+    "item": {
+      "Hero costume": "ชุดฮีโร่",
+      "Support item": "อุปกรณ์สนับสนุน",
+      "Quirk-Destroying Drug": "ยาทำลายอัตลักษณ์",
+      "Trigger": "ทริกเกอร์"
+    },
+    "other": {
+      "Plus Ultra": "พลัสอัลตร้า",
+      "Go beyond": "ก้าวข้ามขีดจำกัด",
+      "Sports Festival": "งานกีฬา",
+      "Entrance Exam": "การสอบเข้า",
+      "Hero Course": "หลักสูตรฮีโร่",
+      "General Studies": "หลักสูตรสามัญ",
+      "Support Course": "หลักสูตรสนับสนุน",
+      "Internship": "การฝึกงาน",
+      "Joint Training": "การฝึกร่วม",
+      "Paranormal Liberation War": "สงครามปลดปล่อยเหนือธรรมชาติ",
+      "Hero Society": "สังคมฮีโร่",
+      "Hero Billboard Chart": "ชาร์ตอันดับฮีโร่"
+    }
+  },
+  "review": [
+    "Quirk",
+    "Vigilante",
+    "Creati",
+    "Chargebolt",
+    "Danger Sense",
+    "Flashfire Fist",
+    "Hellflame",
+    "Hardening",
+    "Paranormal Liberation Front",
+    "Meta Liberation Army",
+    "Hero Public Safety Commission",
+    "Vanguard Action Squad",
+    "Go beyond",
+    "Trigger",
+    "Engine",
+    "Float"
+  ]
+}

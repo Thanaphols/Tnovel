@@ -1,0 +1,290 @@
+{
+  "name": "Demon Slayer",
+  "terms": {
+    "name": {
+      "Tanjiro": {
+        "th": "ทันจิโร่",
+        "aliases": {
+          "Tanjiro Kamado": "คามาโดะ ทันจิโร่",
+          "Kamado Tanjiro": "คามาโดะ ทันจิโร่"
+        }
+      },
+      "Kamado": "คามาโดะ",
+      "Nezuko": {
+        "th": "เนซึโกะ",
+        "aliases": {
+          "Nezuko Kamado": "คามาโดะ เนซึโกะ",
+          "Kamado Nezuko": "คามาโดะ เนซึโกะ"
+        }
+      },
+      "Zenitsu": {
+        "th": "เซ็นอิตสึ",
+        "aliases": {
+          "Zenitsu Agatsuma": "อากาซึมะ เซ็นอิตสึ",
+          "Agatsuma Zenitsu": "อากาซึมะ เซ็นอิตสึ"
+        }
+      },
+      "Agatsuma": "อากาซึมะ",
+      "Inosuke": {
+        "th": "อิโนะสุเกะ",
+        "aliases": {
+          "Inosuke Hashibira": "ฮาชิบิระ อิโนะสุเกะ",
+          "Hashibira Inosuke": "ฮาชิบิระ อิโนะสุเกะ"
+        }
+      },
+      "Hashibira": "ฮาชิบิระ",
+      "Kanao": {
+        "th": "คานาโอะ",
+        "aliases": {
+          "Kanao Tsuyuri": "สึยูริ คานาโอะ"
+        }
+      },
+      "Genya": {
+        "th": "เก็นยะ",
+        "aliases": {
+          "Genya Shinazugawa": "ชินาสึกาวะ เก็นยะ"
+        }
+      },
+      "Giyu": {
+        "th": "กิยู",
+        "aliases": {
+          "Giyu Tomioka": "โทมิโอกะ กิยู",
+          "Tomioka": "โทมิโอกะ"
+        }
+      },
+      "Rengoku": {
+        "th": "เรนโงคุ",
+        "aliases": {
+          "Kyojuro Rengoku": "เรนโงคุ เคียวจูโร่",
+          "Kyojuro": "เคียวจูโร่"
+        }
+      },
+      "Shinobu": {
+        "th": "ชิโนบุ",
+        "aliases": {
+          "Shinobu Kocho": "โคโจ ชิโนบุ",
+          "Kocho": "โคโจ"
+        }
+      },
+      "Kanae": "คานาเอะ",
+      "Tengen": {
+        "th": "เท็งเง็น",
+        "aliases": {
+          "Tengen Uzui": "อุซุย เท็งเง็น",
+          "Uzui": "อุซุย"
+        }
+      },
+      "Mitsuri": {
+        "th": "มิตสึริ",
+        "aliases": {
+          "Mitsuri Kanroji": "คันโรจิ มิตสึริ",
+          "Kanroji": "คันโรจิ"
+        }
+      },
+      "Muichiro": {
+        "th": "มุอิจิโร่",
+        "aliases": {
+          "Muichiro Tokito": "โทคิโตะ มุอิจิโร่",
+          "Tokito": "โทคิโตะ"
+        }
+      },
+      "Obanai": {
+        "th": "โอบาไน",
+        "aliases": {
+          "Obanai Iguro": "อิงุโระ โอบาไน",
+          "Iguro": "อิงุโระ"
+        }
+      },
+      "Sanemi": {
+        "th": "ซาเนมิ",
+        "aliases": {
+          "Sanemi Shinazugawa": "ชินาสึกาวะ ซาเนมิ",
+          "Shinazugawa": "ชินาสึกาวะ"
+        }
+      },
+      "Gyomei": {
+        "th": "เกียวเม",
+        "aliases": {
+          "Gyomei Himejima": "ฮิเมจิมะ เกียวเม",
+          "Himejima": "ฮิเมจิมะ"
+        }
+      },
+      "Urokodaki": {
+        "th": "อุโรโกะดากิ",
+        "aliases": {
+          "Sakonji Urokodaki": "อุโรโกะดากิ ซาคนจิ"
+        }
+      },
+      "Sabito": "ซาบิโตะ",
+      "Makomo": "มาโคโมะ",
+      "Jigoro": "จิโงโร่",
+      "Kaigaku": "ไคกาคุ",
+      "Kagaya": {
+        "th": "คางายะ",
+        "aliases": {
+          "Kagaya Ubuyashiki": "อุบุยาชิกิ คางายะ",
+          "Ubuyashiki": "อุบุยาชิกิ"
+        }
+      },
+      "Haganezuka": "ฮากาเนซึกะ",
+      "Murata": "มุราตะ",
+      "Aoi": "อาโออิ",
+      "Tamayo": "ทามาโยะ",
+      "Yushiro": "ยูชิโร่",
+      "Muzan": {
+        "th": "มุซัน",
+        "aliases": {
+          "Muzan Kibutsuji": "คิบุตสึจิ มุซัน",
+          "Kibutsuji": "คิบุตสึจิ"
+        }
+      },
+      "Kokushibo": "โคคุชิโบ",
+      "Doma": "โดมะ",
+      "Akaza": "อาคาซะ",
+      "Hantengu": "ฮันเท็งงุ",
+      "Gyokko": "เกียวโกะ",
+      "Gyutaro": "เกียวทาโร่",
+      "Daki": "ดากิ",
+      "Nakime": "นาคิเมะ",
+      "Enmu": "เอ็นมุ",
+      "Rui": "รุย",
+      "Yoriichi": {
+        "th": "โยริอิจิ",
+        "aliases": {
+          "Yoriichi Tsugikuni": "สึกิคุนิ โยริอิจิ"
+        }
+      },
+      "Michikatsu": "มิจิคัตสึ",
+      "Kanzaburo": "คันซาบุโร่",
+      "Chuntaro": "ชุนทาโร่"
+    },
+    "place": {
+      "Butterfly Mansion": "คฤหาสน์ผีเสื้อ",
+      "Swordsmith Village": "หมู่บ้านช่างตีดาบ",
+      "Entertainment District": "ย่านเริงรมย์",
+      "Yoshiwara": "โยชิวาระ",
+      "Mount Natagumo": "เขานาตากุโมะ",
+      "Mount Sagiri": "เขาซากิริ",
+      "Mount Fujikasane": "เขาฟุจิคาซาเนะ",
+      "Infinity Castle": "ปราสาทไร้ขอบเขต",
+      "Asakusa": "อาซากุสะ",
+      "Mugen Train": "รถไฟสู่นิรันดร์"
+    },
+    "org": {
+      "Demon Slayer Corps": "หน่วยพิฆาตอสูร",
+      "Hashira": "เสาหลัก",
+      "Twelve Kizuki": {
+        "th": "สิบสองจันทรอสูร",
+        "aliases": {
+          "Twelve Demon Moons": "สิบสองจันทรอสูร"
+        }
+      },
+      "Upper Moon": {
+        "th": "ข้างขึ้น",
+        "aliases": {
+          "Upper Moons": "ข้างขึ้น",
+          "Upper Moon One": "ข้างขึ้นที่หนึ่ง",
+          "Upper Moon Two": "ข้างขึ้นที่สอง",
+          "Upper Moon Three": "ข้างขึ้นที่สาม"
+        }
+      },
+      "Lower Moon": {
+        "th": "ข้างแรม",
+        "aliases": {
+          "Lower Moons": "ข้างแรม"
+        }
+      },
+      "Kakushi": "หน่วยคาคุชิ",
+      "Ubuyashiki Family": "ตระกูลอุบุยาชิกิ"
+    },
+    "title": {
+      "Demon Slayer": "นักล่าอสูร",
+      "Water Hashira": "เสาหลักวารี",
+      "Flame Hashira": "เสาหลักเพลิง",
+      "Insect Hashira": "เสาหลักแมลง",
+      "Sound Hashira": "เสาหลักเสียง",
+      "Love Hashira": "เสาหลักรัก",
+      "Mist Hashira": "เสาหลักหมอก",
+      "Serpent Hashira": "เสาหลักอสรพิษ",
+      "Wind Hashira": "เสาหลักวายุ",
+      "Stone Hashira": "เสาหลักศิลา",
+      "Master": "นายท่าน",
+      "Swordsmith": "ช่างตีดาบ",
+      "Mizunoto": "มิซึโนะโตะ",
+      "Kinoe": "คิโนเอะ"
+    },
+    "skill": {
+      "Breathing": {
+        "th": "ปราณ",
+        "aliases": {
+          "Breathing Style": "รูปแบบปราณ"
+        }
+      },
+      "Total Concentration Breathing": {
+        "th": "ปราณรวมศูนย์",
+        "aliases": {
+          "Total Concentration Constant": "ปราณรวมศูนย์ต่อเนื่อง"
+        }
+      },
+      "Water Breathing": "ปราณวารี",
+      "Flame Breathing": "ปราณเพลิง",
+      "Thunder Breathing": "ปราณอัสนี",
+      "Beast Breathing": "ปราณสัตว์ร้าย",
+      "Insect Breathing": "ปราณแมลง",
+      "Sound Breathing": "ปราณเสียง",
+      "Love Breathing": "ปราณรัก",
+      "Mist Breathing": "ปราณหมอก",
+      "Serpent Breathing": "ปราณอสรพิษ",
+      "Wind Breathing": "ปราณวายุ",
+      "Stone Breathing": "ปราณศิลา",
+      "Flower Breathing": "ปราณบุปผา",
+      "Moon Breathing": "ปราณจันทรา",
+      "Sun Breathing": "ปราณสุริยัน",
+      "Hinokami Kagura": "ระบำเทพอัคคี",
+      "Thunderclap and Flash": "อัสนีบาตสายฟ้าแลบ",
+      "Dead Calm": "ทะเลสงบ",
+      "Blood Demon Art": "มนตร์โลหิตอสูร",
+      "Demon Slayer Mark": "รอยนักล่าอสูร",
+      "See-Through World": "โลกโปร่งใส",
+      "Exploding Blood": "โลหิตระเบิด"
+    },
+    "item": {
+      "Nichirin Sword": {
+        "th": "ดาบนิจิริน",
+        "aliases": {
+          "Nichirin Blade": "ดาบนิจิริน"
+        }
+      },
+      "Kasugai Crow": "อีกาคาสุไก",
+      "Wisteria": "ดอกวิสทีเรีย",
+      "Bamboo muzzle": "กระบอกไม้ไผ่",
+      "Box": "กล่องไม้",
+      "Hanafuda earrings": "ต่างหูฮานะฟุดะ",
+      "Haori": "ฮาโอริ"
+    },
+    "other": {
+      "Demon": "อสูร",
+      "Final Selection": "การคัดเลือกขั้นสุดท้าย",
+      "Hashira Training": "การฝึกเสาหลัก",
+      "Blue Spider Lily": "ดอกลิลลี่แมงมุมสีคราม",
+      "Sunlight": "แสงอาทิตย์",
+      "Demon Slayer: Kimetsu no Yaiba": "ดาบพิฆาตอสูร"
+    }
+  },
+  "review": [
+    "Twelve Kizuki",
+    "Upper Moon",
+    "Lower Moon",
+    "Total Concentration Breathing",
+    "Thunderclap and Flash",
+    "Dead Calm",
+    "Blood Demon Art",
+    "See-Through World",
+    "Mizunoto",
+    "Kinoe",
+    "Box",
+    "Bamboo muzzle",
+    "Master",
+    "Mugen Train"
+  ]
+}

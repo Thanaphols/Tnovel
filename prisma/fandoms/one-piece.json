@@ -1,0 +1,520 @@
+{
+  "name": "One Piece",
+  "terms": {
+    "name": {
+      "Luffy": {
+        "th": "ลูฟี่",
+        "aliases": {
+          "Monkey D. Luffy": "มังกี้ ดี ลูฟี่"
+        }
+      },
+      "Zoro": {
+        "th": "โซโร",
+        "aliases": {
+          "Roronoa Zoro": "โรโรโนอา โซโร",
+          "Pirate Hunter": "นักล่าโจรสลัด"
+        }
+      },
+      "Nami": "นามิ",
+      "Usopp": {
+        "th": "อุซป",
+        "aliases": {
+          "Sogeking": "โซเงคิง"
+        }
+      },
+      "Sanji": {
+        "th": "ซันจิ",
+        "aliases": {
+          "Vinsmoke Sanji": "วินสโม้ค ซันจิ",
+          "Black Leg": "ขาดำ"
+        }
+      },
+      "Chopper": {
+        "th": "ช็อปเปอร์",
+        "aliases": {
+          "Tony Tony Chopper": "โทนี่ โทนี่ ช็อปเปอร์"
+        }
+      },
+      "Robin": {
+        "th": "โรบิน",
+        "aliases": {
+          "Nico Robin": "นิโค โรบิน"
+        }
+      },
+      "Franky": "แฟรงกี้",
+      "Brook": "บรู๊ค",
+      "Jinbe": {
+        "th": "จินเบ",
+        "aliases": {
+          "Jinbei": "จินเบ"
+        }
+      },
+      "Shanks": {
+        "th": "แชงคูส",
+        "aliases": {
+          "Red-Haired Shanks": "แชงคูสผมแดง"
+        }
+      },
+      "Ace": {
+        "th": "เอส",
+        "aliases": {
+          "Portgas D. Ace": "พอร์ทกัส ดี เอส",
+          "Fire Fist": "หมัดอัคคี"
+        }
+      },
+      "Sabo": "ซาโบ",
+      "Gol D. Roger": {
+        "th": "โกล ดี โรเจอร์",
+        "aliases": {
+          "Gold Roger": "โกลด์ โรเจอร์"
+        }
+      },
+      "Whitebeard": {
+        "th": "หนวดขาว",
+        "aliases": {
+          "Edward Newgate": "เอ็ดเวิร์ด นิวเกต"
+        }
+      },
+      "Blackbeard": {
+        "th": "หนวดดำ",
+        "aliases": {
+          "Marshall D. Teach": "มาร์แชล ดี ทีช"
+        }
+      },
+      "Kaido": {
+        "th": "ไคโด",
+        "aliases": {
+          "Kaidou": "ไคโด"
+        }
+      },
+      "Big Mom": {
+        "th": "บิ๊กมัม",
+        "aliases": {
+          "Charlotte Linlin": "ชาร์ล็อต ลินลิน"
+        }
+      },
+      "Katakuri": {
+        "th": "คาตาคุริ",
+        "aliases": {
+          "Charlotte Katakuri": "ชาร์ล็อต คาตาคุริ"
+        }
+      },
+      "Trafalgar Law": {
+        "th": "ทราฟัลการ์ ลอว์",
+        "aliases": {
+          "Trafalgar D. Water Law": "ทราฟัลการ์ ดี วอเตอร์ ลอว์",
+          "Surgeon of Death": "ศัลยแพทย์แห่งความตาย"
+        }
+      },
+      "Hancock": {
+        "th": "แฮนค็อก",
+        "aliases": {
+          "Boa Hancock": "โบอา แฮนค็อก",
+          "Pirate Empress": "จักรพรรดินีโจรสลัด"
+        }
+      },
+      "Mihawk": {
+        "th": "มิฮอว์ค",
+        "aliases": {
+          "Dracule Mihawk": "ดราคูล มิฮอว์ค"
+        }
+      },
+      "Buggy": "บากี้",
+      "Sir Crocodile": "เซอร์ คร็อกโคไดล์",
+      "Doflamingo": {
+        "th": "โดฟลามิงโก้",
+        "aliases": {
+          "Donquixote Doflamingo": "ดองกิโฮเต้ โดฟลามิงโก้"
+        }
+      },
+      "Donquixote Rosinante": "ดองกิโฮเต้ โรซินันเต้",
+      "Garp": {
+        "th": "การ์ป",
+        "aliases": {
+          "Monkey D. Garp": "มังกี้ ดี การ์ป"
+        }
+      },
+      "Monkey D. Dragon": "มังกี้ ดี ดราก้อน",
+      "Sengoku": "เซ็นโงคุ",
+      "Akainu": {
+        "th": "อาคาอินุ",
+        "aliases": {
+          "Sakazuki": "ซาคาซึกิ"
+        }
+      },
+      "Aokiji": {
+        "th": "อาโอคิจิ",
+        "aliases": {
+          "Kuzan": "คุซัน"
+        }
+      },
+      "Kizaru": {
+        "th": "คิซารุ",
+        "aliases": {
+          "Borsalino": "บอร์ซาลิโน่"
+        }
+      },
+      "Fujitora": "ฟูจิโทระ",
+      "Smoker": "สโมคเกอร์",
+      "Tashigi": "ทาชิงิ",
+      "Koby": {
+        "th": "โคบี้",
+        "aliases": {
+          "Coby": "โคบี้"
+        }
+      },
+      "Helmeppo": "เฮลเมปโป",
+      "Vivi": {
+        "th": "วีวี่",
+        "aliases": {
+          "Nefertari Vivi": "เนเฟลตาริ วีวี่"
+        }
+      },
+      "Eustass Kid": "ยูสตาส คิด",
+      "Enel": {
+        "th": "เอเนล",
+        "aliases": {
+          "Eneru": "เอเนล"
+        }
+      },
+      "Arlong": "อารอง",
+      "Lucci": {
+        "th": "ลุจจิ",
+        "aliases": {
+          "Rob Lucci": "ร็อบ ลุจจิ"
+        }
+      },
+      "Kuma": {
+        "th": "คุมะ",
+        "aliases": {
+          "Bartholomew Kuma": "บาร์โธโลมิว คุมะ"
+        }
+      },
+      "Marco": "มาร์โค",
+      "Kuina": "คุอินะ",
+      "Bellemere": "เบลเมล",
+      "Nojiko": "โนจิโกะ",
+      "Zeff": "เซฟ",
+      "Kaya": "คายะ",
+      "Dr. Kureha": "ด็อกเตอร์คุเรฮะ",
+      "Rayleigh": {
+        "th": "เรย์ลีห์",
+        "aliases": {
+          "Silvers Rayleigh": "ซิลเวอร์ส เรย์ลีห์"
+        }
+      },
+      "Yamato": "ยามาโตะ",
+      "Oden": {
+        "th": "โอเด้ง",
+        "aliases": {
+          "Kozuki Oden": "โคสึกิ โอเด้ง"
+        }
+      },
+      "Momonosuke": "โมโมโนะสุเกะ",
+      "Kin'emon": "คินเอมอน",
+      "Perona": "เปโรน่า",
+      "Gecko Moria": "เก็คโค โมเรีย",
+      "Bon Clay": {
+        "th": "บอน เคลย์",
+        "aliases": {
+          "Mr. 2": "มิสเตอร์ทู"
+        }
+      },
+      "Ivankov": "อิวานคอฟ",
+      "Magellan": "มาเจลแลน",
+      "Rebecca": "เรเบคก้า",
+      "Vegapunk": "เวก้าพังค์",
+      "Imu": "อิมู"
+    },
+    "place": {
+      "Grand Line": "แกรนด์ไลน์",
+      "East Blue": "อีสต์บลู",
+      "West Blue": "เวสต์บลู",
+      "North Blue": "นอร์ทบลู",
+      "South Blue": "เซาท์บลู",
+      "New World": "โลกใหม่",
+      "Red Line": "เรดไลน์",
+      "Calm Belt": "คาล์มเบลท์",
+      "Marineford": "มารีนฟอร์ด",
+      "Impel Down": "อิมเพลดาวน์",
+      "Alabasta": {
+        "th": "อลาบัสต้า",
+        "aliases": {
+          "Arabasta": "อลาบัสต้า"
+        }
+      },
+      "Skypiea": "สกายเปีย",
+      "Water 7": "วอเตอร์เซเว่น",
+      "Enies Lobby": "เอนิเอส ล็อบบี้",
+      "Thriller Bark": "ทริลเลอร์บาร์ค",
+      "Sabaody": {
+        "th": "ชาบอนดี้",
+        "aliases": {
+          "Sabaody Archipelago": "หมู่เกาะชาบอนดี้"
+        }
+      },
+      "Fish-Man Island": "เกาะมนุษย์เงือก",
+      "Amazon Lily": "อมาซอน ลิลลี่",
+      "Punk Hazard": "พังค์ฮาซาร์ด",
+      "Dressrosa": "เดรสโรซ่า",
+      "Zou": "โซว",
+      "Whole Cake Island": "โฮลเค้กไอส์แลนด์",
+      "Wano": {
+        "th": "วาโนะ",
+        "aliases": {
+          "Wano Country": "ประเทศวาโนะ"
+        }
+      },
+      "Onigashima": "โอนิงาชิมะ",
+      "Egghead": "เอ้กเฮด",
+      "Elbaf": "เอลบัฟ",
+      "Mary Geoise": {
+        "th": "แมรี่จัวร์",
+        "aliases": {
+          "Mariejois": "แมรี่จัวร์"
+        }
+      },
+      "Laugh Tale": {
+        "th": "ราฟเทล",
+        "aliases": {
+          "Raftel": "ราฟเทล"
+        }
+      },
+      "Foosha Village": {
+        "th": "หมู่บ้านฟูชะ",
+        "aliases": {
+          "Windmill Village": "หมู่บ้านกังหันลม"
+        }
+      },
+      "Syrup Village": "หมู่บ้านไซรัป",
+      "Baratie": "บาราติเอ",
+      "Cocoyasi Village": "หมู่บ้านโคโคยาชิ",
+      "Loguetown": "โลเกทาวน์",
+      "Reverse Mountain": "รีเวิร์สเมาน์เทน",
+      "Drum Island": "เกาะดรัม",
+      "Little Garden": "ลิตเติ้ลการ์เด้น",
+      "Ohara": "โอฮาร่า"
+    },
+    "org": {
+      "Straw Hat Pirates": {
+        "th": "กลุ่มโจรสลัดหมวกฟาง",
+        "aliases": {
+          "Straw Hats": "กลุ่มหมวกฟาง"
+        }
+      },
+      "Straw Hat Grand Fleet": "กองเรือใหญ่หมวกฟาง",
+      "Whitebeard Pirates": "กลุ่มโจรสลัดหนวดขาว",
+      "Blackbeard Pirates": "กลุ่มโจรสลัดหนวดดำ",
+      "Red Hair Pirates": "กลุ่มโจรสลัดผมแดง",
+      "Heart Pirates": "กลุ่มโจรสลัดฮาร์ท",
+      "Beasts Pirates": "กลุ่มโจรสลัดร้อยอสูร",
+      "Big Mom Pirates": "กลุ่มโจรสลัดบิ๊กมัม",
+      "Marines": "ทหารเรือ",
+      "World Government": "รัฐบาลโลก",
+      "Revolutionary Army": "กองทัพปฏิวัติ",
+      "Celestial Dragons": {
+        "th": "มังกรฟ้า",
+        "aliases": {
+          "Celestial Dragon": "มังกรฟ้า",
+          "World Nobles": "ชนชั้นสูงแห่งโลก"
+        }
+      },
+      "Five Elders": {
+        "th": "ห้าผู้เฒ่า",
+        "aliases": {
+          "Gorosei": "ห้าผู้เฒ่า"
+        }
+      },
+      "Cipher Pol": "ไซเฟอร์โพล",
+      "CP9": "ซีพีไนน์",
+      "Baroque Works": "บาร็อคเวิร์กส์",
+      "Donquixote Pirates": "กลุ่มโจรสลัดดองกิโฮเต้",
+      "Kuja Pirates": "กลุ่มโจรสลัดคุจา",
+      "Sun Pirates": "กลุ่มโจรสลัดอาทิตย์"
+    },
+    "title": {
+      "Pirate King": {
+        "th": "ราชาโจรสลัด",
+        "aliases": {
+          "King of the Pirates": "ราชาโจรสลัด"
+        }
+      },
+      "Four Emperors": {
+        "th": "สี่จักรพรรดิ",
+        "aliases": {
+          "Yonko": "สี่จักรพรรดิ",
+          "Yonkou": "สี่จักรพรรดิ"
+        }
+      },
+      "Seven Warlords of the Sea": {
+        "th": "เจ็ดเทพโจรสลัด",
+        "aliases": {
+          "Shichibukai": "เจ็ดเทพโจรสลัด"
+        }
+      },
+      "Fleet Admiral": "จอมพลเรือ",
+      "Admiral": "พลเรือเอก",
+      "Vice Admiral": "พลเรือโท",
+      "Rear Admiral": "พลเรือตรี",
+      "Supernovas": {
+        "th": "ซุปเปอร์โนวา",
+        "aliases": {
+          "Worst Generation": "ยุคที่เลวร้ายที่สุด"
+        }
+      }
+    },
+    "skill": {
+      "Haki": "ฮาคิ",
+      "Observation Haki": {
+        "th": "ฮาคิสังเกต",
+        "aliases": {
+          "Kenbunshoku Haki": "ฮาคิสังเกต"
+        }
+      },
+      "Armament Haki": {
+        "th": "ฮาคิเกราะ",
+        "aliases": {
+          "Busoshoku Haki": "ฮาคิเกราะ"
+        }
+      },
+      "Conqueror's Haki": {
+        "th": "ฮาคิราชันย์",
+        "aliases": {
+          "Haoshoku Haki": "ฮาคิราชันย์"
+        }
+      },
+      "Gear Second": {
+        "th": "เกียร์ 2",
+        "aliases": {
+          "Gear 2": "เกียร์ 2"
+        }
+      },
+      "Gear Third": {
+        "th": "เกียร์ 3",
+        "aliases": {
+          "Gear 3": "เกียร์ 3"
+        }
+      },
+      "Gear Fourth": {
+        "th": "เกียร์ 4",
+        "aliases": {
+          "Gear 4": "เกียร์ 4"
+        }
+      },
+      "Gear Fifth": {
+        "th": "เกียร์ 5",
+        "aliases": {
+          "Gear 5": "เกียร์ 5"
+        }
+      },
+      "Santoryu": {
+        "th": "เพลงดาบสามดาบ",
+        "aliases": {
+          "Three Sword Style": "เพลงดาบสามดาบ"
+        }
+      },
+      "Rokushiki": "หกรูปแบบ",
+      "Soru": "โซรุ",
+      "Geppo": "เก็ปโป",
+      "Diable Jambe": "ขาปีศาจ"
+    },
+    "item": {
+      "One Piece": "วันพีซ",
+      "Devil Fruit": {
+        "th": "ผลปีศาจ",
+        "aliases": {
+          "Devil Fruits": "ผลปีศาจ"
+        }
+      },
+      "Gomu Gomu no Mi": {
+        "th": "ผลยางยืด",
+        "aliases": {
+          "Gum-Gum Fruit": "ผลยางยืด"
+        }
+      },
+      "Mera Mera no Mi": "ผลเปลวไฟ",
+      "Ope Ope no Mi": "ผลผ่าตัด",
+      "Poneglyph": {
+        "th": "โพเนกลีฟ",
+        "aliases": {
+          "Poneglyphs": "โพเนกลีฟ"
+        }
+      },
+      "Road Poneglyph": "โร้ดโพเนกลีฟ",
+      "Log Pose": "ล็อกโพส",
+      "Eternal Pose": "เอเทอร์นอลโพส",
+      "Vivre Card": "บัตรชีวิต",
+      "Den Den Mushi": {
+        "th": "หอยทากสื่อสาร",
+        "aliases": {
+          "Transponder Snail": "หอยทากสื่อสาร"
+        }
+      },
+      "Seastone": {
+        "th": "หินไคโรเซกิ",
+        "aliases": {
+          "Sea Prism Stone": "หินไคโรเซกิ",
+          "Kairoseki": "หินไคโรเซกิ"
+        }
+      },
+      "Going Merry": "โกอิ้งเมอร์รี่",
+      "Thousand Sunny": "เธาซันด์ซันนี่",
+      "Wado Ichimonji": "วาโดอิจิมอนจิ",
+      "Enma": "เอ็นมะ",
+      "Yoru": "โยรุ",
+      "Straw Hat": "หมวกฟาง"
+    },
+    "other": {
+      "Sea King": {
+        "th": "เจ้าทะเล",
+        "aliases": {
+          "Sea Kings": "เจ้าทะเล"
+        }
+      },
+      "Fish-Man": {
+        "th": "มนุษย์เงือก",
+        "aliases": {
+          "Fish-Men": "มนุษย์เงือก"
+        }
+      },
+      "Merfolk": "เงือก",
+      "Mink Tribe": "เผ่ามิงค์",
+      "Will of D": "เจตจำนงแห่ง D",
+      "Void Century": "ศตวรรษที่ว่างเปล่า",
+      "Ancient Weapons": "อาวุธโบราณ",
+      "Buster Call": "บัสเตอร์คอล",
+      "Summit War": "สงครามสุดยอด",
+      "Paramecia": "พารามีเซีย",
+      "Zoan": "โซออน",
+      "Logia": "โลเกีย",
+      "Joy Boy": "จอยบอย",
+      "Nika": {
+        "th": "นิกะ",
+        "aliases": {
+          "Sun God Nika": "เทพแห่งดวงอาทิตย์นิกะ"
+        }
+      }
+    }
+  },
+  "review": [
+    "Usopp",
+    "Ace",
+    "Brook",
+    "Buggy",
+    "Smoker",
+    "Admiral",
+    "Rokushiki",
+    "Diable Jambe",
+    "Beasts Pirates",
+    "World Nobles",
+    "Worst Generation",
+    "Fire Fist",
+    "Black Leg",
+    "Summit War",
+    "Will of D",
+    "Thousand Sunny",
+    "Mink Tribe",
+    "Zou",
+    "Elbaf"
+  ]
+}

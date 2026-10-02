@@ -1,0 +1,415 @@
+{
+  "name": "Game of Thrones",
+  "terms": {
+    "name": {
+      "Jon": {
+        "th": "จอน",
+        "aliases": {
+          "Jon Snow": "จอน สโนว์"
+        }
+      },
+      "Snow": "สโนว์",
+      "Ned": {
+        "th": "เน็ด",
+        "aliases": {
+          "Eddard Stark": "เอ็ดดาร์ด สตาร์ค",
+          "Ned Stark": "เน็ด สตาร์ค",
+          "Eddard": "เอ็ดดาร์ด"
+        }
+      },
+      "Stark": {
+        "th": "สตาร์ค",
+        "aliases": {
+          "Starks": "ตระกูลสตาร์ค"
+        }
+      },
+      "Catelyn": {
+        "th": "แคทลิน",
+        "aliases": {
+          "Catelyn Stark": "แคทลิน สตาร์ค",
+          "Catelyn Tully": "แคทลิน ทัลลี"
+        }
+      },
+      "Robb": {
+        "th": "ร็อบ",
+        "aliases": {
+          "Robb Stark": "ร็อบ สตาร์ค"
+        }
+      },
+      "Sansa": {
+        "th": "แซนซา",
+        "aliases": {
+          "Sansa Stark": "แซนซา สตาร์ค"
+        }
+      },
+      "Arya": {
+        "th": "อาร์ยา",
+        "aliases": {
+          "Arya Stark": "อาร์ยา สตาร์ค"
+        }
+      },
+      "Bran": {
+        "th": "แบรน",
+        "aliases": {
+          "Bran Stark": "แบรน สตาร์ค",
+          "Brandon Stark": "แบรนดอน สตาร์ค"
+        }
+      },
+      "Rickon": "ริคคอน",
+      "Benjen": "เบนเจน",
+      "Lyanna": "ไลอานนา",
+      "Daenerys": {
+        "th": "แดเนริส",
+        "aliases": {
+          "Daenerys Targaryen": "แดเนริส ทาร์แกเรียน",
+          "Dany": "แดนี่",
+          "Khaleesi": "คาลีซี",
+          "Mother of Dragons": "มารดาแห่งมังกร",
+          "Daenerys Stormborn": "แดเนริสผู้เกิดกลางพายุ"
+        }
+      },
+      "Targaryen": {
+        "th": "ทาร์แกเรียน",
+        "aliases": {
+          "Targaryens": "ตระกูลทาร์แกเรียน"
+        }
+      },
+      "Viserys": "วิเซริส",
+      "Rhaegar": "เรการ์",
+      "Aegon": "เอกอน",
+      "Aerys": {
+        "th": "แอริส",
+        "aliases": {
+          "Mad King": "ราชันวิปลาส"
+        }
+      },
+      "Tyrion": {
+        "th": "ทีเรียน",
+        "aliases": {
+          "Tyrion Lannister": "ทีเรียน แลนนิสเตอร์",
+          "Imp": "เจ้าแคระ"
+        }
+      },
+      "Lannister": {
+        "th": "แลนนิสเตอร์",
+        "aliases": {
+          "Lannisters": "ตระกูลแลนนิสเตอร์"
+        }
+      },
+      "Cersei": {
+        "th": "เซอร์ซี",
+        "aliases": {
+          "Cersei Lannister": "เซอร์ซี แลนนิสเตอร์"
+        }
+      },
+      "Jaime": {
+        "th": "เจมี",
+        "aliases": {
+          "Jaime Lannister": "เจมี แลนนิสเตอร์",
+          "Kingslayer": "นักปลงพระชนม์"
+        }
+      },
+      "Tywin": {
+        "th": "ไทวิน",
+        "aliases": {
+          "Tywin Lannister": "ไทวิน แลนนิสเตอร์"
+        }
+      },
+      "Joffrey": {
+        "th": "จอฟฟรีย์",
+        "aliases": {
+          "Joffrey Baratheon": "จอฟฟรีย์ บาราเธียน"
+        }
+      },
+      "Tommen": "ทอมเมน",
+      "Myrcella": "เมอร์เซลลา",
+      "Baratheon": "บาราเธียน",
+      "Robert": {
+        "th": "โรเบิร์ต",
+        "aliases": {
+          "Robert Baratheon": "โรเบิร์ต บาราเธียน"
+        }
+      },
+      "Stannis": {
+        "th": "สแตนนิส",
+        "aliases": {
+          "Stannis Baratheon": "สแตนนิส บาราเธียน"
+        }
+      },
+      "Renly": "เรนลี",
+      "Gendry": "เจนดรี",
+      "Theon": {
+        "th": "ธีออน",
+        "aliases": {
+          "Theon Greyjoy": "ธีออน เกรย์จอย",
+          "Reek": "รีค"
+        }
+      },
+      "Greyjoy": "เกรย์จอย",
+      "Yara": "ยารา",
+      "Asha": "อาชา",
+      "Euron": "ยูรอน",
+      "Balon": "เบลอน",
+      "Petyr": {
+        "th": "ปีเตอร์",
+        "aliases": {
+          "Petyr Baelish": "ปีเตอร์ เบลิช",
+          "Littlefinger": "ลิตเติลฟิงเกอร์"
+        }
+      },
+      "Varys": {
+        "th": "วาริส",
+        "aliases": {
+          "Spider": "แมงมุม"
+        }
+      },
+      "Sandor": {
+        "th": "แซนดอร์",
+        "aliases": {
+          "Sandor Clegane": "แซนดอร์ คลีเกน",
+          "Hound": "เดอะฮาวด์"
+        }
+      },
+      "Gregor": {
+        "th": "เกรเกอร์",
+        "aliases": {
+          "Gregor Clegane": "เกรเกอร์ คลีเกน",
+          "Mountain": "เดอะเมาน์เทน"
+        }
+      },
+      "Clegane": "คลีเกน",
+      "Brienne": {
+        "th": "ไบรเอนนี",
+        "aliases": {
+          "Brienne of Tarth": "ไบรเอนนีแห่งทาร์ธ"
+        }
+      },
+      "Samwell": {
+        "th": "แซมเวล",
+        "aliases": {
+          "Samwell Tarly": "แซมเวล ทาร์ลี",
+          "Sam": "แซม"
+        }
+      },
+      "Gilly": "กิลลี",
+      "Jorah": {
+        "th": "จอราห์",
+        "aliases": {
+          "Jorah Mormont": "จอราห์ มอร์มอนต์"
+        }
+      },
+      "Mormont": "มอร์มอนต์",
+      "Davos": {
+        "th": "ดาวอส",
+        "aliases": {
+          "Davos Seaworth": "ดาวอส ซีเวิร์ธ",
+          "Onion Knight": "อัศวินหัวหอม"
+        }
+      },
+      "Melisandre": {
+        "th": "เมลิซานเดร",
+        "aliases": {
+          "Red Woman": "สตรีชุดแดง"
+        }
+      },
+      "Margaery": {
+        "th": "มาร์เจอรี",
+        "aliases": {
+          "Margaery Tyrell": "มาร์เจอรี ไทเรล"
+        }
+      },
+      "Olenna": "โอเลนนา",
+      "Tyrell": "ไทเรล",
+      "Oberyn": {
+        "th": "โอเบอริน",
+        "aliases": {
+          "Oberyn Martell": "โอเบอริน มาร์เทล",
+          "Red Viper": "อสรพิษแดง"
+        }
+      },
+      "Martell": "มาร์เทล",
+      "Bronn": "บรอนน์",
+      "Podrick": "พ็อดริก",
+      "Missandei": "มิสซานเด",
+      "Grey Worm": "เกรย์เวิร์ม",
+      "Daario": "ดาริโอ",
+      "Khal Drogo": {
+        "th": "คาล โดรโก",
+        "aliases": {
+          "Drogo": "โดรโก"
+        }
+      },
+      "Tormund": "ทอร์มุนด์",
+      "Ygritte": "อีกริตต์",
+      "Mance Rayder": "แมนซ์ เรย์เดอร์",
+      "Hodor": "โฮดอร์",
+      "Roose Bolton": "รูส โบลตัน",
+      "Ramsay": {
+        "th": "แรมซีย์",
+        "aliases": {
+          "Ramsay Bolton": "แรมซีย์ โบลตัน",
+          "Ramsay Snow": "แรมซีย์ สโนว์"
+        }
+      },
+      "Bolton": "โบลตัน",
+      "Walder Frey": "วอลเดอร์ เฟรย์",
+      "Frey": "เฟรย์",
+      "Jaqen H'ghar": "จาเคน ฮาการ์",
+      "Night King": "ราชาราตรี",
+      "Ghost": "โกสต์",
+      "Nymeria": "ไนมีเรีย",
+      "Drogon": "โดรกอน",
+      "Rhaegal": "เรกัล",
+      "Viserion": "วิเซริออน"
+    },
+    "place": {
+      "Westeros": "เวสเทอรอส",
+      "Essos": "เอสซอส",
+      "Seven Kingdoms": "เจ็ดราชอาณาจักร",
+      "King's Landing": "คิงส์แลนดิง",
+      "Winterfell": "วินเทอร์เฟลล์",
+      "The Wall": {
+        "th": "กำแพง",
+        "aliases": {
+          "Wall": "กำแพง"
+        }
+      },
+      "Castle Black": "คาสเซิลแบล็ก",
+      "Beyond the Wall": "ดินแดนเหนือกำแพง",
+      "the North": "ดินแดนเหนือ",
+      "Casterly Rock": "แคสเตอร์ลีร็อก",
+      "Highgarden": "ไฮการ์เดน",
+      "Riverrun": "ริเวอร์รัน",
+      "The Eyrie": "ดิไอรี",
+      "Dragonstone": "ดรากอนสโตน",
+      "Iron Islands": "หมู่เกาะเหล็ก",
+      "Pyke": "ไพค์",
+      "Dorne": "ดอร์น",
+      "Sunspear": "ซันสเปียร์",
+      "Storm's End": "สตอร์มส์เอนด์",
+      "The Twins": "เดอะทวินส์",
+      "Harrenhal": "แฮร์เรนฮอล",
+      "Oldtown": "โอลด์ทาวน์",
+      "Citadel": "ซิทาเดล",
+      "Red Keep": "เรดคีป",
+      "Great Sept of Baelor": "มหาวิหารแห่งเบเลอร์",
+      "Braavos": "บราวอส",
+      "Meereen": "เมียรีน",
+      "Qarth": "ควาร์ธ",
+      "Pentos": "เพนทอส",
+      "Volantis": "โวแลนทิส",
+      "Valyria": "วาลีเรีย",
+      "Vaes Dothrak": "แวส โดธรัก",
+      "Hardhome": "ฮาร์ดโฮม",
+      "Godswood": "ป่าเทพ",
+      "Narrow Sea": "ทะเลแคบ"
+    },
+    "org": {
+      "Night's Watch": "หน่วยพิทักษ์ราตรี",
+      "Kingsguard": "ราชองครักษ์",
+      "Small Council": "สภาเล็ก",
+      "Faceless Men": "บุรุษไร้หน้า",
+      "Unsullied": "ทหารไร้มลทิน",
+      "Dothraki": "ดอธรากี",
+      "Wildlings": {
+        "th": "คนเถื่อน",
+        "aliases": {
+          "Free Folk": "ชนเสรี"
+        }
+      },
+      "White Walkers": {
+        "th": "ไวท์วอล์กเกอร์",
+        "aliases": {
+          "White Walker": "ไวท์วอล์กเกอร์",
+          "Others": "ภูตน้ำแข็ง"
+        }
+      },
+      "Children of the Forest": "บุตรแห่งพงไพร",
+      "Brotherhood Without Banners": "ภราดรไร้ธง",
+      "Golden Company": "กองร้อยทองคำ",
+      "Second Sons": "บุตรคนรอง",
+      "Iron Bank": "ธนาคารเหล็ก",
+      "Faith Militant": "กองกำลังศรัทธา",
+      "Sparrows": "นกกระจอก",
+      "Maesters": "เมสเตอร์"
+    },
+    "title": {
+      "Hand of the King": {
+        "th": "หัตถ์แห่งราชา",
+        "aliases": {
+          "Hand": "หัตถ์",
+          "Hand of the Queen": "หัตถ์แห่งราชินี"
+        }
+      },
+      "Lord Commander": "ผู้บัญชาการใหญ่",
+      "Warden of the North": "ผู้พิทักษ์แดนเหนือ",
+      "King in the North": "ราชาแห่งแดนเหนือ",
+      "Khal": "คาล",
+      "Maester": "เมสเตอร์",
+      "Grand Maester": "มหาเมสเตอร์",
+      "High Sparrow": "มหานกกระจอก",
+      "Ser": "เซอร์",
+      "Lord": "ลอร์ด",
+      "Lady": "เลดี้",
+      "Your Grace": "ฝ่าบาท",
+      "My lord": "นายท่าน",
+      "Three-Eyed Raven": "อีกาสามตา"
+    },
+    "skill": {
+      "Warg": {
+        "th": "วอร์ก",
+        "aliases": {
+          "Warging": "การสิงร่าง",
+          "Skinchanger": "ผู้เปลี่ยนร่าง"
+        }
+      },
+      "Greensight": "ญาณเขียว",
+      "Wildfire": "ไฟป่า",
+      "Dracarys": "ดราคาริส"
+    },
+    "item": {
+      "Iron Throne": "บัลลังก์เหล็ก",
+      "Valyrian steel": "เหล็กวาลีเรีย",
+      "Dragonglass": "แก้วมังกร",
+      "Longclaw": "ลองคลอว์",
+      "Needle": "นีดเดิล",
+      "Ice": "ไอซ์",
+      "Oathkeeper": "โอธคีปเปอร์",
+      "Widow's Wail": "วิโดว์สเวล",
+      "Heartsbane": "ฮาร์ตส์เบน",
+      "Weirwood": "ต้นเวียร์วูด",
+      "Direwolf": "หมาป่าไดร์"
+    },
+    "other": {
+      "Winter is coming": "เหมันต์กำลังมา",
+      "Valar morghulis": "วาลาร์ มอร์กูลิส",
+      "Valar dohaeris": "วาลาร์ โดเฮริส",
+      "Red Wedding": "งานแต่งเลือด",
+      "Lord of Light": "เทพแห่งแสง",
+      "Old Gods": "เทพเก่า",
+      "Faith of the Seven": "ศรัทธาแห่งเจ็ดเทพ",
+      "Many-Faced God": "เทพพันหน้า",
+      "Drowned God": "เทพจมน้ำ",
+      "Long Night": "ราตรีอันยาวนาน",
+      "Wight": "ศพเดินได้",
+      "Bannerman": "ข้าราชบริพาร",
+      "Wildling": "คนเถื่อน",
+      "Gold cloaks": "ทหารเสื้อคลุมทอง"
+    }
+  },
+  "review": [
+    "Others",
+    "Ice",
+    "Ghost",
+    "Spider",
+    "Hound",
+    "Mountain",
+    "Hand",
+    "Wall",
+    "Sparrows",
+    "Second Sons",
+    "Winter is coming",
+    "Kingslayer",
+    "Bannerman"
+  ]
+}

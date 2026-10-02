@@ -1,0 +1,334 @@
+{
+  "name": "Naruto",
+  "terms": {
+    "name": {
+      "Naruto": {
+        "th": "นารูโตะ",
+        "aliases": {
+          "Naruto Uzumaki": "นารูโตะ อุซึมากิ",
+          "Uzumaki Naruto": "อุซึมากิ นารูโตะ"
+        }
+      },
+      "Uzumaki": "อุซึมากิ",
+      "Sasuke": {
+        "th": "ซาสึเกะ",
+        "aliases": {
+          "Sasuke Uchiha": "ซาสึเกะ อุจิวะ",
+          "Uchiha Sasuke": "อุจิวะ ซาสึเกะ"
+        }
+      },
+      "Uchiha": "อุจิวะ",
+      "Sakura": {
+        "th": "ซากุระ",
+        "aliases": {
+          "Sakura Haruno": "ซากุระ ฮารุโนะ",
+          "Haruno Sakura": "ฮารุโนะ ซากุระ"
+        }
+      },
+      "Haruno": "ฮารุโนะ",
+      "Kakashi": {
+        "th": "คาคาชิ",
+        "aliases": {
+          "Kakashi Hatake": "คาคาชิ ฮาตาเกะ",
+          "Hatake Kakashi": "ฮาตาเกะ คาคาชิ"
+        }
+      },
+      "Hatake": "ฮาตาเกะ",
+      "Itachi": "อิทาจิ",
+      "Madara": "มาดาระ",
+      "Obito": "โอบิโตะ",
+      "Shisui": "ชิซุย",
+      "Hinata": {
+        "th": "ฮินาตะ",
+        "aliases": {
+          "Hinata Hyuga": "ฮินาตะ ฮิวงะ"
+        }
+      },
+      "Hyuga": {
+        "th": "ฮิวงะ",
+        "aliases": {
+          "Hyuuga": "ฮิวงะ"
+        }
+      },
+      "Neji": "เนจิ",
+      "Hiashi": "ฮิอาชิ",
+      "Hanabi": "ฮานาบิ",
+      "Rock Lee": "ร็อค ลี",
+      "Might Guy": {
+        "th": "ไมโตะ ไก",
+        "aliases": {
+          "Maito Gai": "ไมโตะ ไก"
+        }
+      },
+      "Tenten": "เท็นเท็น",
+      "Shikamaru": "ชิกามารุ",
+      "Choji": {
+        "th": "โจจิ",
+        "aliases": {
+          "Chouji": "โจจิ"
+        }
+      },
+      "Akimichi": "อาคิมิจิ",
+      "Ino Yamanaka": "อิโนะ ยามานากะ",
+      "Yamanaka": "ยามานากะ",
+      "Kiba": "คิบะ",
+      "Inuzuka": "อินุซึกะ",
+      "Akamaru": "อาคามารุ",
+      "Shino": "ชิโนะ",
+      "Aburame": "อาบุราเมะ",
+      "Gaara": "กาอาระ",
+      "Temari": "เทมาริ",
+      "Kankuro": "คันคุโร่",
+      "Iruka": "อิรุกะ",
+      "Jiraiya": "จิไรยะ",
+      "Tsunade": "ซึนาเดะ",
+      "Orochimaru": "โอโรจิมารุ",
+      "Kabuto": "คาบุโตะ",
+      "Minato": {
+        "th": "มินาโตะ",
+        "aliases": {
+          "Minato Namikaze": "มินาโตะ นามิคาเซะ"
+        }
+      },
+      "Namikaze": "นามิคาเซะ",
+      "Kushina": "คุชินะ",
+      "Hiruzen": {
+        "th": "ฮิรุเซ็น",
+        "aliases": {
+          "Hiruzen Sarutobi": "ฮิรุเซ็น ซารุโทบิ"
+        }
+      },
+      "Sarutobi": "ซารุโทบิ",
+      "Asuma": "อาสึมะ",
+      "Kurenai": "คุเรไน",
+      "Konohamaru": "โคโนฮามารุ",
+      "Hashirama": "ฮาชิรามะ",
+      "Tobirama": "โทบิรามะ",
+      "Senju": "เซ็นจู",
+      "Danzo": "ดันโซ",
+      "Shizune": "ชิซุเนะ",
+      "Anko": "อังโกะ",
+      "Yamato": "ยามาโตะ",
+      "Zabuza": "ซาบุซะ",
+      "Kisame": "คิซาเมะ",
+      "Nagato": "นางาโตะ",
+      "Konan": "โคนัน",
+      "Deidara": "เดดาระ",
+      "Sasori": "ซาโซริ",
+      "Hidan": "ฮิดัน",
+      "Kakuzu": "คาคุซุ",
+      "Zetsu": "เซ็ตสึ",
+      "Tobi": "โทบิ",
+      "Kurama": {
+        "th": "คุรามะ",
+        "aliases": {
+          "Nine-Tails": "จิ้งจอกเก้าหาง",
+          "Nine-Tailed Fox": "จิ้งจอกเก้าหาง",
+          "Kyuubi": "จิ้งจอกเก้าหาง"
+        }
+      },
+      "Killer Bee": "คิลเลอร์บี",
+      "Karin": "คาริน",
+      "Suigetsu": "ซุยเกทสึ",
+      "Jugo": "จูโกะ",
+      "Boruto": "โบรูโตะ",
+      "Himawari": "ฮิมาวาริ",
+      "Sarada": "ซาราดะ",
+      "Kaguya": "คางูยะ",
+      "Indra": "อินดรา",
+      "Asura": "อาชูระ",
+      "Hagoromo": "ฮาโงโรโมะ"
+    },
+    "place": {
+      "Konoha": {
+        "th": "โคโนฮะ",
+        "aliases": {
+          "Konohagakure": "หมู่บ้านโคโนฮะ",
+          "Hidden Leaf Village": "หมู่บ้านใบไม้",
+          "Village Hidden in the Leaves": "หมู่บ้านใบไม้",
+          "Leaf Village": "หมู่บ้านใบไม้"
+        }
+      },
+      "Sunagakure": {
+        "th": "หมู่บ้านซึนะ",
+        "aliases": {
+          "Hidden Sand Village": "หมู่บ้านทราย"
+        }
+      },
+      "Kirigakure": {
+        "th": "หมู่บ้านคิริ",
+        "aliases": {
+          "Hidden Mist Village": "หมู่บ้านหมอก"
+        }
+      },
+      "Kumogakure": {
+        "th": "หมู่บ้านคุโมะ",
+        "aliases": {
+          "Hidden Cloud Village": "หมู่บ้านเมฆ"
+        }
+      },
+      "Iwagakure": {
+        "th": "หมู่บ้านอิวะ",
+        "aliases": {
+          "Hidden Stone Village": "หมู่บ้านหิน"
+        }
+      },
+      "Amegakure": "หมู่บ้านอาเมะ",
+      "Land of Fire": "แคว้นไฟ",
+      "Land of Wind": "แคว้นลม",
+      "Land of Water": "แคว้นน้ำ",
+      "Land of Lightning": "แคว้นสายฟ้า",
+      "Land of Earth": "แคว้นดิน",
+      "Land of Waves": "แคว้นคลื่น",
+      "Valley of the End": "หุบเขาแห่งจุดจบ",
+      "Forest of Death": "ป่ามรณะ",
+      "Hokage Rock": "ผาโฮคาเงะ",
+      "Ichiraku": {
+        "th": "อิจิราคุ",
+        "aliases": {
+          "Ichiraku Ramen": "ร้านราเมงอิจิราคุ"
+        }
+      },
+      "Mount Myoboku": "เขาเมียวโบคุ"
+    },
+    "org": {
+      "Akatsuki": "แสงอุษา",
+      "Uchiha Clan": "ตระกูลอุจิวะ",
+      "Hyuga Clan": "ตระกูลฮิวงะ",
+      "Senju Clan": "ตระกูลเซ็นจู",
+      "Uzumaki Clan": "ตระกูลอุซึมากิ",
+      "Team 7": {
+        "th": "ทีม 7",
+        "aliases": {
+          "Team Seven": "ทีม 7"
+        }
+      },
+      "Allied Shinobi Forces": "กองกำลังพันธมิตรนินจา"
+    },
+    "title": {
+      "Hokage": "โฮคาเงะ",
+      "Kazekage": "คาเซคาเงะ",
+      "Mizukage": "มิซึคาเงะ",
+      "Raikage": "ไรคาเงะ",
+      "Tsuchikage": "ซึจิคาเงะ",
+      "Kage": "คาเงะ",
+      "Genin": "เกะนิน",
+      "Chunin": {
+        "th": "จูนิน",
+        "aliases": {
+          "Chuunin": "จูนิน"
+        }
+      },
+      "Jonin": {
+        "th": "โจนิน",
+        "aliases": {
+          "Jounin": "โจนิน"
+        }
+      },
+      "ANBU": "หน่วยอันบุ",
+      "Sannin": {
+        "th": "สามนินจาในตำนาน",
+        "aliases": {
+          "Legendary Sannin": "สามนินจาในตำนาน"
+        }
+      },
+      "Jinchuriki": {
+        "th": "พลังสถิต",
+        "aliases": {
+          "Jinchuuriki": "พลังสถิต"
+        }
+      },
+      "Shinobi": "นินจา",
+      "Kunoichi": "นินจาหญิง",
+      "Sensei": "อาจารย์",
+      "Missing-nin": "นินจาแปรพักตร์"
+    },
+    "skill": {
+      "Chakra": "จักระ",
+      "Mangekyo Sharingan": {
+        "th": "เนตรวงแหวนกระจกหมุนหมื่นบุปผา",
+        "aliases": {
+          "Mangekyou Sharingan": "เนตรวงแหวนกระจกหมุนหมื่นบุปผา"
+        }
+      },
+      "Sharingan": "เนตรวงแหวน",
+      "Rinnegan": "เนตรสังสารวัฏ",
+      "Byakugan": "เนตรสีขาว",
+      "Rasengan": "เกลียวจักระ",
+      "Chidori": "จิโดริ",
+      "Shadow Clone Jutsu": {
+        "th": "คาถาแยกเงาพันร่าง",
+        "aliases": {
+          "Multi Shadow Clone Jutsu": "คาถาแยกเงาพันร่าง",
+          "Shadow Clone": "เงาแยกร่าง",
+          "Shadow Clones": "เงาแยกร่าง"
+        }
+      },
+      "Jutsu": "คาถา",
+      "Ninjutsu": "นินจุตสึ",
+      "Genjutsu": "เก็นจุตสึ",
+      "Taijutsu": "ไทจุตสึ",
+      "Sage Mode": "โหมดเซียน",
+      "Sage Art": "วิชาเซียน",
+      "Edo Tensei": {
+        "th": "คาถาฟื้นคืนชีพ",
+        "aliases": {
+          "Reanimation Jutsu": "คาถาฟื้นคืนชีพ"
+        }
+      },
+      "Susanoo": "ซุซาโนะโอะ",
+      "Amaterasu": "อามาเทราสึ",
+      "Tsukuyomi": "สึคุโยมิ",
+      "Infinite Tsukuyomi": "สึคุโยมิอนันต์",
+      "Kamui": "คามุย",
+      "Izanagi": "อิซานางิ",
+      "Izanami": "อิซานามิ",
+      "Eight Gates": "แปดประตู",
+      "Summoning Jutsu": "คาถาอัญเชิญ",
+      "Flying Thunder God": "เทพสายฟ้าเหิน",
+      "Sexy Jutsu": "คาถาแปลงร่างสาวเซ็กซี่",
+      "Kekkei Genkai": "สายเลือดพิเศษ"
+    },
+    "item": {
+      "Kunai": "คุไน",
+      "Shuriken": "ชูริเคน",
+      "Forehead Protector": "ที่คาดหน้าผาก",
+      "Samehada": "ซาเมฮาดะ"
+    },
+    "other": {
+      "Tailed Beast": {
+        "th": "สัตว์หาง",
+        "aliases": {
+          "Tailed Beasts": "สัตว์หาง",
+          "Bijuu": "สัตว์หาง"
+        }
+      },
+      "Ten-Tails": "สิบหาง",
+      "Will of Fire": "เจตจำนงแห่งไฟ",
+      "Chunin Exams": {
+        "th": "การสอบจูนิน",
+        "aliases": {
+          "Chunin Exam": "การสอบจูนิน"
+        }
+      },
+      "Fourth Great Ninja War": "มหาสงครามนินจาครั้งที่ 4",
+      "Great Ninja War": "มหาสงครามนินจา",
+      "Ramen": "ราเมง"
+    }
+  },
+  "review": [
+    "Mangekyo Sharingan",
+    "Rasengan",
+    "Chidori",
+    "Edo Tensei",
+    "Flying Thunder God",
+    "Sexy Jutsu",
+    "Kekkei Genkai",
+    "Missing-nin",
+    "Hokage Rock",
+    "Mount Myoboku",
+    "Suigetsu",
+    "Sensei",
+    "Shinobi"
+  ]
+}

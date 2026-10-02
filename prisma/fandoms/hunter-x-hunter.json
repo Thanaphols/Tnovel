@@ -1,0 +1,269 @@
+{
+  "name": "Hunter x Hunter",
+  "terms": {
+    "name": {
+      "Gon": {
+        "th": "กอน",
+        "aliases": {
+          "Gon Freecss": "กอน ฟรีคส์"
+        }
+      },
+      "Freecss": "ฟรีคส์",
+      "Killua": {
+        "th": "คิรัวร์",
+        "aliases": {
+          "Killua Zoldyck": "คิรัวร์ โซลดิ๊ก"
+        }
+      },
+      "Zoldyck": {
+        "th": "โซลดิ๊ก",
+        "aliases": {
+          "Zoldycks": "ตระกูลโซลดิ๊ก"
+        }
+      },
+      "Kurapika": "คุราปิก้า",
+      "Leorio": {
+        "th": "เลโอริโอ",
+        "aliases": {
+          "Leorio Paradinight": "เลโอริโอ พาราไดไนท์"
+        }
+      },
+      "Hisoka": {
+        "th": "ฮิโซกะ",
+        "aliases": {
+          "Hisoka Morow": "ฮิโซกะ โมโรว์"
+        }
+      },
+      "Ging": {
+        "th": "จิน",
+        "aliases": {
+          "Ging Freecss": "จิน ฟรีคส์"
+        }
+      },
+      "Mito": "มิโตะ",
+      "Illumi": {
+        "th": "อิรูมิ",
+        "aliases": {
+          "Illumi Zoldyck": "อิรูมิ โซลดิ๊ก"
+        }
+      },
+      "Silva": "ซิลวา",
+      "Zeno": "ซีโน่",
+      "Kikyo": "คิเคียว",
+      "Milluki": "มิรูกิ",
+      "Alluka": "อรุกะ",
+      "Kalluto": "คาลุโตะ",
+      "Nanika": "นานิกะ",
+      "Gotoh": "โกโต้",
+      "Canary": "คานารี่",
+      "Chrollo": {
+        "th": "คุโรโร่",
+        "aliases": {
+          "Chrollo Lucilfer": "คุโรโร่ ลูซิลเฟอร์"
+        }
+      },
+      "Feitan": "เฟย์ตัน",
+      "Phinks": "ฟิงคซ์",
+      "Nobunaga": "โนบุนากะ",
+      "Machi": "มาจิ",
+      "Shalnark": "ชาลนาร์ค",
+      "Pakunoda": "ปาคุโนะดะ",
+      "Uvogin": "อโวกิน",
+      "Franklin": "แฟรงคลิน",
+      "Shizuku": "ชิซุคุ",
+      "Kortopi": "คอลโทปิ",
+      "Bonolenov": "โบโนเลนอฟ",
+      "Netero": {
+        "th": "เนเทโร่",
+        "aliases": {
+          "Isaac Netero": "ไอแซค เนเทโร่",
+          "Chairman Netero": "ประธานเนเทโร่"
+        }
+      },
+      "Wing": "วิง",
+      "Zushi": "ซูชิ",
+      "Biscuit": {
+        "th": "บิสกิต",
+        "aliases": {
+          "Bisky": "บิสกี้",
+          "Biscuit Krueger": "บิสกิต ครูเกอร์"
+        }
+      },
+      "Kite": "ไคท์",
+      "Knuckle": "นัคเคิล",
+      "Shoot": "ชูท",
+      "Morel": "โมราอุ",
+      "Knov": "โนฟ",
+      "Palm": "ปาม",
+      "Meruem": "เมรุเอ็ม",
+      "Komugi": "โคมูกิ",
+      "Neferpitou": {
+        "th": "เนเฟอร์พิโท",
+        "aliases": {
+          "Pitou": "พิโท"
+        }
+      },
+      "Shaiapouf": {
+        "th": "เชาเปาฟ์",
+        "aliases": {
+          "Pouf": "เปาฟ์"
+        }
+      },
+      "Menthuthuyoupi": {
+        "th": "มอนทุทุยุปี้",
+        "aliases": {
+          "Youpi": "ยุปี้"
+        }
+      },
+      "Colt": "โคลท์",
+      "Meleoron": "เมเลโอรอน",
+      "Ikalgo": "อิคัลโก",
+      "Pariston": "ปาริสตัน",
+      "Cheadle": "ชีดเดิล",
+      "Ginta": "กินตะ",
+      "Tonpa": "ทอนปะ",
+      "Satotz": "ซาโทซ",
+      "Menchi": "เมนจิ",
+      "Buhara": "บุฮาระ",
+      "Gittarackur": "กิตตาราคุล",
+      "Razor": "เรเซอร์",
+      "Genthru": {
+        "th": "เก็นสุรุ",
+        "aliases": {
+          "Bomber": "บอมเบอร์"
+        }
+      },
+      "Neon Nostrade": "เนออน นอสตราเด",
+      "Melody": "เมโลดี้",
+      "Senritsu": "เซ็นริทสึ",
+      "Beyond Netero": "บียอนด์ เนเทโร่"
+    },
+    "place": {
+      "Whale Island": "เกาะปลาวาฬ",
+      "Kukuroo Mountain": "ภูเขาคุคุรู",
+      "Yorknew City": {
+        "th": "ยอร์คชิน",
+        "aliases": {
+          "Yorknew": "ยอร์คชิน"
+        }
+      },
+      "Heavens Arena": "หอคอยสวรรค์",
+      "Greed Island": "เกาะกรีดไอส์แลนด์",
+      "Trick Tower": "หอคอยกลลวง",
+      "Zevil Island": "เกาะเซวิล",
+      "Meteor City": "เมืองดาวตก",
+      "NGL": "NGL",
+      "East Gorteau": "กอร์โตอูตะวันออก",
+      "Dark Continent": "ทวีปมืด",
+      "Kakin": "คากิน",
+      "Black Whale": "แบล็กเวล"
+    },
+    "org": {
+      "Hunter Association": "สมาคมฮันเตอร์",
+      "Phantom Troupe": {
+        "th": "กองโจรเงามายา",
+        "aliases": {
+          "Spiders": "แมงมุม",
+          "Genei Ryodan": "กองโจรเงามายา"
+        }
+      },
+      "Chimera Ants": {
+        "th": "มดคิเมร่า",
+        "aliases": {
+          "Chimera Ant": "มดคิเมร่า"
+        }
+      },
+      "Royal Guard": "ราชองครักษ์",
+      "Zodiacs": "สิบสองนักษัตร",
+      "Mafia Community": "เครือข่ายมาเฟีย",
+      "Shadow Beasts": "สัตว์อสูรเงา",
+      "Kurta Clan": {
+        "th": "เผ่าคุรุตะ",
+        "aliases": {
+          "Kurta": "คุรุตะ"
+        }
+      }
+    },
+    "title": {
+      "Hunter": "ฮันเตอร์",
+      "Pro Hunter": "ฮันเตอร์มืออาชีพ",
+      "Hunter Exam": "การสอบฮันเตอร์",
+      "Examiner": "กรรมการคุมสอบ",
+      "Chairman": "ประธาน",
+      "Floor Master": "ฟลอร์มาสเตอร์",
+      "Single Star Hunter": "ฮันเตอร์หนึ่งดาว",
+      "Double Star Hunter": "ฮันเตอร์สองดาว",
+      "Triple Star Hunter": "ฮันเตอร์สามดาว",
+      "Blacklist Hunter": "แบล็กลิสต์ฮันเตอร์",
+      "King": "ราชา",
+      "Queen": "ราชินี"
+    },
+    "skill": {
+      "Nen": "เนน",
+      "Aura": "ออร่า",
+      "Ten": "เท็น",
+      "Zetsu": "เซ็ตสึ",
+      "Ren": "เร็น",
+      "Hatsu": "ฮัตสึ",
+      "Gyo": "เกียว",
+      "En": "เอ็น",
+      "In": "อิน",
+      "Shu": "ชู",
+      "Ko": "โค",
+      "Ken": "เคน",
+      "Ryu": "ริว",
+      "Enhancer": "สายเสริมพลัง",
+      "Transmuter": "สายแปรสภาพ",
+      "Emitter": "สายปล่อยพลัง",
+      "Conjurer": "สายแปลงร่างวัตถุ",
+      "Manipulator": "สายควบคุม",
+      "Specialist": "สายพิเศษ",
+      "Water Divination": "การทดสอบด้วยแก้วน้ำ",
+      "Jajanken": "จังเคนกู",
+      "Godspeed": "ความเร็วเทพ",
+      "Bungee Gum": "บันจี้กัม",
+      "Texture Surprise": "เท็กซ์เจอร์เซอร์ไพรส์",
+      "Emperor Time": "จักรพรรดิไทม์",
+      "Chain Jail": "โซ่จองจำ",
+      "Judgment Chain": "โซ่พิพากษา",
+      "Skill Hunter": "สกิลฮันเตอร์",
+      "Hundred-Type Guanyin Bodhisattva": "พระโพธิสัตว์กวนอิมร้อยหัตถ์",
+      "Zero Hand": "ซีโร่แฮนด์",
+      "Scarlet Eyes": "ดวงตาสีเพลิง",
+      "Vows and Limitations": "พันธนาการและข้อจำกัด"
+    },
+    "item": {
+      "Hunter License": "ใบอนุญาตฮันเตอร์",
+      "Book": "บุ๊ก",
+      "Spell Card": "การ์ดเวทมนตร์",
+      "Miniature Rose": "มินิเอเจอร์โรส",
+      "Testing Gate": "ประตูทดสอบ",
+      "Hunter Website": "เว็บไซต์ฮันเตอร์"
+    },
+    "other": {
+      "Hunter x Hunter": "ฮันเตอร์ x ฮันเตอร์",
+      "Election Arc": "ภาคเลือกตั้ง",
+      "Succession War": "สงครามสืบราชบัลลังก์",
+      "Gourmet Hunter": "ฮันเตอร์อาหาร",
+      "Treasure Hunter": "ฮันเตอร์ล่าสมบัติ",
+      "Rookie Crusher": "นักล่ามือใหม่"
+    }
+  },
+  "review": [
+    "Killua",
+    "Uvogin",
+    "Menthuthuyoupi",
+    "Shaiapouf",
+    "Morel",
+    "Conjurer",
+    "Godspeed",
+    "Emperor Time",
+    "Hundred-Type Guanyin Bodhisattva",
+    "Zodiacs",
+    "Testing Gate",
+    "Rookie Crusher",
+    "Spiders",
+    "Book",
+    "In"
+  ]
+}

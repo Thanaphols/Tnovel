@@ -1,0 +1,355 @@
+{
+  "name": "Fairy Tail",
+  "terms": {
+    "name": {
+      "Natsu": {
+        "th": "นัตสึ",
+        "aliases": {
+          "Natsu Dragneel": "นัตสึ ดรากูนีล",
+          "Salamander": "ซาลาแมนเดอร์"
+        }
+      },
+      "Dragneel": "ดรากูนีล",
+      "Lucy": {
+        "th": "ลูซี่",
+        "aliases": {
+          "Lucy Heartfilia": "ลูซี่ ฮาร์ทฟิเลีย"
+        }
+      },
+      "Heartfilia": "ฮาร์ทฟิเลีย",
+      "Gray": {
+        "th": "เกรย์",
+        "aliases": {
+          "Gray Fullbuster": "เกรย์ ฟูลบัสเตอร์"
+        }
+      },
+      "Erza": {
+        "th": "เอลซ่า",
+        "aliases": {
+          "Erza Scarlet": "เอลซ่า สการ์เล็ต",
+          "Titania": "ไททาเนีย"
+        }
+      },
+      "Happy": "แฮปปี้",
+      "Wendy": {
+        "th": "เวนดี้",
+        "aliases": {
+          "Wendy Marvell": "เวนดี้ มาร์เวล"
+        }
+      },
+      "Carla": {
+        "th": "ชาร์ล",
+        "aliases": {
+          "Charle": "ชาร์ล"
+        }
+      },
+      "Juvia": {
+        "th": "จูเวีย",
+        "aliases": {
+          "Juvia Lockser": "จูเวีย ล็อกเซอร์"
+        }
+      },
+      "Gajeel": {
+        "th": "กาจีล",
+        "aliases": {
+          "Gajeel Redfox": "กาจีล เรดฟ็อกซ์"
+        }
+      },
+      "Pantherlily": {
+        "th": "แพนเธอร์ลิลลี่",
+        "aliases": {
+          "Lily": "ลิลลี่"
+        }
+      },
+      "Levy": {
+        "th": "เลวี่",
+        "aliases": {
+          "Levy McGarden": "เลวี่ แม็คการ์เดน"
+        }
+      },
+      "Makarov": {
+        "th": "มาคารอฟ",
+        "aliases": {
+          "Makarov Dreyar": "มาคารอฟ เดรย์ยาร์",
+          "Gramps": "ตาแก่"
+        }
+      },
+      "Laxus": {
+        "th": "ลักซัส",
+        "aliases": {
+          "Laxus Dreyar": "ลักซัส เดรย์ยาร์"
+        }
+      },
+      "Dreyar": "เดรย์ยาร์",
+      "Mirajane": {
+        "th": "มิราเจน",
+        "aliases": {
+          "Mira": "มิระ",
+          "Mirajane Strauss": "มิราเจน สเตราส์"
+        }
+      },
+      "Elfman": "เอลฟ์แมน",
+      "Lisanna": "ลิซานน่า",
+      "Strauss": "สเตราส์",
+      "Cana": {
+        "th": "คาน่า",
+        "aliases": {
+          "Cana Alberona": "คาน่า อัลเบอโรน่า"
+        }
+      },
+      "Gildarts": {
+        "th": "กิลดาร์ทส์",
+        "aliases": {
+          "Gildarts Clive": "กิลดาร์ทส์ ไคลฟ์"
+        }
+      },
+      "Mystogan": "มิสโตแกน",
+      "Jellal": {
+        "th": "เจอราร์ด",
+        "aliases": {
+          "Jellal Fernandes": "เจอราร์ด เฟอร์นันเดส",
+          "Siegrain": "ซีเกรน"
+        }
+      },
+      "Ultear": "อุลเทียร์",
+      "Meredy": "เมอเรดี้",
+      "Lyon": {
+        "th": "ลีออน",
+        "aliases": {
+          "Lyon Vastia": "ลีออน บาสเตีย"
+        }
+      },
+      "Ur": "อูร์",
+      "Freed": "ฟรีด",
+      "Evergreen": "เอเวอร์กรีน",
+      "Bickslow": "บิกซ์โลว์",
+      "Romeo": "โรมิโอ",
+      "Macao": "มาเคา",
+      "Wakaba": "วากาบะ",
+      "Mavis": {
+        "th": "เมวิส",
+        "aliases": {
+          "Mavis Vermillion": "เมวิส เวอร์มิลเลียน",
+          "First Master": "มาสเตอร์คนแรก"
+        }
+      },
+      "Zeref": {
+        "th": "เซเรฟ",
+        "aliases": {
+          "Zeref Dragneel": "เซเรฟ ดรากูนีล",
+          "Black Wizard": "จอมเวทดำ"
+        }
+      },
+      "Acnologia": "อัคโนโลเกีย",
+      "Igneel": "อิกนีล",
+      "Metalicana": "เมทาลิคานา",
+      "Grandeeney": "แกรนดีนี่",
+      "Sting": {
+        "th": "สติง",
+        "aliases": {
+          "Sting Eucliffe": "สติง ยูคลิฟ"
+        }
+      },
+      "Rogue": {
+        "th": "โร้ก",
+        "aliases": {
+          "Rogue Cheney": "โร้ก เชนีย์"
+        }
+      },
+      "Minerva": "มิเนอร์วา",
+      "Kagura": "คางุระ",
+      "Ichiya": "อิจิยะ",
+      "Jura": "จูร่า",
+      "Hades": "ฮาเดส",
+      "Brain": "เบรน",
+      "Midnight": "มิดไนท์",
+      "Cobra": "คอบร้า",
+      "Mard Geer": "มาร์ด เกียร์",
+      "E.N.D.": "อี.เอ็น.ดี.",
+      "Irene Belserion": "ไอรีน เบลเซอริออน",
+      "August": "ออกัสต์",
+      "Invel": "อินเวล",
+      "Aquarius": "อควาเรียส",
+      "Loke": {
+        "th": "โลกิ",
+        "aliases": {
+          "Leo": "ลีโอ"
+        }
+      },
+      "Virgo": "เวอร์โก้",
+      "Taurus": "ทอรัส",
+      "Cancer": "แคนเซอร์",
+      "Sagittarius": "ซาจิทาเรียส",
+      "Scorpio": "สกอร์ปิโอ",
+      "Gemini": "เจมินี่",
+      "Plue": "พลู",
+      "Celestial Spirit King": "ราชาวิญญาณดวงดาว",
+      "Yukino": "ยูกิโนะ",
+      "Frosch": "ฟรอช",
+      "Lector": "เลคเตอร์"
+    },
+    "place": {
+      "Earthland": "เอิร์ธแลนด์",
+      "Fiore": "ฟิโอเร",
+      "Magnolia": "แม็กโนเลีย",
+      "Crocus": "โครคัส",
+      "Hargeon": "ฮาร์เจียน",
+      "Tenrou Island": "เกาะเท็นโร",
+      "Edolas": "เอโดลาส",
+      "Extalia": "เอ็กซ์ตาเลีย",
+      "Tower of Heaven": "หอคอยสวรรค์",
+      "Galuna Island": "เกาะกาลูน่า",
+      "Domus Flau": "โดมัส ฟลาว",
+      "Alvarez": "อัลวาเรซ",
+      "Celestial Spirit World": "โลกวิญญาณดวงดาว",
+      "Fairy Hills": "แฟรี่ฮิลส์"
+    },
+    "org": {
+      "Fairy Tail": "แฟรี่เทล",
+      "Sabertooth": "เซเบอร์ทูธ",
+      "Lamia Scale": "ลาเมียสเกล",
+      "Blue Pegasus": "บลูเพกาซัส",
+      "Mermaid Heel": "เมอร์เมดฮีล",
+      "Quatro Cerberus": "ควอโทรเซอร์เบอรัส",
+      "Phantom Lord": "แฟนท่อมลอร์ด",
+      "Raven Tail": "เรเวนเทล",
+      "Oración Seis": {
+        "th": "โอราซิออน เซอิส",
+        "aliases": {
+          "Oracion Seis": "โอราซิออน เซอิส"
+        }
+      },
+      "Grimoire Heart": "กริมัวร์ฮาร์ท",
+      "Tartaros": "ทาร์ทารอส",
+      "Crime Sorcière": "ไครม์ ซอร์เซียร์",
+      "Thunder Legion": "หน่วยรบอัสนี",
+      "Spriggan 12": "สปริกแกน 12",
+      "Alvarez Empire": "จักรวรรดิอัลวาเรซ",
+      "Magic Council": "สภาเวทมนตร์",
+      "Rune Knights": "อัศวินรูน",
+      "Ten Wizard Saints": "สิบนักบุญจอมเวท",
+      "Exceed": "เอ็กซีด",
+      "Etherious": "อีเธอเรียส",
+      "Dark guild": "กิลด์มืด",
+      "Balam Alliance": "พันธมิตรบาลัม",
+      "Seven Kin of Purgatory": "เจ็ดพี่น้องแห่งนรก"
+    },
+    "title": {
+      "Guild Master": {
+        "th": "มาสเตอร์กิลด์",
+        "aliases": {
+          "Master": "มาสเตอร์"
+        }
+      },
+      "S-Class Mage": {
+        "th": "จอมเวทระดับ S",
+        "aliases": {
+          "S-Class": "ระดับ S",
+          "S-Class Trial": "การสอบเลื่อนระดับ S"
+        }
+      },
+      "Wizard Saint": "นักบุญจอมเวท",
+      "Mage": {
+        "th": "จอมเวท",
+        "aliases": {
+          "Wizard": "จอมเวท"
+        }
+      },
+      "Celestial Spirit Mage": "จอมเวทวิญญาณดวงดาว",
+      "Fairy Queen": "ราชินีภูต",
+      "Emperor Spriggan": "จักรพรรดิสปริกแกน"
+    },
+    "skill": {
+      "Dragon Slayer Magic": {
+        "th": "เวทนักล่ามังกร",
+        "aliases": {
+          "Dragon Slayer": "ดราก้อนสเลเยอร์",
+          "Dragon Slayers": "ดราก้อนสเลเยอร์"
+        }
+      },
+      "God Slayer": "ก็อดสเลเยอร์",
+      "Devil Slayer": "เดวิลสเลเยอร์",
+      "Dragon Force": "ดราก้อนฟอร์ซ",
+      "Fire Dragon's Roar": "คำรามมังกรเพลิง",
+      "Fire Dragon's Iron Fist": "หมัดเหล็กมังกรเพลิง",
+      "Fire Dragon's Wing Attack": "ปีกมังกรเพลิง",
+      "Fire Dragon King's Demolition Fist": "หมัดทำลายล้างราชามังกรเพลิง",
+      "Celestial Spirit Magic": "เวทวิญญาณดวงดาว",
+      "Ice-Make": "สร้างน้ำแข็ง",
+      "Ice-Make Lance": "สร้างน้ำแข็ง: หอก",
+      "Requip": "รีอิควิป",
+      "Heaven's Wheel Armor": "เกราะวงล้อสวรรค์",
+      "Purgatory Armor": "เกราะนรก",
+      "Water Lock": "คุกวารี",
+      "Iron Dragon's Roar": "คำรามมังกรเหล็ก",
+      "Sky Dragon's Roar": "คำรามมังกรนภา",
+      "Lightning Dragon's Roar": "คำรามมังกรสายฟ้า",
+      "Take Over": "เทคโอเวอร์",
+      "Satan Soul": "ซาตานโซล",
+      "Solid Script": "อักษรรูปธรรม",
+      "Card Magic": "เวทไพ่",
+      "Crash": "แครช",
+      "Heavenly Body Magic": "เวทดวงดาวสวรรค์",
+      "Fairy Law": "แฟรี่ลอว์",
+      "Fairy Glitter": "แฟรี่กลิตเตอร์",
+      "Fairy Sphere": "แฟรี่สเฟียร์",
+      "Unison Raid": "ยูนิซันเรด",
+      "Iced Shell": "ไอซ์ด์เชลล์",
+      "Star Dress": "สตาร์เดรส",
+      "Urano Metria": "อูราโน เมเทรีย",
+      "Lost Magic": "เวทที่สาบสูญ",
+      "Second Origin": "ต้นกำเนิดที่สอง",
+      "Curse": "คำสาป"
+    },
+    "item": {
+      "Celestial Spirit Key": {
+        "th": "กุญแจวิญญาณดวงดาว",
+        "aliases": {
+          "Gate Key": "กุญแจประตู",
+          "Golden Key": "กุญแจทอง",
+          "Silver Key": "กุญแจเงิน"
+        }
+      },
+      "Lacrima": "ลาคริม่า",
+      "Guild mark": "ตรากิลด์",
+      "Request board": "บอร์ดภารกิจ",
+      "Etherion": "อีเธอเรียน",
+      "Face": "เฟซ",
+      "Book of E.N.D.": "คัมภีร์ อี.เอ็น.ดี.",
+      "Lumen Histoire": "ลูเมน อิสตัวร์",
+      "Fleuve d'étoiles": "ฟลูฟเดตัวล์"
+    },
+    "other": {
+      "Grand Magic Games": "มหกรรมศึกจอมเวท",
+      "Guild": "กิลด์",
+      "Job request": "ภารกิจ",
+      "Magic Power": "พลังเวท",
+      "Ethernano": "อีเธอร์นาโน",
+      "Eclipse Gate": "ประตูสุริยคราส",
+      "Fairy Tail Spirit": "จิตวิญญาณแฟรี่เทล",
+      "Nakama": "พวกพ้อง",
+      "Aye sir!": "รับทราบ!"
+    }
+  },
+  "review": [
+    "Carla",
+    "Jellal",
+    "Lyon",
+    "Loke",
+    "Gramps",
+    "Fairy Queen",
+    "Thunder Legion",
+    "Seven Kin of Purgatory",
+    "Solid Script",
+    "Heavenly Body Magic",
+    "Ice-Make Lance",
+    "Requip",
+    "Take Over",
+    "Fleuve d'étoiles",
+    "Nakama",
+    "Aye sir!",
+    "Midnight",
+    "Brain",
+    "Face"
+  ]
+}

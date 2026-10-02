@@ -1,0 +1,239 @@
+{
+  "name": "The Witcher",
+  "terms": {
+    "name": {
+      "Geralt": {
+        "th": "เกรัลต์",
+        "aliases": {
+          "Geralt of Rivia": "เกรัลต์แห่งริเวีย",
+          "White Wolf": "หมาป่าขาว",
+          "Butcher of Blaviken": "นักเชือดแห่งบลาวิเคน",
+          "Gwynbleidd": "กวินเบลด"
+        }
+      },
+      "Yennefer": {
+        "th": "เยนเนเฟอร์",
+        "aliases": {
+          "Yennefer of Vengerberg": "เยนเนเฟอร์แห่งเวนเกอร์เบิร์ก",
+          "Yen": "เยน"
+        }
+      },
+      "Ciri": {
+        "th": "ซิริ",
+        "aliases": {
+          "Cirilla": "ซิริลลา",
+          "Cirilla Fiona Elen Riannon": "ซิริลลา ฟิโอนา เอเลน ริอานนอน",
+          "Lion Cub of Cintra": "ลูกสิงห์แห่งซินทรา",
+          "Zireael": "ซิเรเอล"
+        }
+      },
+      "Jaskier": {
+        "th": "แจสเคียร์",
+        "aliases": {
+          "Dandelion": "แดนดิไลออน"
+        }
+      },
+      "Triss": {
+        "th": "ทริส",
+        "aliases": {
+          "Triss Merigold": "ทริส เมริโกลด์"
+        }
+      },
+      "Vesemir": "เวเซเมียร์",
+      "Eskel": "เอสเคล",
+      "Lambert": "แลมเบิร์ต",
+      "Coën": "โคเอน",
+      "Roach": "โรช",
+      "Calanthe": {
+        "th": "คาแลนธี",
+        "aliases": {
+          "Queen Calanthe": "ราชินีคาแลนธี",
+          "Lioness of Cintra": "สิงห์สาวแห่งซินทรา"
+        }
+      },
+      "Pavetta": "ปาเวตตา",
+      "Duny": {
+        "th": "ดูนี",
+        "aliases": {
+          "Emhyr": "เอมฮีร์",
+          "Emhyr var Emreis": "เอมฮีร์ วาร์ เอมเรส"
+        }
+      },
+      "Tissaia": {
+        "th": "ทิสซายา",
+        "aliases": {
+          "Tissaia de Vries": "ทิสซายา เดอ ไวรีส์"
+        }
+      },
+      "Stregobor": "สเตรโกบอร์",
+      "Fringilla": {
+        "th": "ฟริงกิลลา",
+        "aliases": {
+          "Fringilla Vigo": "ฟริงกิลลา วิโก"
+        }
+      },
+      "Philippa": {
+        "th": "ฟิลิปปา",
+        "aliases": {
+          "Philippa Eilhart": "ฟิลิปปา ไอล์ฮาร์ต"
+        }
+      },
+      "Vilgefortz": "วิลเกฟอร์ตซ์",
+      "Cahir": "คาฮีร์",
+      "Zoltan": {
+        "th": "โซลตัน",
+        "aliases": {
+          "Zoltan Chivay": "โซลตัน ชีวาย"
+        }
+      },
+      "Regis": "เรจิส",
+      "Milva": "มิลวา",
+      "Eredin": "เอเรดิน",
+      "Avallac'h": "อาวาลลัค",
+      "Dijkstra": "ไดค์สตรา",
+      "Radovid": "ราโดวิด",
+      "Foltest": "โฟลเทสต์",
+      "Ermion": "เออร์มิออน",
+      "Nenneke": "เนนเนเก",
+      "Mousesack": "เมาส์แซ็ก",
+      "Renfri": "เรนฟรี",
+      "Borch Three Jackdaws": "บอร์ช สามอีกา",
+      "Gaunter O'Dimm": {
+        "th": "กอนเทอร์ โอดิม",
+        "aliases": {
+          "Man of Glass": "ชายแห่งกระจก"
+        }
+      },
+      "Olgierd": "โอลเกียร์ด",
+      "Anna Henrietta": "แอนนา เฮนริเอตตา",
+      "Keira Metz": "เคียรา เมตซ์",
+      "Bloody Baron": "บารอนกระหายเลือด"
+    },
+    "place": {
+      "the Continent": "ทวีป",
+      "Kaer Morhen": "แคร์ มอร์เฮน",
+      "Rivia": "ริเวีย",
+      "Cintra": "ซินทรา",
+      "Nilfgaard": "นิลฟ์การ์ด",
+      "Temeria": "เทเมเรีย",
+      "Redania": "เรดาเนีย",
+      "Kaedwen": "แคดเวน",
+      "Aedirn": "เอเดิร์น",
+      "Lyria": "ไลเรีย",
+      "Skellige": "สเกลลิเก",
+      "Novigrad": "โนวิกราด",
+      "Oxenfurt": "ออกเซนเฟิร์ต",
+      "Vizima": "วิซิมา",
+      "Velen": "เวเลน",
+      "Toussaint": "ทูแซ็ง",
+      "Brokilon": "โบรคิลอน",
+      "Aretuza": "อาเรทูซา",
+      "Ban Ard": "บัน อาร์ด",
+      "Thanedd": "ธาเนดด์",
+      "Sodden": "ซอดเดน",
+      "Blaviken": "บลาวิเคน",
+      "Vengerberg": "เวนเกอร์เบิร์ก",
+      "Mahakam": "มาฮาคัม",
+      "Dol Blathanna": "ดอล บลาธานนา",
+      "Crookback Bog": "หนองหลังค่อม",
+      "Kaer Trolde": "แคร์ ทรอลด์"
+    },
+    "org": {
+      "Witchers": "วิชเชอร์",
+      "School of the Wolf": "สำนักหมาป่า",
+      "School of the Cat": "สำนักแมว",
+      "School of the Griffin": "สำนักกริฟฟิน",
+      "School of the Bear": "สำนักหมี",
+      "School of the Viper": "สำนักอสรพิษ",
+      "Brotherhood of Sorcerers": "ภราดรแห่งผู้วิเศษ",
+      "Lodge of Sorceresses": "สมาคมแม่มด",
+      "Wild Hunt": "วิลด์ฮันต์",
+      "Scoia'tael": {
+        "th": "สโกยาเทล",
+        "aliases": {
+          "Squirrels": "พวกกระรอก"
+        }
+      },
+      "Aen Elle": "เอน เอลล์",
+      "Aen Seidhe": "เอน ไซด์",
+      "Church of the Eternal Fire": "ศาสนจักรแห่งเปลวเพลิงนิรันดร์",
+      "Witch Hunters": "นักล่าแม่มด",
+      "Crones": "สามแม่มดชรา"
+    },
+    "title": {
+      "Witcher": "วิชเชอร์",
+      "Sorceress": "แม่มด",
+      "Sorcerer": "ผู้วิเศษ",
+      "Mage": "จอมเวท",
+      "Bard": "กวีพเนจร",
+      "Emperor": "จักรพรรดิ",
+      "Jarl": "ยาร์ล",
+      "Elder Blood": "สายเลือดอาวุโส",
+      "Child of Surprise": "บุตรแห่งความประหลาดใจ"
+    },
+    "skill": {
+      "Signs": "สัญลักษณ์",
+      "Aard": "อาร์ด",
+      "Igni": "อิกนี",
+      "Quen": "เควน",
+      "Yrden": "เยอร์เดน",
+      "Axii": "แอกซี",
+      "Trial of the Grasses": "บททดสอบสมุนไพร",
+      "Law of Surprise": "กฎแห่งความประหลาดใจ",
+      "Portal": "ประตูมิติ",
+      "Chaos": "พลังแห่งความโกลาหล"
+    },
+    "item": {
+      "silver sword": "ดาบเงิน",
+      "steel sword": "ดาบเหล็ก",
+      "Witcher medallion": "เหรียญวิชเชอร์",
+      "Swallow": "สวอลโลว์",
+      "Thunderbolt": "ธันเดอร์โบลต์",
+      "Cat potion": "ยาแมว",
+      "White Honey": "น้ำผึ้งขาว",
+      "Dimeritium": "ไดเมอริเทียม",
+      "Gwent": "เกวนต์",
+      "Zireael sword": "ดาบซิเรเอล",
+      "Potions": "ยาวิเศษ",
+      "Oils": "น้ำมันเคลือบดาบ"
+    },
+    "other": {
+      "Conjunction of the Spheres": "การบรรจบแห่งทรงกลม",
+      "Elder Speech": "ภาษาโบราณ",
+      "Mutations": "การกลายพันธุ์",
+      "Mutant": "มนุษย์กลายพันธุ์",
+      "Destiny": "โชคชะตา",
+      "Striga": "สตริกา",
+      "Kikimore": "คิกิมอร์",
+      "Drowner": "ดราวเนอร์",
+      "Leshen": "เลเชน",
+      "Griffin": "กริฟฟิน",
+      "Wyvern": "ไวเวิร์น",
+      "Djinn": "จินน์",
+      "Higher Vampire": "แวมไพร์ชั้นสูง",
+      "Bruxa": "บรูซา",
+      "Golden Dragon": "มังกรทอง",
+      "Elves": "เอลฟ์",
+      "Dwarves": "คนแคระ",
+      "Halfling": "ฮาล์ฟลิง",
+      "Doppler": "ด็อปเปลอร์",
+      "Toss a coin to your witcher": "โยนเหรียญให้วิชเชอร์ของเธอ"
+    }
+  },
+  "review": [
+    "Geralt",
+    "Jaskier",
+    "Dandelion",
+    "Signs",
+    "Sorcerer",
+    "Elder Blood",
+    "Child of Surprise",
+    "Law of Surprise",
+    "Crones",
+    "Swallow",
+    "Thunderbolt",
+    "Cat potion",
+    "Mutant",
+    "Toss a coin to your witcher"
+  ]
+}
