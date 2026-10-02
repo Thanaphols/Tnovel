@@ -15,10 +15,13 @@ import { enqueueChapterForPolish } from '@/lib/polishQueue';
 import { inFlightLock } from '@/lib/inFlightLock';
 import { isAIProvider } from '@/lib/aiSettings';
 import { isStoredImageUrl, tryStoreImageFromUrl } from '@/lib/imageStore';
+import { finishImport, ImportCancelledError, rollbackImport, startImport, throwIfCancelled } from '@/lib/importRuns';
+
+type Run = ReturnType<typeof startImport>;
 
 export async function POST(request: Request) {
   try {
-    const { url, mode = 'auto', category, quality = 'fast', provider, fandomId: rawFandomId } = await request.json();
+    const { url, mode = 'auto', category, quality = 'fast', provider, fandomId: rawFandomId, importId } = await request.json();
     const fandomId: string | undefined = typeof rawFandomId === 'string' && rawFandomId ? rawFandomId : undefined;
     const enablePolish = quality === 'polished';
     const providerOverride: string | undefined = isAIProvider(provider) ? provider : undefined;
@@ -47,6 +50,9 @@ export async function POST(request: Request) {
     const creatorId = session.id;
 
     const io = (global as any).io;
+    // Everything this request creates is recorded on run, so the drawer's cancel can roll it back.
+    const run = startImport(importId, creatorId);
+    try {
 
     const isFanmtlChapter = url.includes('fanmtl.com') && /_\d+\.html$/i.test(url);
     const isDekDChapter = url.includes('dek-d.com') && (url.includes('viewlongc.php') || url.includes('&chapter='));
@@ -94,9 +100,10 @@ export async function POST(request: Request) {
         }
 
         const indexData = await scrapeNovelIndex(targetIndexUrl);
+        throwIfCancelled(run);
 
         if (!indexData.chapters || indexData.chapters.length === 0) {
-          return await processSingleChapter(url, session, io, category, fandomId);
+          return await processSingleChapter(url, session, io, category, fandomId, run);
         }
 
         let author = await prisma.author.findUnique({
@@ -106,6 +113,7 @@ export async function POST(request: Request) {
           author = await prisma.author.create({
             data: { name: indexData.authorName },
           });
+          if (run) run.createdAuthorId = author.id;
         }
 
         const cleanUrl = targetIndexUrl.trim().replace(/\/+$/, '');
@@ -158,6 +166,7 @@ export async function POST(request: Request) {
               createdById: creatorId,
             },
           });
+          if (run) run.createdNovelId = novel.id;
 
           if (io) {
             io.emit('novel:created', {
@@ -193,11 +202,14 @@ export async function POST(request: Request) {
           }
           if (!novel.description && indexData.description) updateData.description = indexData.description;
           if (author.id && author.id !== novel.authorId) updateData.authorId = author.id;
+          if (run) run.touchedNovel = { id: novel.id, totalChapters: novel.totalChapters, translationStatus: novel.translationStatus };
           novel = await prisma.novel.update({
             where: { id: novel.id },
             data: updateData,
           });
         }
+
+        throwIfCancelled(run);
 
         // Synchronously translate Chapter 1 so the user can begin reading immediately
         let firstChapter = await prisma.chapter.findFirst({
@@ -303,6 +315,7 @@ export async function POST(request: Request) {
                   originalUrl: firstLink.url,
                 },
               });
+              run?.createdChapterIds.push(firstChapter.id);
 
               // Enqueue Chapter 1 for polish if enabled
               if (enablePolish) {
@@ -323,9 +336,11 @@ export async function POST(request: Request) {
               }
             }
           } catch (e: any) {
+            if (e instanceof ImportCancelledError) throw e;
             console.error('Error translating first chapter synchronously:', e.message);
           }
         }
+        throwIfCancelled(run);
 
         // Get all existing chapter numbers for this novel to prevent unique constraint collision
         const existingChapRecords = await prisma.chapter.findMany({
@@ -346,6 +361,7 @@ export async function POST(request: Request) {
             status: ChapterStatus.TOC_ONLY,
           }))
           .filter((chap) => !existingChapNumbers.has(chap.chapterNumber));
+        run?.createdChapterIds.push(...tocChapterData.map((c) => c.id));
 
         // Chunk inserts in batches of 500
         const CHUNK_SIZE = 500;
@@ -370,6 +386,8 @@ export async function POST(request: Request) {
             totalChapters: indexData.chapters.length,
           });
         }
+
+        throwIfCancelled(run);
 
         // Fire-and-forget: translate the whole novel in the background (upserts the TOC_ONLY
         // placeholders). Marks the novel COMPLETED when done; JIT fetch still covers any chapter
@@ -399,7 +417,14 @@ export async function POST(request: Request) {
       });
     }
 
-    return await processSingleChapter(url, session, io, category, fandomId);
+    return await processSingleChapter(url, session, io, category, fandomId, run);
+    } catch (err) {
+      if (!(err instanceof ImportCancelledError)) throw err;
+      await rollbackImport(run!);
+      return NextResponse.json({ success: false, cancelled: true, error: 'ยกเลิกการนำเข้าแล้ว' }, { status: 409 });
+    } finally {
+      await finishImport(run);
+    }
   } catch (err: any) {
     console.error('Scrape and translate error:', err);
     return NextResponse.json(
@@ -419,7 +444,7 @@ async function safeTranslateTitle(titleEn: string): Promise<string> {
   }
 }
 
-async function processSingleChapter(url: string, session: any, io: any, category?: string, fandomId?: string) {
+async function processSingleChapter(url: string, session: any, io: any, category?: string, fandomId?: string, run: Run = null) {
   const lockKey = `single-chapter:${url}`;
   return await inFlightLock.runExclusive(lockKey, async () => {
     const existingChapter = await prisma.chapter.findFirst({
@@ -482,6 +507,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
   }
 
   const scrapedData = await scrapeNovelChapter(url);
+  throwIfCancelled(run);
 
   if (!scrapedData.paragraphs || scrapedData.paragraphs.length === 0) {
     return NextResponse.json(
@@ -497,6 +523,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
     author = await prisma.author.create({
       data: { name: scrapedData.authorName },
     });
+    if (run) run.createdAuthorId = author.id;
   }
 
   const novelSourceUrl = url.includes('fanmtl.com') ? url.replace(/_\d+\.html$/i, '.html') : url;
@@ -526,6 +553,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
         createdById: creatorId,
       },
     });
+    if (run) run.createdNovelId = novel.id;
 
     if (io) {
       io.emit('novel:created', {
@@ -580,6 +608,8 @@ async function processSingleChapter(url: string, session: any, io: any, category
     }));
   }
 
+  throwIfCancelled(run);
+
   const currentChapterCount = await prisma.chapter.count({
     where: { novelId: novel.id, deletedAt: null },
   });
@@ -595,6 +625,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
       originalUrl: url,
     },
   });
+  run?.createdChapterIds.push(chapter.id);
 
   if (io) {
     io.emit('chapter:created', {

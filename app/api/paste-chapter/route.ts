@@ -6,6 +6,7 @@ import { translateWithGlossary, toPromptGlossary } from '@/lib/glossaryService';
 import { applySafeNameReplacer } from '@/lib/nameReplacer';
 import { recordAuditLog } from '@/lib/auditLog';
 import { isThaiText, deobfuscateThaiText } from '@/lib/scraper';
+import { finishImport, ImportCancelledError, rollbackImport, startImport, throwIfCancelled } from '@/lib/importRuns';
 
 // Blank lines separate paragraphs in pasted text; if there are none, fall back to single
 // newlines so a chapter copied out of a reader that uses one line per paragraph still works.
@@ -24,14 +25,16 @@ function splitParagraphs(text: string): string[] {
 }
 
 export async function POST(request: Request) {
+  let run: ReturnType<typeof startImport> = null;
   try {
     const session = await getSession();
     if (!session || session.role !== 'ADMIN') {
       return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มตอนได้' }, { status: 403 });
     }
 
-    const { novelTitle, chapterTitle, text, sourceUrl, category, quality = 'fast', fandomId: rawFandomId } =
+    const { novelTitle, chapterTitle, text, sourceUrl, category, quality = 'fast', fandomId: rawFandomId, importId } =
       await request.json();
+    run = startImport(importId, session.id);
     const fandomId: string | undefined = typeof rawFandomId === 'string' && rawFandomId ? rawFandomId : undefined;
 
     if (!novelTitle || typeof novelTitle !== 'string' || !novelTitle.trim()) {
@@ -78,6 +81,7 @@ export async function POST(request: Request) {
           createdById: session.id,
         },
       });
+      if (run) run.createdNovelId = novel.id;
     } else if ((category && !novel.category) || fandomId) {
       novel = await prisma.novel.update({
         where: { id: novel.id },
@@ -106,6 +110,7 @@ export async function POST(request: Request) {
       translatedTitle = transTitle || cleanChapterTitle;
       contentTh = transBody;
 
+      throwIfCancelled(run);
       if (quality === 'polished' && contentTh.length > 0) {
         if (io) {
           io.emit('translation:progress', {
@@ -130,6 +135,7 @@ export async function POST(request: Request) {
       }
     }
 
+    throwIfCancelled(run);
     const chapter = await prisma.chapter.create({
       data: {
         novelId: novel.id,
@@ -141,6 +147,7 @@ export async function POST(request: Request) {
         originalUrl: sourceUrl?.trim() || `paste:${novel.id}:${chapterNumber}`,
       },
     });
+    run?.createdChapterIds.push(chapter.id);
 
     if (io) {
       if (isNewNovel) {
@@ -174,10 +181,16 @@ export async function POST(request: Request) {
       isNewNovel,
     });
   } catch (err: any) {
+    if (err instanceof ImportCancelledError) {
+      await rollbackImport(run!);
+      return NextResponse.json({ success: false, cancelled: true, error: 'ยกเลิกการนำเข้าแล้ว' }, { status: 409 });
+    }
     console.error('Paste chapter error:', err);
     return NextResponse.json(
       { success: false, error: err.message || 'เกิดข้อผิดพลาดในการเพิ่มตอน' },
       { status: 500 }
     );
+  } finally {
+    await finishImport(run);
   }
 }

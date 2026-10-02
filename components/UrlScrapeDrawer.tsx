@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, Tag, Zap, Library } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
@@ -35,6 +35,8 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
   const [novelTitles, setNovelTitles] = useState<Array<{ id: string; titleTh: string; titleEn: string }>>([]);
   const router = useRouter();
   const { socket } = useSocket();
+  // The import in flight: X cancels it server-side and rolls back what it created.
+  const importRef = useRef<{ id: string; abort: AbortController } | null>(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -91,6 +93,31 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
 
   if (!isOpen || !isAdmin || !authed) return null;
 
+  function beginImport() {
+    importRef.current = { id: crypto.randomUUID(), abort: new AbortController() };
+    return importRef.current;
+  }
+
+  function handleClose() {
+    const current = importRef.current;
+    if (loading && current) {
+      importRef.current = null;
+      current.abort.abort();
+      fetch('/api/scrape-and-translate/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ importId: current.id }),
+      })
+        .catch(() => {})
+        .finally(() => window.dispatchEvent(new Event('novels:refresh')));
+      setLoading(false);
+      setStatusMessage('');
+      setProgressPercent(0);
+      setBatchInfo(null);
+    }
+    onClose();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!url.trim()) return;
@@ -105,11 +132,13 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
     setProgressPercent(5);
     setBatchInfo(null);
 
+    const run = beginImport();
     try {
       const res = await fetch('/api/scrape-and-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), mode, category, fandomId, quality }),
+        body: JSON.stringify({ url: url.trim(), mode, category, fandomId, quality, importId: run.id }),
+        signal: run.abort.signal,
       });
 
       let data: any = null;
@@ -141,6 +170,8 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         setStatusMessage(data.message || t('scrapeStatusComplete'));
         setProgressPercent(100);
         setTimeout(() => {
+          if (importRef.current !== run) return; // cancelled meanwhile
+          importRef.current = null;
           setLoading(false);
           setUrl('');
           setCategory('');
@@ -159,6 +190,8 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       setProgressPercent(100);
 
       setTimeout(() => {
+        if (importRef.current !== run) return; // cancelled meanwhile
+        importRef.current = null;
         setLoading(false);
         setUrl('');
         setCategory('');
@@ -167,6 +200,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         router.push(`/reader/${data.chapterId}`);
       }, 600);
     } catch (err: any) {
+      if (run.abort.signal.aborted) return; // cancelled via X
       setError(err.message || t('scrapeErrorFetch'));
       setLoading(false);
     }
@@ -187,11 +221,14 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
     setProgressPercent(30);
     setBatchInfo(null);
 
+    const run = beginImport();
     try {
       const res = await fetch('/api/paste-chapter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: run.abort.signal,
         body: JSON.stringify({
+          importId: run.id,
           novelTitle: pasteNovelTitle.trim(),
           chapterTitle: pasteChapterTitle.trim(),
           text: pasteText,
@@ -221,6 +258,8 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
       setStatusMessage(`${t('scrapeSuccessPasted')}${data.paragraphCount}${t('scrapeSuccessPastedTail')}`);
       setProgressPercent(100);
       setTimeout(() => {
+        if (importRef.current !== run) return; // cancelled meanwhile
+        importRef.current = null;
         setLoading(false);
         setPasteText('');
         setPasteChapterTitle('');
@@ -230,6 +269,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         router.push(`/reader/${data.chapterId}`);
       }, 600);
     } catch (err: any) {
+      if (run.abort.signal.aborted) return; // cancelled via X
       setError(err.message || t('scrapeErrorAddChapter'));
       setLoading(false);
     }
@@ -251,8 +291,9 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
         className="relative w-full max-w-lg max-h-[92dvh] overflow-y-auto overscroll-contain p-6 bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl space-y-5 cursor-default"
       >
         <button
-          onClick={onClose}
-          disabled={loading}
+          onClick={handleClose}
+          title={loading ? 'ยกเลิกการนำเข้า (ลบเรื่อง/ตอนที่เพิ่งดึงมา)' : undefined}
+          aria-label={loading ? 'ยกเลิกการนำเข้า' : 'ปิด'}
           className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 rounded-full transition-colors"
         >
           <X className="w-5 h-5" />
