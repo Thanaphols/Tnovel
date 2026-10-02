@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
+import { getSession, isPrimaryAdmin } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
-
-const PRIMARY_ADMIN_EMAIL = 'cupteo254504@gmail.com';
 
 // 1. GET: ดึงรายการ Whitelist ทั้งหมด
 export async function GET() {
@@ -33,7 +31,7 @@ export async function GET() {
         role: w.role || 'USER',
         note: w.note,
         createdAt: w.createdAt,
-        isPrimaryAdmin: w.email.toLowerCase() === PRIMARY_ADMIN_EMAIL,
+        isPrimaryAdmin: isPrimaryAdmin(w.email),
         user: user || null,
       };
     });
@@ -69,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     // Prevent demoting Primary Admin
-    if (email === PRIMARY_ADMIN_EMAIL && role !== 'ADMIN') {
+    if (isPrimaryAdmin(email) && role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'ไม่สามารถลดระดับสิทธิ์ของ Primary Admin ได้' },
         { status: 400 }
@@ -173,9 +171,9 @@ export async function DELETE(request: Request) {
     }
 
     // ป้องกันการลบ Superadmin
-    if (target.email.toLowerCase() === PRIMARY_ADMIN_EMAIL) {
+    if (isPrimaryAdmin(target.email)) {
       return NextResponse.json(
-        { success: false, error: `ไม่อนุญาตให้ลบอีเมลผู้ดูแลระบบหลัก (${PRIMARY_ADMIN_EMAIL}) ออกจาก Whitelist` },
+        { success: false, error: `ไม่อนุญาตให้ลบอีเมลผู้ดูแลระบบหลักออกจาก Whitelist` },
         { status: 400 }
       );
     }

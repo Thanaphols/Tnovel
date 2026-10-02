@@ -113,6 +113,7 @@ export default function BackgroundProgressWidget() {
     }
 
     function handleState(data: any) {
+      if (data.initiatorUserId && user?.id && data.initiatorUserId !== user.id) return;
       if (data.isPaused !== undefined) setIsPaused(data.isPaused);
       if (data.isCancelled) {
         setActive(false);
@@ -126,27 +127,24 @@ export default function BackgroundProgressWidget() {
       socket.off('translation:progress', handleProgress);
       socket.off('translation:state', handleState);
     };
-  }, [socket, t, isAdmin]);
+  }, [socket, t, isAdmin, user?.id]);
 
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (!isAdmin || !active) return null;
 
   function togglePause() {
-    if (!socket) return;
-    if (isPaused) {
-      socket.emit('translation:resume');
-      setIsPaused(false);
-    } else {
-      socket.emit('translation:pause');
-      setIsPaused(true);
-    }
+    const paused = !isPaused;
+    setIsPaused(paused);
+    fetch('/api/translation/pause', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paused }),
+    }).catch(() => {});
   }
 
   function handleConfirmCancel() {
-    if (socket) {
-      socket.emit('translation:cancel');
-    }
+    fetch('/api/translation/cancel', { method: 'POST' }).catch(() => {});
     setActive(false);
     setIsPaused(false);
     setShowCancelConfirm(false);

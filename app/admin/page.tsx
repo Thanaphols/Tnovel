@@ -24,6 +24,7 @@ import { useLanguage } from '@/lib/languageContext';
 import { useSocket } from '@/lib/socket';
 import UrlScrapeDrawer from '@/components/UrlScrapeDrawer';
 import OllamaStatusCard from '@/components/OllamaStatusCard';
+import NovelUpdateCard from '@/components/NovelUpdateCard';
 
 export default function AdminDashboardPage() {
   const { t, lang } = useLanguage();
@@ -229,6 +230,9 @@ export default function AdminDashboardPage() {
 
       {/* AI Ollama Connection & VRAM Control */}
       <OllamaStatusCard />
+
+      {/* Auto-check source sites for new chapters */}
+      <NovelUpdateCard />
 
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

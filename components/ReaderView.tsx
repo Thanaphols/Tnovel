@@ -553,41 +553,41 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       }
     }
 
-    function handleChapterPolished(data: any) {
-      if (data?.chapterId) {
-        setLoadedChapters((prev) => {
-          const exists = prev.some((c) => c.id === data.chapterId);
-          if (!exists) return prev;
-          // Refetch polished chapter quietly
-          fetch(`/api/chapters/${data.chapterId}`)
-            .then((r) => r.json())
-            .then((res) => {
-              if (res.success && res.chapter) {
-                setLoadedChapters((current) =>
-                  current.map((c) =>
-                    c.id === data.chapterId
-                      ? {
-                          ...c,
-                          titleTh: res.chapter.titleTh,
-                          contentTh: res.chapter.contentTh,
-                          status: 'POLISHED',
-                        }
-                      : c
-                  )
-                );
-              }
-            })
-            .catch(() => {});
-          return prev;
-        });
-      }
+    // Content of an open chapter changed in the DB (re-translate, polish, glossary apply, manual
+    // paste, JIT fill, background polish): pull it again so every viewer sees it without a refresh.
+    function handleChapterContentChanged(data: any) {
+      const target = loadedChaptersRef.current.find((c) => c.id === data?.chapterId);
+      if (!target) return;
+      fetch(`/api/chapters/${target.id}?refresh=1`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((res) => {
+          if (!res.success || !res.chapter) return;
+          const { titleTh, titleEn, contentTh, contentEn, status } = res.chapter;
+          setLoadedChapters((current) =>
+            current.map((c) => (c.id === target.id ? { ...c, titleTh, titleEn, contentTh, contentEn, status } : c))
+          );
+          saveChapterOffline({
+            id: target.id,
+            originalUrl: target.originalUrl,
+            titleEn,
+            titleTh,
+            contentEn,
+            contentTh,
+            novelTitle: target.novelTitle,
+            chapterNumber: target.chapterNumber,
+            updatedAt: new Date().toISOString(),
+          });
+        })
+        .catch(() => {});
     }
 
     socket.on('chapter:created', handleChapterCreated);
-    socket.on('chapter:polished', handleChapterPolished);
+    socket.on('chapter:polished', handleChapterContentChanged);
+    socket.on('chapter:updated', handleChapterContentChanged);
     return () => {
       socket.off('chapter:created', handleChapterCreated);
-      socket.off('chapter:polished', handleChapterPolished);
+      socket.off('chapter:polished', handleChapterContentChanged);
+      socket.off('chapter:updated', handleChapterContentChanged);
     };
   }, [socket, chapter.novelId, chapter.chapterNumber]);
 
@@ -1446,7 +1446,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
                             <textarea
                               value={manualTextMap[chap.id] || ''}
                               onChange={(e) => setManualTextMap((prev) => ({ ...prev, [chap.id]: e.target.value }))}
-                              placeholder="วางข้อความภาษาอังกฤษของบทนี้ที่นี่..."
+                              placeholder="วางข้อความต้นฉบับ (อังกฤษหรือจีน) ของบทนี้ที่นี่..."
                               rows={6}
                               className="w-full p-3 rounded-xl border border-neutral-700 bg-neutral-900 text-xs text-neutral-200 focus:outline-none focus:border-amber-500"
                             />

@@ -28,6 +28,7 @@ import {
   Languages,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
+import type { TranslationKey } from '@/lib/languages';
 import { useAuth } from '@/lib/authContext';
 import { useSocket } from '@/lib/socket';
 import { toggleBookshelf, isNovelInGuestBookshelf, fetchReadingHistory } from '@/lib/bookshelf';
@@ -75,6 +76,39 @@ interface NovelDetail {
   } | null;
 }
 
+const NEW_CHAPTER_DAYS = 7;
+
+/**
+ * "New" = added after the novel's first import (an update from the source site) and within the
+ * last week. The import itself creates every chapter within minutes of the novel, so a 1h grace
+ * keeps a freshly imported novel from showing NEW on every row.
+ */
+function isNewChapter(chapterCreatedAt: string, novelCreatedAt: string, now = Date.now()): boolean {
+  const added = new Date(chapterCreatedAt).getTime();
+  return added - new Date(novelCreatedAt).getTime() > 3600_000 && now - added < NEW_CHAPTER_DAYS * 86400_000;
+}
+
+function chapterStatusBadge(status?: string): { key: TranslationKey; cls: string } {
+  switch (status) {
+    case 'POLISHED':
+      return { key: 'chapterStatusPolished', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
+    case 'TRANSLATED_GT':
+    case 'POLISH_QUEUED':
+    case 'POLISHING':
+    case 'POLISH_FAILED': // polish failed but the Google draft is there and readable
+      return { key: 'chapterStatusTranslated', cls: 'text-ocean-500 bg-ocean-500/10 border-ocean-500/30' };
+    case 'FETCHING':
+    case 'FETCHED':
+    case 'TRANSLATING':
+      return { key: 'chapterStatusTranslating', cls: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
+    case 'FETCH_FAILED':
+    case 'TRANSLATE_FAILED':
+      return { key: 'chapterStatusFailed', cls: 'text-rose-400 bg-rose-500/10 border-rose-500/30' };
+    default: // TOC_ONLY: in the table of contents, translated on first open
+      return { key: 'chapterStatusPending', cls: 'text-slate-400 bg-slate-800/60 border-slate-700/60' };
+  }
+}
+
 export default function NovelDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -97,6 +131,10 @@ export default function NovelDetailPage() {
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
+
+  // Admin: re-read the source site's table of contents for chapters published since import.
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Reading progress (from server or guest localStorage)
   const [lastReadChapter, setLastReadChapter] = useState<{
@@ -124,6 +162,23 @@ export default function NovelDetailPage() {
     if (!id) return;
     loadNovel();
   }, [id]);
+
+  async function handleCheckUpdates() {
+    setCheckingUpdates(true);
+    setUpdateMsg(null);
+    try {
+      const res = await fetch(`/api/novels/${id}/check-updates`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'เช็คตอนใหม่ไม่สำเร็จ');
+      setUpdateMsg({ ok: true, text: data.message });
+      if (data.added > 0) await loadNovel({ silent: true });
+    } catch (err: any) {
+      setUpdateMsg({ ok: false, text: err.message });
+    } finally {
+      setCheckingUpdates(false);
+      setTimeout(() => setUpdateMsg(null), 6000);
+    }
+  }
 
   // silent: refresh novel data (chapter statuses for the overview) without the full-page
   // loading/error takeover — used mid-batch so the running panel never unmounts.
@@ -221,6 +276,7 @@ export default function NovelDetailPage() {
               chapterNumber: data.chapterNumber || chapters.length + 1,
               titleEn: data.chapterTitleEn || '',
               titleTh: data.chapterTitle || `${t('chapterPrefix')} ${chapters.length + 1}`,
+              status: data.status,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             });
@@ -615,15 +671,6 @@ export default function NovelDetailPage() {
                   )}
                 </div>
 
-                {novel.category && (
-                  <div
-                    className={`absolute bottom-2.5 left-2.5 z-10 px-2 py-0.5 text-[10px] font-bold rounded-md backdrop-blur-md border shadow-md ${getCategoryBadgeClass(
-                      novel.category
-                    )}`}
-                  >
-                    {getCategoryLabel(novel.category, lang)}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -723,6 +770,19 @@ export default function NovelDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Category → search filtered by it */}
+                {novel.category && (
+                  <Link
+                    href={`/search?category=${encodeURIComponent(novel.category)}`}
+                    title={`${t('categoryLabel')}: ${getCategoryLabel(novel.category, lang)}`}
+                    className={`inline-flex px-2.5 py-1 text-xs font-bold rounded-md border hover:brightness-110 transition ${getCategoryBadgeClass(
+                      novel.category
+                    )}`}
+                  >
+                    {getCategoryLabel(novel.category, lang)}
+                  </Link>
+                )}
               </div>
 
               {/* Action Buttons Toolbar */}
@@ -1025,6 +1085,26 @@ export default function NovelDetailPage() {
 
               {/* Filter controls */}
               <div className="flex items-center gap-2">
+                {/* Admin: check source site for new chapters */}
+                {isAdmin && novel.sourceUrl?.startsWith('http') && (
+                  <button
+                    type="button"
+                    onClick={handleCheckUpdates}
+                    disabled={checkingUpdates}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all disabled:opacity-60 flex-shrink-0"
+                    title={t('checkNewChapters')}
+                  >
+                    {checkingUpdates ? (
+                      <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    ) : (
+                      <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span className="hidden md:inline">
+                      {checkingUpdates ? t('checkingNewChapters') : t('checkNewChapters')}
+                    </span>
+                  </button>
+                )}
+
                 {/* Search Chapter */}
                 <div className="relative flex-1 sm:w-60">
                   <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1052,6 +1132,12 @@ export default function NovelDetailPage() {
               </div>
             </div>
 
+            {updateMsg && (
+              <p className={`text-xs font-medium ${updateMsg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {updateMsg.text}
+              </p>
+            )}
+
             {/* Chapter Grid / List */}
             {filteredChapters.length === 0 ? (
               <div className="py-16 text-center space-y-2 bg-slate-900/30 rounded-3xl border border-slate-800/40">
@@ -1064,6 +1150,8 @@ export default function NovelDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {filteredChapters.map((chap) => {
                   const isLastRead = lastReadChapter?.chapterId === chap.id;
+                  const isNew = isNewChapter(chap.createdAt, novel.createdAt);
+                  const statusBadge = chapterStatusBadge(chap.status);
                   const itemPct = isLastRead && typeof lastReadChapter?.scrollPercent === 'number' && lastReadChapter.scrollPercent > 0 ? lastReadChapter.scrollPercent : undefined;
 
                   return (
@@ -1115,8 +1203,16 @@ export default function NovelDetailPage() {
                         </div>
                       </div>
 
-                      {/* Right side: Last read badge or date */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Right side: new/status badges, then last read badge or date */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {isNew && (
+                          <span className="px-1.5 py-0.5 text-[9.5px] font-bold rounded-md bg-rose-500 text-white">
+                            {t('chapterNewBadge')}
+                          </span>
+                        )}
+                        <span className={`px-1.5 py-0.5 text-[9.5px] font-semibold rounded-md border ${statusBadge.cls}`}>
+                          {t(statusBadge.key)}
+                        </span>
                         {isLastRead ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-md">
                             <Clock className="w-3 h-3" />

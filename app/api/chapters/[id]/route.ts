@@ -38,13 +38,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: false, error: 'ไม่พบบทนิยายนี้' }, { status: 404 });
     }
 
-    // Increment novel view count asynchronously
-    prisma.novel
-      .update({
-        where: { id: chapter.novelId },
-        data: { viewCount: { increment: 1 } },
-      })
-      .catch(() => {});
+    // Increment novel view count asynchronously. ?refresh=1 is the reader silently re-pulling a
+    // chapter whose content changed (chapter:updated / chapter:polished) — not a new view.
+    if (!new URL(request.url).searchParams.has('refresh')) {
+      prisma.novel
+        .update({
+          where: { id: chapter.novelId },
+          data: { viewCount: { increment: 1 } },
+        })
+        .catch(() => {});
+    }
 
     const session = await getSession();
     let scrollPercent = 0;

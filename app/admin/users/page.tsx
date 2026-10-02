@@ -34,11 +34,6 @@ export default function AdminUsersPage() {
   }
 
   async function handleToggleRole(userId: string, currentRole: string, email: string) {
-    if (email.toLowerCase() === 'cupteo254504@gmail.com') {
-      alert('ไม่สามารถลดระดับสิทธิ์ของ Primary Admin ได้');
-      return;
-    }
-
     if (currentUser?.id === userId && currentRole === 'ADMIN') {
       alert('คุณไม่สามารถลดระดับสิทธิ์บัญชีของตนเองได้');
       return;

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { jobsOf } from '@/lib/batchJobs';
 
+// Cancels the caller's own batches (running or still queued). The batch loop emits
+// batch_cancelled itself once it notices the flag.
 export async function POST() {
   try {
     const session = await getSession();
@@ -8,22 +11,15 @@ export async function POST() {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
 
-    (global as any).activeTranslationJob = null;
-    if (!(global as any).translationState) {
-      (global as any).translationState = { isPaused: false, isCancelled: true };
-    } else {
-      (global as any).translationState.isCancelled = true;
-      (global as any).translationState.isPaused = false;
+    for (const job of jobsOf(session.id)) {
+      job.isCancelled = true;
+      job.isPaused = false;
     }
 
-    const io = (global as any).io;
-    if (io) {
-      io.emit('translation:progress', {
-        status: 'batch_cancelled',
-        message: 'ยกเลิกการแปลแล้ว',
-      });
-      io.emit('translation:state', { isPaused: false, isCancelled: true });
-    }
+    const g = global as any;
+    if (g.activeTranslationJob?.initiatorUserId === session.id) g.activeTranslationJob = null;
+
+    g.io?.emit('translation:state', { initiatorUserId: session.id, isPaused: false, isCancelled: true });
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

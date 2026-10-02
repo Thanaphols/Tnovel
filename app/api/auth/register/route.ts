@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, signToken } from '@/lib/auth';
+import { hashPassword, isPrimaryAdmin, signToken } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
 
 export async function POST(request: Request) {
@@ -14,12 +14,12 @@ export async function POST(request: Request) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check Whitelist & Primary Admin
-    const isPrimaryAdmin = normalizedEmail === 'cupteo254504@gmail.com';
+    const primaryAdmin = isPrimaryAdmin(normalizedEmail);
     const whitelisted = await prisma.whitelistedEmail.findUnique({
       where: { email: normalizedEmail },
     });
 
-    if (!isPrimaryAdmin && !whitelisted) {
+    if (!primaryAdmin && !whitelisted) {
       return NextResponse.json(
         {
           success: false,
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
     // First registered user, primary admin, or admin-whitelisted becomes ADMIN
     const userCount = await prisma.user.count();
-    const role = isPrimaryAdmin || whitelisted?.role === 'ADMIN' || userCount === 0 ? 'ADMIN' : (whitelisted?.role || 'USER');
+    const role = primaryAdmin || whitelisted?.role === 'ADMIN' || userCount === 0 ? 'ADMIN' : (whitelisted?.role || 'USER');
 
     const hashedPassword = await hashPassword(password);
     const user = await prisma.user.create({

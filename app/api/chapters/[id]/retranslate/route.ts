@@ -304,6 +304,8 @@ async function handleRetranslate(request: Request, { params }: { params: Promise
         paragraphsEn: contentEn,
         paragraphsThDraft: draft.slice(1),
         context: polishContext,
+        // Clicked from the reader → cut ahead of whole-novel batches. Panel-driven batches don't.
+        priority: !isBatch,
         onProgress: (currentBatch, totalBatches) => {
           if (io) {
             let pct: number;

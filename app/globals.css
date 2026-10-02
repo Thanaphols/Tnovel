@@ -171,6 +171,63 @@ input:focus, textarea:focus, select:focus {
   outline: none;
 }
 
+/* Select dropdown list: themed for every <select> in the app.
+   ponytail: CSS customizable select (Chromium 135+) instead of a custom JS dropdown component;
+   other browsers fall back to the native list, tinted by the option colors below. */
+select option {
+  background-color: rgb(var(--slate-900));
+  color: rgb(var(--slate-200));
+}
+
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+
+  /* Same chevron as lucide ChevronDown used elsewhere, instead of the default triangle. */
+  select::picker-icon {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    background-color: rgb(var(--slate-400));
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: rotate 0.2s;
+  }
+  select:open::picker-icon {
+    rotate: 180deg;
+  }
+
+  ::picker(select) {
+    min-width: anchor-size(width);
+    margin-top: 4px;
+    padding: 4px;
+    border: 1px solid rgb(var(--slate-800));
+    border-radius: 0.75rem;
+    background-color: rgb(var(--slate-900));
+    box-shadow: 0 10px 28px rgba(84, 58, 30, 0.16);
+  }
+
+  select option {
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+  }
+  select option:hover,
+  select option:focus-visible {
+    background-color: rgb(var(--slate-850));
+    outline: none;
+  }
+  select option:checked {
+    background-color: rgb(212 163 115 / 0.18);
+    color: rgb(var(--slate-100));
+    font-weight: 600;
+  }
+  select option::checkmark {
+    color: #d4a373;
+  }
+}
+
 /* Google OAuth Login Button */
 .google-auth-btn {
   background-color: rgb(var(--slate-900)) !important;

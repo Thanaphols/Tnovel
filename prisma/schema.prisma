@@ -52,6 +52,7 @@ model Novel {
   viewCount         Int               @default(0)
   likeCount         Int               @default(0)
   deletedAt         DateTime?
+  hiddenAt          DateTime? // admin-hidden: left out of listings/search for non-admins
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -289,6 +290,9 @@ model Fandom {
   terms     FandomGlossary[]
 }
 
+// A top-level row is a "card" (e.g. Luffy); rows with parentId are its variants (Monkey D. Luffy,
+// Straw Hat Luffy...). Variants are ordinary terms with their own Thai, so the translate pipeline
+// needs no special handling — parentId/imageUrl are for the admin UI only. One level deep.
 model FandomGlossary {
   id          String   @id @default(uuid())
   fandomId    String
@@ -296,12 +300,17 @@ model FandomGlossary {
   canonicalTh String
   category    String?
   entityType  String   @default("CHARACTER")
+  imageUrl    String?
+  parentId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  fandom      Fandom   @relation(fields: [fandomId], references: [id], onDelete: Cascade)
+  fandom      Fandom           @relation(fields: [fandomId], references: [id], onDelete: Cascade)
+  parent      FandomGlossary?  @relation("FandomTermVariants", fields: [parentId], references: [id], onDelete: Cascade)
+  variants    FandomGlossary[] @relation("FandomTermVariants")
 
   @@unique([fandomId, canonicalEn])
+  @@index([parentId])
 }
 
 model SystemLock {

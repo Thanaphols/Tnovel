@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { scrapeNovelIndex } from '@/lib/scraper';
 import { processBatchChaptersAsync } from '@/lib/batchTranslator';
+import { isLaneFull, laneFor } from '@/lib/batchJobs';
 
 export async function POST(
   request: Request,
@@ -75,7 +76,10 @@ export async function POST(
     });
 
     // Start background translation process
-    processBatchChaptersAsync(novel, novel.author, indexData.chapters, io, enablePolish, session.id);
+    const queued = isLaneFull(await laneFor(enablePolish));
+    processBatchChaptersAsync(novel, novel.author, indexData.chapters, io, enablePolish, session.id).catch(
+      (e: any) => console.error('[Resume] background batch failed:', e?.message || e)
+    );
 
     return NextResponse.json({
       success: true,
@@ -84,7 +88,8 @@ export async function POST(
       totalChapters,
       alreadyTranslated: completedUrls.size,
       remainingChapters: remainingChapters.length,
-      message: `เริ่มแปลต่อ (แปลแล้ว ${completedUrls.size}/${totalChapters} ตอน, เหลืออีก ${remainingChapters.length} ตอน)`,
+      queued,
+      message: `${queued ? 'เข้าคิวแปลต่อ รอเรื่องก่อนหน้าแปลเสร็จก่อน' : 'เริ่มแปลต่อ'} (แปลแล้ว ${completedUrls.size}/${totalChapters} ตอน, เหลืออีก ${remainingChapters.length} ตอน)`,
     });
   } catch (err: any) {
     console.error('Resume translation error:', err);

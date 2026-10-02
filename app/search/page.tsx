@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import NovelCardSkeleton from '@/components/NovelCardSkeleton';
 import { useLanguage } from '@/lib/languageContext';
 import { Search, SlidersHorizontal, Clock, Eye, Layers, Heart, Sparkles, Plus, X, Check, Tag } from 'lucide-react';
@@ -34,8 +35,18 @@ type SortKey = 'latest' | 'newest' | 'views' | 'chapters' | 'likes';
 
 const PAGE_SIZE = 18;
 
-export default function SearchPage() {
+// useSearchParams needs a Suspense boundary or the build bails out of static rendering.
+export default function SearchPageWrapper() {
+  return (
+    <Suspense>
+      <SearchPage />
+    </Suspense>
+  );
+}
+
+function SearchPage() {
   const { t, lang } = useLanguage();
+  const categoryParam = useSearchParams().get('category');
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -64,6 +75,12 @@ export default function SearchPage() {
     { key: 'likes', label: t('sortMostLiked'), icon: Heart },
   ];
   const sortMeta = (k: SortKey) => SORT_OPTIONS.find((o) => o.key === k)!;
+
+  // Preselect ?category= from badge links on cards / the novel page. Re-runs when a badge is
+  // clicked while already on /search (same route, no remount).
+  useEffect(() => {
+    if (categoryParam) setCategories(categoryParam.split(',').filter(Boolean));
+  }, [categoryParam]);
 
   // Debounce the text input so we don't hit the API on every keystroke.
   useEffect(() => {

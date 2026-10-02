@@ -7,12 +7,14 @@ import { translateTitleGoogle } from '@/lib/googleTranslate';
 import { translateWithGlossary, toPromptGlossary } from '@/lib/glossaryService';
 import { applySafeNameReplacer } from '@/lib/nameReplacer';
 import { processBatchChaptersAsync } from '@/lib/batchTranslator';
+import { isLaneFull, laneFor } from '@/lib/batchJobs';
 import { polishParagraphs } from '@/lib/translator';
 import { recordAuditLog } from '@/lib/auditLog';
 import { ChapterStatus } from '@/lib/enums';
 import { enqueueChapterForPolish } from '@/lib/polishQueue';
 import { inFlightLock } from '@/lib/inFlightLock';
 import { isAIProvider } from '@/lib/aiSettings';
+import { isStoredImageUrl, tryStoreImageFromUrl } from '@/lib/imageStore';
 
 export async function POST(request: Request) {
   try {
@@ -148,7 +150,7 @@ export async function POST(request: Request) {
               sourceUrl: targetIndexUrl,
               category: category.trim(),
               fandomId: fandomId ?? null,
-              coverUrl: indexData.coverUrl || null,
+              coverUrl: await tryStoreImageFromUrl(indexData.coverUrl, 'cover', targetIndexUrl),
               description: indexData.description || null,
               totalChapters: indexData.chapters.length,
               translationStatus: 'TRANSLATING',
@@ -185,7 +187,10 @@ export async function POST(request: Request) {
             updateData.category = category.trim();
           }
           if (fandomId) updateData.fandomId = fandomId;
-          if (!novel.coverUrl && indexData.coverUrl) updateData.coverUrl = indexData.coverUrl;
+          // Re-import also upgrades an old hotlinked cover to a stored, compressed copy.
+          if (indexData.coverUrl && !isStoredImageUrl(novel.coverUrl)) {
+            updateData.coverUrl = await tryStoreImageFromUrl(indexData.coverUrl, 'cover', targetIndexUrl);
+          }
           if (!novel.description && indexData.description) updateData.description = indexData.description;
           if (author.id && author.id !== novel.authorId) updateData.authorId = author.id;
           novel = await prisma.novel.update({
@@ -269,6 +274,7 @@ export async function POST(request: Request) {
                       };
                       const result = await polishParagraphs(enWithTitle, [titleTh, ...contentTh], polishContext, undefined, {
                         provider: providerOverride,
+                        priority: true, // admin waits on chapter 1 before the background batch starts
                       });
                       if (result.failedBatches === 0) {
                         const [polishedTitle, ...polishedBody] = applySafeNameReplacer(result.paragraphs, glossary);
@@ -373,6 +379,7 @@ export async function POST(request: Request) {
           title: c.title || `Chapter ${idx + 1}`,
           url: c.url,
         }));
+        const queued = isLaneFull(await laneFor(enablePolish, providerOverride));
         processBatchChaptersAsync(novel, author, chapterLinks, io, enablePolish, creatorId, providerOverride).catch(
           (e: any) => console.error('[ScrapeRoute] background batch failed:', e?.message || e)
         );
@@ -384,7 +391,10 @@ export async function POST(request: Request) {
           novelId: novel.id,
           novelTitle: novel.titleTh || novel.titleEn,
           totalChapters: indexData.chapters.length,
-          message: `สร้างสารบัญครบทั้ง ${indexData.chapters.length} ตอนแล้ว! กำลังแปลทั้งเรื่องอยู่เบื้องหลัง (เปิดอ่านตอนไหนก็ได้ทันทีแบบ JIT)`,
+          queued,
+          message: queued
+            ? `สร้างสารบัญครบทั้ง ${indexData.chapters.length} ตอนแล้ว! เข้าคิวแปล รอเรื่องก่อนหน้าแปลเสร็จก่อน (เปิดอ่านตอนไหนก็ได้ทันทีแบบ JIT)`
+            : `สร้างสารบัญครบทั้ง ${indexData.chapters.length} ตอนแล้ว! กำลังแปลทั้งเรื่องอยู่เบื้องหลัง (เปิดอ่านตอนไหนก็ได้ทันทีแบบ JIT)`,
         });
       });
     }
@@ -511,7 +521,7 @@ async function processSingleChapter(url: string, session: any, io: any, category
         sourceUrl: novelSourceUrl,
         category: category?.trim() || null,
         fandomId: fandomId ?? null,
-        coverUrl: scrapedData.coverUrl || null,
+        coverUrl: await tryStoreImageFromUrl(scrapedData.coverUrl, 'cover', url),
         authorId: author.id,
         createdById: creatorId,
       },

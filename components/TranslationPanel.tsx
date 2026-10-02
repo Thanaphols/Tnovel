@@ -233,9 +233,6 @@ export default function TranslationPanel({
     isCancelledRef.current = true;
     setIsRunning(false);
     setCurrentProcessingTitle('');
-    if (socket) {
-      socket.emit('translation:cancel');
-    }
     try {
       await fetch('/api/translation/cancel', { method: 'POST' });
     } catch {}
@@ -378,7 +375,7 @@ export default function TranslationPanel({
                 <div>
                   <p className="text-xs font-bold text-slate-200">แปลเร็ว (Google Translate)</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    แปลตรงความหมายจากภาษาอังกฤษทันที พร้อมผูกคำจากตาราง Glossary (ความเร็วสูง)
+                    แปลตรงความหมายจากต้นฉบับทันที พร้อมผูกคำจากตาราง Glossary (ความเร็วสูง)
                   </p>
                 </div>
               </button>

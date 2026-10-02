@@ -127,6 +127,14 @@ export async function POST(
 
       await completeChapterJob(jobId);
 
+      // Readers who opened this chapter while it was still empty get the content too.
+      (global as any).io?.emit('chapter:updated', {
+        chapterId,
+        novelId: updated.novelId,
+        titleTh: updated.titleTh,
+        status: updated.status,
+      });
+
       // Step D: Enqueue asynchronous AI polish in the background
       enqueueChapterForPolish(chapterId);
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
+import { getSession, isPrimaryAdmin } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET() {
@@ -26,7 +26,7 @@ export async function GET() {
 
     const mappedUsers = users.map((u) => ({
       ...u,
-      isPrimaryAdmin: u.email.toLowerCase() === 'cupteo254504@gmail.com',
+      isPrimaryAdmin: isPrimaryAdmin(u.email),
     }));
 
     return NextResponse.json({ success: true, users: mappedUsers });
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     // Protect Primary Admin
-    if (targetUser.email === 'cupteo254504@gmail.com' && newRole !== 'ADMIN') {
+    if (isPrimaryAdmin(targetUser.email) && newRole !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'ไม่สามารถลดระดับสิทธิ์ของ Primary Admin ได้' },
         { status: 400 }

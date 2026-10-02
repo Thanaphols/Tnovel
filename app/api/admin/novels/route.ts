@@ -86,6 +86,20 @@ export async function POST(request: Request) {
       });
 
       return NextResponse.json({ success: true, message: 'กู้คืนนิยายเรียบร้อย' });
+    } else if (action === 'hide' || action === 'unhide') {
+      const hide = action === 'hide';
+      await prisma.novel.update({ where: { id: novelId }, data: { hiddenAt: hide ? new Date() : null } });
+
+      await recordAuditLog({
+        userId: session.id,
+        action: hide ? 'NOVEL_HIDE' : 'NOVEL_UNHIDE',
+        entity: 'NOVEL',
+        entityId: novelId,
+        details: `${hide ? 'ซ่อน' : 'เลิกซ่อน'}นิยาย "${novelTitle}"`,
+        request,
+      });
+
+      return NextResponse.json({ success: true, message: hide ? 'ซ่อนนิยายเรียบร้อย' : 'เลิกซ่อนนิยายเรียบร้อย' });
     } else if (action === 'delete_permanent') {
       await prisma.novel.delete({ where: { id: novelId } });
 

@@ -35,11 +35,6 @@ const appUrl = rawAppUrl || `http://${hostname}:${port}`;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-global.translationState = {
-  isPaused: false,
-  isCancelled: false,
-};
-
 if (require.main === module) {
   app.prepare().then(() => {
   const server = createServer(async (req, res) => {
@@ -66,14 +61,9 @@ if (require.main === module) {
   io.on('connection', (socket) => {
     console.log('⚡ Socket connected:', socket.id);
 
-    // Send active translation job state on reconnect/connect if available
-    if (global.activeTranslationJob && global.activeTranslationJob.isActive) {
-      socket.emit('translation:progress', {
-        status: 'batch_progress',
-        ...global.activeTranslationJob,
-        isPaused: global.translationState ? global.translationState.isPaused : false,
-      });
-    }
+    // Translation pause/resume/cancel and the "current job" replay used to live here with no auth,
+    // so any visitor could stop an admin's batch. They are now admin-checked HTTP routes under
+    // /api/translation/*, and the widget restores its own job via /api/translation/status.
 
     socket.on('join_chapter', (chapterId) => {
       socket.join(`chapter_${chapterId}`);
@@ -81,22 +71,6 @@ if (require.main === module) {
 
     socket.on('leave_chapter', (chapterId) => {
       socket.leave(`chapter_${chapterId}`);
-    });
-
-    socket.on('translation:pause', () => {
-      global.translationState.isPaused = true;
-      io.emit('translation:state', { isPaused: true, isCancelled: false });
-    });
-
-    socket.on('translation:resume', () => {
-      global.translationState.isPaused = false;
-      io.emit('translation:state', { isPaused: false, isCancelled: false });
-    });
-
-    socket.on('translation:cancel', () => {
-      global.translationState.isCancelled = true;
-      global.translationState.isPaused = false;
-      io.emit('translation:state', { isPaused: false, isCancelled: true });
     });
 
     socket.on('disconnect', () => {

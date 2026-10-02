@@ -39,7 +39,7 @@ export async function POST(
 
     if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
       return NextResponse.json(
-        { success: false, error: 'กรุณากรอกข้อความภาษาอังกฤษสำหรับบทนี้' },
+        { success: false, error: 'กรุณากรอกข้อความต้นฉบับสำหรับบทนี้' },
         { status: 400 }
       );
     }
@@ -92,6 +92,14 @@ export async function POST(
         errorCode: ErrorCode.NONE,
         errorMessage: null,
       },
+    });
+
+    // Other open readers of this chapter re-pull the new content.
+    (global as any).io?.emit('chapter:updated', {
+      chapterId,
+      novelId: updated.novelId,
+      titleTh: updated.titleTh,
+      status: updated.status,
     });
 
     // Enqueue background AI polish

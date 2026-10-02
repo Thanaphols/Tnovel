@@ -4,6 +4,7 @@ import { polishParagraphs } from '@/lib/translator';
 import { autoDiscoverAndSaveGlossary, translateWithGlossary, toPromptGlossary } from '@/lib/glossaryService';
 import { applySafeNameReplacer } from '@/lib/nameReplacer';
 import { ChapterStatus } from '@/lib/enums';
+import { createJob, finishJob, laneFor, waitForTurn } from '@/lib/batchJobs';
 
 export async function processBatchChaptersAsync(
   novel: any,
@@ -20,54 +21,78 @@ export async function processBatchChaptersAsync(
     (novel.sourceUrl && novel.sourceUrl.includes('dek-d.com')) ||
     (Boolean(novel.titleEn) && isThaiText(novel.titleEn));
 
-  if (!(global as any).translationState) {
-    (global as any).translationState = { isPaused: false, isCancelled: false };
-  }
-  (global as any).translationState.isPaused = false;
-  (global as any).translationState.isCancelled = false;
-
-  (global as any).activeTranslationJob = {
-    isActive: true,
+  const novelTitle = novel.titleTh || novel.titleEn;
+  const job = createJob({
+    lane: await laneFor(enablePolish, providerOverride),
     initiatorUserId,
     novelId: novel.id,
-    novelTitle: novel.titleTh || novel.titleEn,
-    currentChapter: 0,
-    totalChapters: total,
-    chapterTitle: isThaiNovel ? 'กำลังเตรียมการนำเข้า...' : 'กำลังเตรียมการแปล...',
-    percent: 0,
-    isPaused: false,
-    updatedAt: new Date().toISOString(),
+    payload: {},
+  });
+  // Every progress event carries initiatorUserId so only the admin who started it sees it.
+  const report = (payload: Record<string, any>) => {
+    job.payload = { status: 'batch_progress', initiatorUserId, novelId: novel.id, novelTitle, ...payload };
+    if (io) io.emit('translation:progress', { ...job.payload, isPaused: job.isPaused });
   };
 
+  try {
+    const gotTurn = await waitForTurn(job, (position) =>
+      report({
+        currentChapter: 0,
+        totalChapters: total,
+        percent: 0,
+        chapterTitle: 'รอคิว',
+        statusText: `⏳ รอคิว (ลำดับที่ ${position}) — เรื่องก่อนหน้ากำลังแปลอยู่`,
+      })
+    );
+    if (gotTurn) await runBatch();
+  } finally {
+    finishJob(job);
+  }
+
+  if (job.isCancelled) {
+    try {
+      await prisma.novel.update({ where: { id: novel.id }, data: { translationStatus: 'CANCELLED' } });
+    } catch {}
+    if (io) {
+      io.emit('translation:progress', {
+        status: 'batch_cancelled',
+        initiatorUserId,
+        novelId: novel.id,
+        novelTitle,
+        message: isThaiNovel ? `ยกเลิกการนำเข้าเรื่อง "${novelTitle}" แล้ว` : `ยกเลิกการแปลเรื่อง "${novelTitle}" แล้ว`,
+      });
+    }
+    return;
+  }
+
+  try {
+    await prisma.novel.update({ where: { id: novel.id }, data: { translationStatus: 'COMPLETED' } });
+  } catch {}
+
+  if (io) {
+    io.emit('translation:progress', {
+      status: 'batch_completed',
+      initiatorUserId,
+      novelTitle,
+      message: isThaiNovel
+        ? `นำเข้านิยายเรื่อง "${novelTitle}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`
+        : `แปลนิยายเรื่อง "${novelTitle}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`,
+    });
+  }
+
+  async function runBatch() {
+  report({
+    currentChapter: 0,
+    totalChapters: total,
+    percent: 0,
+    chapterTitle: isThaiNovel ? 'กำลังเตรียมการนำเข้า...' : 'กำลังเตรียมการแปล...',
+  });
 
   for (let i = 0; i < total; i++) {
-    // Check if user paused translation
-    while ((global as any).translationState?.isPaused) {
-      if ((global as any).translationState?.isCancelled) break;
+    while (job.isPaused && !job.isCancelled) {
       await new Promise((resolve) => setTimeout(resolve, 800));
     }
-
-    // Check if user cancelled translation
-    if ((global as any).translationState?.isCancelled) {
-      (global as any).activeTranslationJob = null;
-      try {
-        await prisma.novel.update({
-          where: { id: novel.id },
-          data: { translationStatus: 'CANCELLED' },
-        });
-      } catch {}
-
-      if (io) {
-        io.emit('translation:progress', {
-          status: 'batch_cancelled',
-          novelTitle: novel.titleTh || novel.titleEn,
-          message: isThaiNovel
-            ? `ยกเลิกการนำเข้าเรื่อง "${novel.titleTh || novel.titleEn}" แล้ว`
-            : `ยกเลิกการแปลเรื่อง "${novel.titleTh || novel.titleEn}" แล้ว`,
-        });
-      }
-      break;
-    }
+    if (job.isCancelled) return;
 
     const link = chapterLinks[i];
     const currentNum = link.chapterNumber || i + 1;
@@ -128,25 +153,14 @@ export async function processBatchChaptersAsync(
         }
       }
 
-      const progressPayload = {
-        status: 'batch_progress',
-        initiatorUserId,
-        novelId: novel.id,
+      report({
         currentChapter: currentNum,
         totalChapters: total,
-        novelTitle: novel.titleTh || novel.titleEn,
         chapterTitle: link.title,
         percent: Math.round((currentNum / total) * 100),
         chapterCount: saved,
-        isPaused: (global as any).translationState?.isPaused || false,
         updatedAt: new Date().toISOString(),
-      };
-
-      (global as any).activeTranslationJob = { isActive: true, ...progressPayload };
-
-      if (io) {
-        io.emit('translation:progress', progressPayload);
-      }
+      });
 
       let scrapedData = await scrapeNovelChapter(link.url);
       if (!scrapedData.paragraphs || scrapedData.paragraphs.length < 3) {
@@ -189,19 +203,14 @@ export async function processBatchChaptersAsync(
 
           // AI Polish: refine Google's draft for natural Thai prose (all-or-nothing)
           if (enablePolish && contentTh.length > 0) {
-            if (io) {
-              io.emit('translation:progress', {
-                status: 'batch_progress',
-                novelId: novel.id,
-                currentChapter: currentNum,
-                totalChapters: total,
-                novelTitle: novel.titleTh || novel.titleEn,
-                chapterTitle: `✨ กำลังเกลาสำนวน: ${link.title}`,
-                percent: Math.round((currentNum / total) * 100),
-                chapterCount: saved,
-                updatedAt: new Date().toISOString(),
-              });
-            }
+            report({
+              currentChapter: currentNum,
+              totalChapters: total,
+              chapterTitle: `✨ กำลังเกลาสำนวน: ${link.title}`,
+              percent: Math.round((currentNum / total) * 100),
+              chapterCount: saved,
+              updatedAt: new Date().toISOString(),
+            });
             try {
               const polishContext = {
                 novelTitle: novel.titleTh || novel.titleEn,
@@ -278,25 +287,5 @@ export async function processBatchChaptersAsync(
     }
   }
 
-  (global as any).activeTranslationJob = null;
-
-  if (!(global as any).translationState?.isCancelled) {
-    try {
-      await prisma.novel.update({
-        where: { id: novel.id },
-        data: { translationStatus: 'COMPLETED' },
-      });
-    } catch {}
-
-    if (io) {
-      io.emit('translation:progress', {
-        status: 'batch_completed',
-        initiatorUserId,
-        novelTitle: novel.titleTh || novel.titleEn,
-        message: isThaiNovel
-          ? `นำเข้านิยายเรื่อง "${novel.titleTh || novel.titleEn}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`
-          : `แปลนิยายเรื่อง "${novel.titleTh || novel.titleEn}" ครบทั้งเรื่อง (${total} ตอน) เรียบร้อยแล้ว!`,
-      });
-    }
   }
 }

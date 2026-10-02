@@ -1,3 +1,5 @@
+import { isChineseText } from './thaiUtils';
+
 // ponytail: this is the endpoint Chrome's built-in translator uses, not a documented public
 // API — no key, no daily quota, ~1.6s for a whole chapter. It can be rate-limited or pulled
 // at any time; move to Google Cloud Translation API (paid) if that starts happening.
@@ -30,11 +32,11 @@ function chunk(items: string[]): string[][] {
   return chunks;
 }
 
-async function translateChunk(texts: string[], attempt = 1): Promise<string[]> {
+async function translateChunk(texts: string[], sl: string, attempt = 1): Promise<string[]> {
   const body = texts.map((t) => 'q=' + encodeURIComponent(t)).join('&');
 
   try {
-    const res = await fetch(ENDPOINT + '&sl=en&tl=th', {
+    const res = await fetch(ENDPOINT + `&sl=${sl}&tl=th`, {
       method: 'POST',
       headers: {
         'User-Agent': USER_AGENT,
@@ -59,7 +61,7 @@ async function translateChunk(texts: string[], attempt = 1): Promise<string[]> {
   } catch (err: any) {
     if (attempt < 2) {
       await new Promise((r) => setTimeout(r, 1500));
-      return translateChunk(texts, attempt + 1);
+      return translateChunk(texts, sl, attempt + 1);
     }
     // Deliberately no English fallback: a caller that silently stores the source text as the
     // translation is how "[แปลผิดพลาด] ..." ended up saved in the database.
@@ -68,13 +70,16 @@ async function translateChunk(texts: string[], attempt = 1): Promise<string[]> {
 }
 
 /**
- * Translates paragraphs EN -> TH, preserving order and length exactly.
+ * Translates paragraphs EN/ZH -> TH, preserving order and length exactly. The source language is
+ * detected once per call, so a Chinese chapter with an English "Chapter 1" title stays zh-CN
+ * (Google handles the stray English fine).
  * Throws if the service fails — callers decide what to do rather than getting fake output.
  */
 export async function translateParagraphsGoogle(
   paragraphs: string[],
   onChunkProgress?: (done: number, total: number) => void
 ): Promise<string[]> {
+  const sl = isChineseText(paragraphs) ? 'zh-CN' : 'en';
   // Blank entries must not be sent, or the response shifts out of alignment for the whole chapter.
   const indexed = paragraphs.map((text, index) => ({ text, index })).filter((p) => p.text.trim().length > 0);
 
@@ -87,7 +92,7 @@ export async function translateParagraphsGoogle(
   for (const [i, texts] of chunks.entries()) {
     if (i > 0) await new Promise((r) => setTimeout(r, DELAY_BETWEEN_REQUESTS_MS));
 
-    const translated = await translateChunk(texts);
+    const translated = await translateChunk(texts, sl);
     for (const text of translated) {
       result[indexed[cursor].index] = text;
       cursor++;

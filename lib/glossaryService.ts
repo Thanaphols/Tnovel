@@ -2,13 +2,14 @@ import { prisma } from './prisma';
 import { EntityType, ValidationStatus } from './enums';
 import { translateParagraphsGoogle } from './googleTranslate';
 import {
-  escapeRegex,
   protectTerms,
   replaceTermsInParagraphs,
   replaceTermsInString,
+  termRegex,
   type GlossaryReplaceItem,
 } from './nameReplacer';
 import { preTranslateNormalize } from './preTranslate';
+import { ENTITY_TO_CATEGORY } from './glossaryCategories';
 
 const COMMON_PRONOUNS_AND_STOPWORDS = new Set([
   'he', 'she', 'they', 'it', 'we', 'you', 'i', 'him', 'her', 'them', 'his', 'hers',
@@ -144,7 +145,7 @@ export async function getRelevantGlossary(
 
   const fullText = paragraphsEn.join('\n');
   const appears = (term: string) =>
-    term.trim().length > 0 && new RegExp(`\\b${escapeRegex(term.trim())}\\b`, 'i').test(fullText);
+    term.trim().length > 0 && termRegex(term, 'i').test(fullText);
 
   const matched = all.filter((g) => appears(g.canonicalEn) || g.aliases.some(appears));
 
@@ -162,7 +163,11 @@ export async function getRelevantGlossary(
 
 /** Polish-prompt shape of a glossary. */
 export function toPromptGlossary(terms: GlossaryTerm[]) {
-  return terms.map((g) => ({ termEn: g.canonicalEn, termTh: g.canonicalTh, category: g.category }));
+  return terms.map((g) => ({
+    termEn: g.canonicalEn,
+    termTh: g.canonicalTh,
+    category: g.category || ENTITY_TO_CATEGORY[g.entityType] || 'other',
+  }));
 }
 
 const PROMPT_TERM_CAP = 30;

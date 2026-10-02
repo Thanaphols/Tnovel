@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, ChevronDown, Tag, Zap, Library } from 'lucide-react';
+import { Sparkles, Globe, X, ArrowRight, Loader2, BookOpen, Layers, CheckCircle2, ClipboardPaste, Tag, Zap, Library } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -248,7 +248,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg p-6 bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl space-y-5 cursor-default"
+        className="relative w-full max-w-lg max-h-[92dvh] overflow-y-auto overscroll-contain p-6 bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl space-y-5 cursor-default"
       >
         <button
           onClick={onClose}
@@ -397,7 +397,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                     if (error) setError(null);
                   }}
                   required
-                  className={`w-full px-4 py-3 text-sm rounded-xl appearance-none bg-slate-950 border transition-all cursor-pointer ${
+                  className={`w-full px-4 py-3 text-sm rounded-xl bg-slate-950 border transition-all cursor-pointer ${
                     !category
                       ? 'border-amber-500/50 text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30'
                       : 'border-slate-800 text-slate-100 focus:border-amber-500/60'
@@ -412,9 +412,6 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3.5 pointer-events-none text-slate-400">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
               </div>
             </div>
 
@@ -610,7 +607,7 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                     if (error) setError(null);
                   }}
                   required
-                  className={`w-full px-4 py-3 text-sm rounded-xl appearance-none bg-slate-950 border transition-all cursor-pointer ${
+                  className={`w-full px-4 py-3 text-sm rounded-xl bg-slate-950 border transition-all cursor-pointer ${
                     !category
                       ? 'border-amber-500/50 text-slate-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30'
                       : 'border-slate-800 text-slate-100 focus:border-amber-500/60'
@@ -625,9 +622,6 @@ export default function UrlScrapeDrawer({ isOpen, onClose }: UrlScrapeDrawerProp
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3.5 pointer-events-none text-slate-400">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
               </div>
             </div>
 

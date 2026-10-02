@@ -34,6 +34,7 @@ interface NovelItem {
   viewCount?: number;
   likeCount?: number;
   liked?: boolean;
+  hidden?: boolean;
   progress?: number;
 }
 
@@ -410,6 +411,7 @@ export default function HomePage() {
                 viewCount={novel.viewCount}
                 likeCount={novel.likeCount}
                 liked={novel.liked}
+                hidden={novel.hidden}
                 progress={novel.progress}
                 onDelete={handleNovelDelete}
               />

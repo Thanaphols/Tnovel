@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
+    const isAdmin = (await getSession())?.role === 'ADMIN';
     const author = await prisma.author.findFirst({
       where: { id, deletedAt: null },
       include: {
         novels: {
-          where: { deletedAt: null },
+          where: { deletedAt: null, ...(isAdmin ? {} : { hiddenAt: null }) },
           include: {
             createdBy: {
               select: { id: true, name: true, email: true, avatar: true },

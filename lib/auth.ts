@@ -10,6 +10,13 @@ export function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret || 'noveltrans-dev-fallback-secret-key-32-chars-min');
 }
 
+// Owner account from env: always allowed in, always ADMIN, cannot be demoted or un-whitelisted.
+// Unset = no primary admin (whitelist ADMIN rows still work).
+export function isPrimaryAdmin(email?: string | null): boolean {
+  const primary = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase();
+  return Boolean(primary && email && email.trim().toLowerCase() === primary);
+}
+
 export interface UserSessionPayload {
   id: string;
   email: string;

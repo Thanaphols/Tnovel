@@ -1,62 +1,53 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
+// Same loader as server.js, so .env.local is honoured when run via `npm run db:seed`.
+require('@next/env').loadEnvConfig(process.cwd());
+
 const prisma = new PrismaClient();
+
+// Upserts an ADMIN user plus its ADMIN whitelist row. password = null keeps the existing one
+// (or none, i.e. Google-login only).
+async function seedAdmin(email, name, note, password) {
+  const hashed = password ? await bcrypt.hash(password, 10) : undefined;
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { role: 'ADMIN', ...(hashed ? { password: hashed } : {}) },
+    create: { email, name, role: 'ADMIN', password: hashed ?? null },
+  });
+  await prisma.whitelistedEmail.upsert({
+    where: { email },
+    update: { note, role: 'ADMIN' },
+    create: { email, note, role: 'ADMIN' },
+  });
+  return user;
+}
 
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // 1. Seed Developer Admin Account
-  const devEmail = 'dev@mail.com';
-  const devPassword = await bcrypt.hash('123456', 10);
-  const devUser = await prisma.user.upsert({
-    where: { email: devEmail },
-    update: {
-      password: devPassword,
-      role: 'ADMIN',
-      name: 'Admin Developer',
-    },
-    create: {
-      email: devEmail,
-      name: 'Admin Developer',
-      password: devPassword,
-      role: 'ADMIN',
-    },
-  });
+  // 1. Developer admin (dev@mail.com / 123456) — local only, never in production.
+  let devUser = null;
+  if (process.env.NODE_ENV !== 'production') {
+    devUser = await seedAdmin('dev@mail.com', 'Admin Developer', 'Developer Account', '123456');
+    console.log('✅ Dev admin seeded: dev@mail.com (Password: 123456)');
+  }
 
-  // 2. Seed Primary Admin Account
-  const primaryEmail = 'cupteo254504@gmail.com';
-  const primaryPassword = await bcrypt.hash('123456', 10);
-  const primaryUser = await prisma.user.upsert({
-    where: { email: primaryEmail },
-    update: {
-      role: 'ADMIN',
-      name: 'Primary Admin',
-    },
-    create: {
-      email: primaryEmail,
-      name: 'Primary Admin',
-      password: primaryPassword,
-      role: 'ADMIN',
-    },
-  });
-
-  // 3. Seed Whitelist for both accounts
-  await prisma.whitelistedEmail.upsert({
-    where: { email: devEmail },
-    update: { note: 'Developer Account', role: 'ADMIN' },
-    create: { email: devEmail, note: 'Developer Account', role: 'ADMIN' },
-  });
-
-  await prisma.whitelistedEmail.upsert({
-    where: { email: primaryEmail },
-    update: { note: 'Primary Admin Account', role: 'ADMIN' },
-    create: { email: primaryEmail, note: 'Primary Admin Account', role: 'ADMIN' },
-  });
-
-  console.log('✅ Admins & Whitelist seeded:');
-  console.log(`   - ${devEmail} (Role: ADMIN, Password: 123456)`);
-  console.log(`   - ${primaryEmail} (Role: ADMIN, Password: 123456)`);
+  // 2. Primary admin from env. Password optional: without it the account signs in with Google.
+  const primaryEmail = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase();
+  if (primaryEmail) {
+    await seedAdmin(
+      primaryEmail,
+      'Primary Admin',
+      'Primary Admin Account',
+      process.env.PRIMARY_ADMIN_PASSWORD || null
+    );
+    console.log(
+      `✅ Primary admin seeded: ${primaryEmail}${process.env.PRIMARY_ADMIN_PASSWORD ? ' (password from env)' : ' (Google login)'}`
+    );
+  } else {
+    console.warn('⚠️  PRIMARY_ADMIN_EMAIL not set — skipping primary admin.');
+  }
 
   // 3b. Seed AI provider defaults (create-only: never clobber an admin's runtime change)
   const aiDefaults = [
@@ -68,6 +59,9 @@ async function main() {
     await prisma.appSetting.upsert({ where: { key: s.key }, update: {}, create: s });
   }
   console.log('✅ AI settings seeded (default provider: gemini)');
+
+  // 3c. Shared fandom glossaries (prisma/fandoms/*.json, create-only)
+  await require('./seed-fandoms').seedFandoms(prisma);
 
   // 4. Seed Sample Author
   const author = await prisma.author.upsert({
@@ -96,7 +90,7 @@ async function main() {
       viewCount: 128,
       likeCount: 15,
       authorId: author.id,
-      createdById: devUser.id,
+      createdById: devUser?.id,
       chapters: {
         create: [
           {

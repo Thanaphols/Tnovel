@@ -34,11 +34,15 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.6-flash}
       - JWT_SECRET=${JWT_SECRET}
+      - PRIMARY_ADMIN_EMAIL=${PRIMARY_ADMIN_EMAIL}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - image_data:/app/storage
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  image_data:

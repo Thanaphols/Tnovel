@@ -9,6 +9,14 @@ export function isThaiText(text: string | string[] | undefined | null): boolean 
   return thaiChars > 10 || (sample.length > 0 && thaiChars / sample.length > 0.15);
 }
 
+/** Chinese source (Han characters). Same thresholds as isThaiText; checks the first 5 paragraphs. */
+export function isChineseText(text: string | string[] | undefined | null): boolean {
+  if (!text) return false;
+  const sample = Array.isArray(text) ? text.slice(0, 5).join(' ') : text;
+  const hanChars = (sample.match(/[㐀-䶿一-鿿]/g) || []).length;
+  return hanChars > 10 || (sample.length > 0 && hanChars / sample.length > 0.15);
+}
+
 /**
  * Reverses Dek-D font obfuscation / anti-copy scrambling.
  * Dek-D shifts the first 27 Thai consonants (0x0E01 - 0x0E1B: ก to ป) by +0x64 (+100)

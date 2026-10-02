@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Library, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import GlossaryEditor from '@/components/GlossaryEditor';
+import FandomGlossaryCards from '@/components/FandomGlossaryCards';
 
 interface Fandom {
   id: string;
@@ -154,7 +154,7 @@ export default function AdminFandomsPage() {
 
         <div className="p-4 sm:p-5 bg-slate-900/40 border border-slate-800/60 rounded-2xl min-w-0">
           {selected ? (
-            <GlossaryEditor key={selected.id} fandomId={selected.id} />
+            <FandomGlossaryCards key={selected.id} fandomId={selected.id} />
           ) : (
             <p className="text-xs text-slate-500 text-center py-10">สร้างหรือเลือก fandom ทางซ้าย</p>
           )}

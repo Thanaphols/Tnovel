@@ -13,6 +13,8 @@ export interface PolishInput {
     glossary: Array<{ termEn: string; termTh: string; category?: string | null }>;
   };
   onProgress?: (currentBatch: number, totalBatches: number) => void;
+  /** A reader is waiting on this chapter: take AI slots ahead of background batches. */
+  priority?: boolean;
 }
 
 export interface PolishResult {
@@ -64,7 +66,7 @@ export class OllamaProvider implements ILLMProvider {
       thWithTitle,
       input.context,
       input.onProgress,
-      { provider: this.name, model: this.modelName }
+      { provider: this.name, model: this.modelName, priority: input.priority }
     );
 
     let titleTh = input.titleThDraft;
@@ -159,7 +161,7 @@ export class GeminiProvider implements ILLMProvider {
       thWithTitle,
       input.context,
       input.onProgress,
-      { provider: this.name, model: this.modelName }
+      { provider: this.name, model: this.modelName, priority: input.priority }
     );
 
     let titleTh = input.titleThDraft;

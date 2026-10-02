@@ -118,7 +118,7 @@ export async function POST(request: Request) {
             novelTitle: novel.titleTh || novel.titleEn,
             genre: novel.genre || novel.category || undefined,
             glossary: toPromptGlossary(glossary),
-          });
+          }, undefined, { priority: true });
           if (result.failedBatches < result.totalBatches) {
             const [polishedTitle, ...polishedBody] = applySafeNameReplacer(result.paragraphs, glossary);
             if (polishedTitle && !polishedTitle.startsWith('[')) translatedTitle = polishedTitle;

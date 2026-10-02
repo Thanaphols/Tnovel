@@ -4,6 +4,8 @@
  * Safely ignores standard acronyms, system terms (HP, MP, EXP, USB, Wi-Fi), and units.
  */
 
+import { termRegex } from '../nameReplacer';
+
 export interface LeakItem {
   term: string;
   paragraphIndex: number;
@@ -24,9 +26,6 @@ const ALLOWED_ACRONYMS = new Set([
   'VR', 'AR', 'MMO', 'RPG', 'MMORPG', 'PVP', 'PVE', 'AOE', 'CD', 'BUFF', 'DEBUFF'
 ]);
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /**
  * Detects whether any entity or glossary term remains untranslated in the Thai paragraphs.
@@ -56,11 +55,10 @@ export function detectEnglishLeak(
     for (const [enLower, thTarget] of glossaryMap.entries()) {
       if (ALLOWED_ACRONYMS.has(enLower.toUpperCase())) continue;
 
-      const pattern = new RegExp(`\\b${escapeRegex(enLower)}\\b`, 'i');
-      if (pattern.test(text)) {
+      if (termRegex(enLower, 'i').test(text)) {
         leaks.push({ term: enLower, paragraphIndex: pIdx });
         // Repair in repaired copy
-        repaired[pIdx] = repaired[pIdx].replace(new RegExp(`\\b${escapeRegex(enLower)}\\b`, 'gi'), thTarget);
+        repaired[pIdx] = repaired[pIdx].replace(termRegex(enLower, 'gi'), thTarget);
       }
     }
 

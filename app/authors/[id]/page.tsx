@@ -96,6 +96,7 @@ export default function AuthorDetailPage() {
             {author.novels.map((novel: any) => (
               <NovelCard
                 key={novel.id}
+                hidden={!!novel.hiddenAt}
                 id={novel.id}
                 titleEn={novel.titleEn}
                 titleTh={novel.titleTh}

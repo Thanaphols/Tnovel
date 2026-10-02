@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const text = typeof body?.text === 'string' ? body.text : '';
   if (!text.trim() || text.length > MAX_CHARS) {
     return NextResponse.json(
-      { success: false, error: `กรุณาใส่ข้อความภาษาอังกฤษ (ไม่เกิน ${MAX_CHARS} ตัวอักษร)` },
+      { success: false, error: `กรุณาใส่ข้อความต้นฉบับ (ไม่เกิน ${MAX_CHARS} ตัวอักษร)` },
       { status: 400 }
     );
   }

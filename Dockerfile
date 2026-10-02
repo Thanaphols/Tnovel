@@ -28,6 +28,8 @@ ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+# Runtime image store (lib/imageStore); docker-compose mounts a volume here so images survive redeploys
+RUN mkdir -p /app/storage/images && chown -R nextjs:nodejs /app/storage
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json

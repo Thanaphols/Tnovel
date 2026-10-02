@@ -114,7 +114,7 @@ export default function AdminModelTestPage() {
         <div>
           <h2 className="text-lg font-bold text-slate-100">ทดสอบแปลเทียบโมเดล</h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            ใส่ต้นฉบับภาษาอังกฤษ (1 บรรทัด = 1 ย่อหน้า, บรรทัดแรกคือชื่อตอน) ระบบจะแปลร่างด้วย Google
+            ใส่ต้นฉบับภาษาอังกฤษหรือจีน (1 บรรทัด = 1 ย่อหน้า, บรรทัดแรกคือชื่อตอน) ระบบจะแปลร่างด้วย Google
             ครั้งเดียว แล้วให้แต่ละโมเดลเกลาเทียบกัน ไม่บันทึกลงฐานข้อมูล
           </p>
         </div>
@@ -122,7 +122,7 @@ export default function AdminModelTestPage() {
 
       <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
         <label htmlFor="model-test-text" className="text-xs font-bold text-slate-300">
-          ต้นฉบับภาษาอังกฤษ
+          ต้นฉบับ (EN/中文)
         </label>
         <textarea
           id="model-test-text"

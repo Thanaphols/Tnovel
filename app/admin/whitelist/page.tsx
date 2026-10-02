@@ -137,10 +137,6 @@ export default function AdminWhitelistPage() {
   // Open the confirm modal for a role change picked from the dropdown.
   function requestRoleChange(email: string, currentRole: string, target: 'USER' | 'ADMIN', note?: string) {
     if (target === currentRole) return;
-    if (email.toLowerCase() === 'cupteo254504@gmail.com') {
-      alert('ไม่สามารถลดสิทธิ์ของ Primary Admin ได้');
-      return;
-    }
     if (currentUser?.email && email.toLowerCase() === currentUser.email.toLowerCase() && currentRole === 'ADMIN') {
       alert('คุณไม่สามารถลดสิทธิ์บัญชีของตนเองได้');
       return;
@@ -173,10 +169,6 @@ export default function AdminWhitelistPage() {
   }
 
   async function handleDeleteWhitelist(id: string, email: string) {
-    if (email.toLowerCase() === 'cupteo254504@gmail.com') {
-      alert(t('cannotDeletePrimaryAdmin'));
-      return;
-    }
     if (currentUser?.email && email.toLowerCase() === currentUser.email.toLowerCase()) {
       alert('คุณไม่สามารถลบอีเมลของตนเองออกจาก Whitelist ได้');
       return;

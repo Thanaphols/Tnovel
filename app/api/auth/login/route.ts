@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, signToken } from '@/lib/auth';
+import { comparePassword, isPrimaryAdmin, signToken } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
 
 export async function POST(request: Request) {
@@ -17,12 +17,12 @@ export async function POST(request: Request) {
     const isExistingAdmin = user && user.role === 'ADMIN';
 
     // Check Whitelist & Primary Admin
-    const isPrimaryAdmin = normalizedEmail === 'cupteo254504@gmail.com';
+    const primaryAdmin = isPrimaryAdmin(normalizedEmail);
     const whitelisted = await prisma.whitelistedEmail.findUnique({
       where: { email: normalizedEmail },
     });
 
-    if (!isPrimaryAdmin && !isExistingAdmin && !whitelisted) {
+    if (!primaryAdmin && !isExistingAdmin && !whitelisted) {
       return NextResponse.json(
         {
           success: false,
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     // Role priority: Primary Admin > Whitelist role > Existing role
     let finalRole = user.role;
-    if (isPrimaryAdmin) {
+    if (primaryAdmin) {
       finalRole = 'ADMIN';
     } else if (whitelisted?.role) {
       finalRole = whitelisted.role;

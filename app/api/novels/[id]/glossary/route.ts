@@ -112,7 +112,7 @@ export async function POST(
 
     if (!en) {
       return NextResponse.json(
-        { success: false, error: 'กรุณาระบุคำศัพท์ภาษาอังกฤษ' },
+        { success: false, error: 'กรุณาระบุคำศัพท์ต้นฉบับ' },
         { status: 400 }
       );
     }
@@ -255,7 +255,7 @@ export async function PUT(
 
     if (!en || !th) {
       return NextResponse.json(
-        { success: false, error: 'กรุณาระบุทั้งคำภาษาอังกฤษและคำแปลภาษาไทย' },
+        { success: false, error: 'กรุณาระบุทั้งคำต้นฉบับและคำแปลภาษาไทย' },
         { status: 400 }
       );
     }

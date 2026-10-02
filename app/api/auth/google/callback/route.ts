@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { getBaseUrl, signToken } from '@/lib/auth';
+import { getBaseUrl, isPrimaryAdmin, signToken } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
 
 export async function GET(request: Request) {
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     const avatar = profile.picture || null;
 
     // Check Whitelist & Primary Admin
-    const isPrimaryAdmin = email === 'cupteo254504@gmail.com';
+    const primaryAdmin = isPrimaryAdmin(email);
     const whitelisted = await prisma.whitelistedEmail.findUnique({
       where: { email },
     });
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
 
     const isExistingAdmin = user && user.role === 'ADMIN';
 
-    if (!isPrimaryAdmin && !isExistingAdmin && !whitelisted) {
+    if (!primaryAdmin && !isExistingAdmin && !whitelisted) {
       const loginUrl = new URL('/login', baseUrl);
       loginUrl.searchParams.set('error', 'UNAUTHORIZED_GOOGLE');
       loginUrl.searchParams.set('email', email);
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const assignedRole = isPrimaryAdmin || whitelisted?.role === 'ADMIN' || isExistingAdmin ? 'ADMIN' : (whitelisted?.role || 'USER');
+    const assignedRole = primaryAdmin || whitelisted?.role === 'ADMIN' || isExistingAdmin ? 'ADMIN' : (whitelisted?.role || 'USER');
 
     if (!user) {
       user = await prisma.user.create({

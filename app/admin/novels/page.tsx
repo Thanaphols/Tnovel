@@ -10,6 +10,8 @@ import {
   ExternalLink,
   Loader2,
   RefreshCw,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import { useLanguage } from '@/lib/languageContext';
@@ -41,7 +43,7 @@ export default function AdminNovelsPage() {
     }
   }
 
-  async function handleNovelAction(action: 'delete_soft' | 'restore' | 'delete_permanent', novelId: string) {
+  async function handleNovelAction(action: 'delete_soft' | 'restore' | 'delete_permanent' | 'hide' | 'unhide', novelId: string) {
     setIsDeleting(true);
     try {
       const res = await fetch('/api/admin/novels', {
@@ -57,6 +59,9 @@ export default function AdminNovelsPage() {
           setNovels((prev) =>
             prev.map((n) => (n.id === novelId ? { ...n, deletedAt: new Date().toISOString() } : n))
           );
+        } else if (action === 'hide' || action === 'unhide') {
+          const hiddenAt = action === 'hide' ? new Date().toISOString() : null;
+          setNovels((prev) => prev.map((n) => (n.id === novelId ? { ...n, hiddenAt } : n)));
         } else if (action === 'restore') {
           setNovels((prev) =>
             prev.map((n) => (n.id === novelId ? { ...n, deletedAt: null } : n))
@@ -85,7 +90,7 @@ export default function AdminNovelsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-100">{t('adminTabNovels')}</h1>
-            <p className="text-xs text-slate-400">จัดการข้อมูลนิยาย จำนวนตอน สถานะ และลบ/กู้คืนเนื้อหา</p>
+            <p className="text-xs text-slate-400">จัดการข้อมูลนิยาย จำนวนตอน สถานะ ซ่อน และลบ/กู้คืนเนื้อหา</p>
           </div>
         </div>
 
@@ -178,6 +183,10 @@ export default function AdminNovelsPage() {
                           <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded-md">
                             {t('statusInBin')}
                           </span>
+                        ) : novel.hiddenAt ? (
+                          <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-500/10 text-slate-300 border border-slate-500/30 rounded-md">
+                            ซ่อนอยู่
+                          </span>
                         ) : (
                           <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md">
                             {t('statusActive')}
@@ -196,6 +205,15 @@ export default function AdminNovelsPage() {
                               <span>{t('restore')}</span>
                             </button>
                           ) : (
+                            <>
+                            <button
+                              onClick={() => handleNovelAction(novel.hiddenAt ? 'unhide' : 'hide', novel.id)}
+                              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-all"
+                              title={novel.hiddenAt ? 'เลิกซ่อน (ผู้ใช้ค้นหาเจออีกครั้ง)' : 'ซ่อนจากรายการและการค้นหาของผู้ใช้'}
+                              aria-label={novel.hiddenAt ? 'เลิกซ่อน' : 'ซ่อน'}
+                            >
+                              {novel.hiddenAt ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            </button>
                             <button
                               onClick={() => handleNovelAction('delete_soft', novel.id)}
                               className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
@@ -203,6 +221,7 @@ export default function AdminNovelsPage() {
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
+                            </>
                           )}
 
                           <button

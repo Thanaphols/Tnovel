@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, User, Trash2, Eye, Heart, Loader2, Bookmark } from 'lucide-react';
+import { BookOpen, User, Trash2, Eye, EyeOff, Heart, Loader2, Bookmark } from 'lucide-react';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { useSocket } from '@/lib/socket';
 import { toggleBookshelf, isNovelInGuestBookshelf } from '@/lib/bookshelf';
@@ -27,6 +27,7 @@ interface NovelCardProps {
   viewCount?: number;
   likeCount?: number;
   liked?: boolean;
+  hidden?: boolean; // admin-only listing flag
   progress?: number;
   onDelete?: (id: string) => void;
 }
@@ -46,6 +47,7 @@ export default function NovelCard({
   viewCount = 0,
   likeCount = 0,
   liked = false,
+  hidden = false,
   progress = 0,
   onDelete,
 }: NovelCardProps) {
@@ -284,6 +286,13 @@ export default function NovelCard({
             </div>
           ) : null}
 
+          {hidden && (
+            <div className="absolute bottom-1.5 left-1 px-1.5 py-0.5 text-[8.5px] font-bold bg-slate-950/85 text-slate-200 border border-slate-700 rounded backdrop-blur-md flex items-center gap-1">
+              <EyeOff className="w-2.5 h-2.5" />
+              <span>ซ่อนอยู่</span>
+            </div>
+          )}
+
           {/* Delete Button (Soft Delete - Admin only) */}
           {isAdmin && (
             <button
@@ -298,16 +307,6 @@ export default function NovelCard({
             >
               <Trash2 className="w-2.5 h-2.5" />
             </button>
-          )}
-
-          {/* Category Badge on Cover Overlay */}
-          {category && (
-            <div
-              className={`absolute bottom-1.5 left-1 z-10 px-1.5 py-0.5 text-[8px] font-bold rounded backdrop-blur-md border shadow-sm ${getCategoryBadgeClass(category)}`}
-              title={`${t('categoryLabel')}: ${getCategoryLabel(category, lang)}`}
-            >
-              {getCategoryLabel(category, lang)}
-            </div>
           )}
 
           {/* Reading Progress Indicator Overlay */}
@@ -354,6 +353,18 @@ export default function NovelCard({
               </span>
             </div>
           </div>
+
+          {/* Category Badge (below the details, off the cover so it never hides the art) */}
+          {category && (
+            <Link
+              href={`/search?category=${encodeURIComponent(category)}`}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative z-10 self-start max-w-full truncate px-1.5 py-0.5 text-[8px] font-bold rounded border hover:brightness-110 transition ${getCategoryBadgeClass(category)}`}
+              title={`${t('categoryLabel')}: ${getCategoryLabel(category, lang)}`}
+            >
+              {getCategoryLabel(category, lang)}
+            </Link>
+          )}
 
           {/* Bottom Stats & Like Row */}
           <div className="mt-auto pt-1 border-t border-slate-800/60 flex items-center justify-between gap-1 text-[9px] sm:text-[9.5px]">

@@ -306,6 +306,19 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
   }
 }
 
+/** Many Chinese novel sites still serve GBK; axios would decode them as UTF-8 mojibake. */
+function decodeHtml(buf: Buffer, contentType: string): string {
+  const charset =
+    /charset=["']?([\w-]+)/i.exec(contentType)?.[1] ||
+    /<meta[^>]+charset=["']?([\w-]+)/i.exec(buf.subarray(0, 4096).toString('latin1'))?.[1] ||
+    'utf-8';
+  try {
+    return new TextDecoder(charset).decode(buf); // WHATWG labels: gb2312 -> gbk, big5, ...
+  } catch {
+    return buf.toString('utf8'); // unknown label
+  }
+}
+
 async function fetchHtml(url: string, waitFor?: WaitTarget): Promise<string> {
   const hostname = new URL(url).hostname.toLowerCase();
   const matchedConfig = NOVEL_SITE_CONFIGS.find((cfg) => hostname.includes(cfg.domain));
@@ -320,11 +333,12 @@ async function fetchHtml(url: string, waitFor?: WaitTarget): Promise<string> {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9,th;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,th;q=0.8,zh-CN;q=0.7',
       },
       timeout: 8000,
+      responseType: 'arraybuffer',
     });
-    return response.data;
+    return decodeHtml(Buffer.from(response.data), String(response.headers['content-type'] || ''));
   } catch (err: any) {
     if (err.response?.status === 403 || err.response?.status === 503 || err.code === 'ECONNABORTED') {
       return await fetchHtmlWithPuppeteer(url, waitFor);
@@ -525,6 +539,7 @@ export async function scrapeNovelChapter(url: string): Promise<ScrapedNovelData>
     url.match(/_(\d+)\.html/i) ||
     url.match(/[?&]chapter=(\d+)/i) ||
     title.match(/ตอนที่\s*(\d+)/i) ||
+    title.match(/第\s*(\d+)\s*[章回节]/) ||
     title.match(/#(\d+)/i);
   const chapterNumber = chapterMatch ? parseInt(chapterMatch[1], 10) : 1;
 

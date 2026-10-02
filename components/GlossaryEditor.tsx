@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
+import { CATEGORY_OPTIONS } from '@/lib/glossaryCategories';
 
 interface GlossaryItem {
   id: string;
@@ -33,25 +34,13 @@ interface GlossaryEditorProps {
   novelTitle?: string;
   /** Novel mode: name of the linked fandom; enables "move to fandom". */
   promoteToFandomName?: string | null;
-  /** Fandom mode: edit a fandom's shared terms instead of a novel's. */
-  fandomId?: string;
 }
 
-const CATEGORY_OPTIONS = [
-  { id: 'name', labelTh: 'ชื่อตัวละคร', labelEn: 'Character Name' },
-  { id: 'place', labelTh: 'สถานที่', labelEn: 'Location/Place' },
-  { id: 'title', labelTh: 'ตำแหน่ง/ยศ', labelEn: 'Title/Rank' },
-  { id: 'skill', labelTh: 'ทักษะ/วิชา', labelEn: 'Skill/Technique' },
-  { id: 'item', labelTh: 'สิ่งของ/อาวุธ', labelEn: 'Item/Weapon' },
-  { id: 'other', labelTh: 'คำเฉพาะอื่นๆ', labelEn: 'Other Term' },
-];
-
-export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomName, fandomId }: GlossaryEditorProps) {
+export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomName }: GlossaryEditorProps) {
   const { t, lang } = useLanguage();
   const { isAdmin } = useAuth();
-  const isFandom = Boolean(fandomId);
-  const endpoint = isFandom ? `/api/admin/fandoms/${fandomId}/glossary` : `/api/novels/${novelId}/glossary`;
-  const canPromote = isAdmin && !isFandom && Boolean(promoteToFandomName);
+  const endpoint = `/api/novels/${novelId}/glossary`;
+  const canPromote = isAdmin && Boolean(promoteToFandomName);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [promoting, setPromoting] = useState(false);
 
@@ -140,7 +129,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
           termEn: editTermEn.trim(),
           termTh: editTermTh.trim(),
           category: editCategory,
-          applyToChapters: !isFandom && editApplyToChapters,
+          applyToChapters: editApplyToChapters,
         }),
       });
 
@@ -166,7 +155,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
   }
 
   async function handleApplyAllToChapters() {
-    if (!novelId || isFandom || glossaries.length === 0) return;
+    if (!novelId || glossaries.length === 0) return;
     if (
       !confirm(
         `ต้องการนำคำศัพท์ทั้งหมด (${glossaries.length} คำ) ไปแทนที่ในเนื้อหาทุกตอนที่แปลแล้วหรือไม่?\nระบบจะสแกนและอัปเดตคำในเนื้อหาทันทีโดยไม่ต้องแปลใหม่`
@@ -308,7 +297,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
           <BookMarked className="w-5 h-5 text-amber-400" />
           <div>
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <span>{isFandom ? 'คำศัพท์ที่ใช้ร่วมกันใน Fandom' : 'พจนานุกรมคำศัพท์เฉพาะเรื่อง (Glossary)'}</span>
+              <span>พจนานุกรมคำศัพท์เฉพาะเรื่อง (Glossary)</span>
               <span className="px-2 py-0.5 text-[11px] font-mono font-semibold bg-slate-800 text-amber-400 rounded-full border border-slate-700/60">
                 {glossaries.length} คำ
               </span>
@@ -333,13 +322,13 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
             </button>
           )}
 
-          {isAdmin && !isFandom && (
+          {isAdmin && (
             <button
               type="button"
               onClick={handleAutoExtract}
               disabled={extracting}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 disabled:opacity-50 transition-all shrink-0"
-              title="สแกนเนื้อหาภาษาอังกฤษของนิยายเรื่องนี้เพื่อตรวจจับชื่อเฉพาะและคำศัพท์โดยอัตโนมัติ"
+              title="สแกนเนื้อหาต้นฉบับภาษาอังกฤษของนิยายเรื่องนี้เพื่อตรวจจับชื่อเฉพาะและคำศัพท์โดยอัตโนมัติ"
             >
               {extracting ? (
                 <>
@@ -355,7 +344,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
             </button>
           )}
 
-          {isAdmin && !isFandom && glossaries.length > 0 && (
+          {isAdmin && glossaries.length > 0 && (
             <button
               type="button"
               onClick={handleApplyAllToChapters}
@@ -401,7 +390,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-[11px] font-medium text-slate-400 block mb-1">คำศัพท์ภาษาอังกฤษ (EN)</label>
+              <label className="text-[11px] font-medium text-slate-400 block mb-1">คำต้นฉบับ (EN/中文)</label>
               <input
                 type="text"
                 value={termEn}
@@ -532,17 +521,15 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
                         ))}
                       </select>
                     </div>
-                    {!isFandom && (
-                      <label className="flex items-center gap-1.5 pt-1 text-[11px] text-slate-300 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={editApplyToChapters}
-                          onChange={(e) => setEditApplyToChapters(e.target.checked)}
-                          className="accent-amber-400 rounded cursor-pointer"
-                        />
-                        <span>แทนที่คำนี้ในทุกตอนทันที</span>
-                      </label>
-                    )}
+                    <label className="flex items-center gap-1.5 pt-1 text-[11px] text-slate-300 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editApplyToChapters}
+                        onChange={(e) => setEditApplyToChapters(e.target.checked)}
+                        className="accent-amber-400 rounded cursor-pointer"
+                      />
+                      <span>แทนที่คำนี้ในทุกตอนทันที</span>
+                    </label>
                   </div>
                   <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-800">
                     <button

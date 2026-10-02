@@ -20,6 +20,19 @@ export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const HAN = /[㐀-䶿一-鿿]/;
+
+/**
+ * Whole-term matcher. \b only where the term starts/ends with an ASCII word char: Chinese has no
+ * word boundaries, and \b next to a Han character never matches, so "林动" would never be found.
+ */
+export function termRegex(term: string, flags = 'g'): RegExp {
+  const t = term.trim();
+  const start = /^\w/.test(t) ? '\\b' : '';
+  const end = /\w$/.test(t) ? '\\b' : '';
+  return new RegExp(`${start}${escapeRegex(t)}${end}`, flags);
+}
+
 /** Terms safe to substitute blindly, longest first so "Albus Dumbledore" wins over "Dumbledore". */
 function selectSafeTerms(glossary: GlossaryReplaceItem[]): GlossaryReplaceItem[] {
   return glossary
@@ -36,8 +49,8 @@ function selectSafeTerms(glossary: GlossaryReplaceItem[]): GlossaryReplaceItem[]
         return false;
       }
 
-      // Allow unambiguous single words if length >= 3
-      return termLower.length >= 3;
+      // Allow unambiguous single words if length >= 3; Chinese names are often 2 characters (林动)
+      return termLower.length >= (HAN.test(termLower) ? 2 : 3);
     })
     .sort((a, b) => b.canonicalEn.trim().length - a.canonicalEn.trim().length);
 }
@@ -68,9 +81,7 @@ export function applySafeNameReplacer(
       const en = item.canonicalEn.trim();
       const th = item.canonicalTh.trim();
 
-      // Use Word Boundary \b for ASCII words
-      const pattern = new RegExp(`\\b${escapeRegex(en)}\\b`, 'g');
-      replaced = replaced.replace(pattern, th);
+      replaced = replaced.replace(termRegex(en), th);
     }
 
     return replaced;
@@ -91,7 +102,7 @@ export function protectTerms(
 ): { protectedText: string[]; restore: (translated: string[]) => string[] } {
   const terms = selectSafeTerms(glossary).map((t) => ({
     th: t.canonicalTh.trim(),
-    pattern: new RegExp(`\\b${escapeRegex(t.canonicalEn.trim())}\\b`, 'g'),
+    pattern: termRegex(t.canonicalEn),
   }));
   const tokens: string[] = []; // token index -> Thai term
 
@@ -145,9 +156,7 @@ export function replaceTermsInString(
       const th = item.canonicalTh.trim();
       if (!en || !th) continue;
 
-      // Use word boundary \b for English ASCII terms
-      const pattern = new RegExp(`\\b${escapeRegex(en)}\\b`, 'g');
-      result = result.replace(pattern, () => {
+      result = result.replace(termRegex(en), () => {
         count++;
         return th;
       });

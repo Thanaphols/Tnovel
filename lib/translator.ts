@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { resolveProvider } from './aiSettings';
 import { withAiSlot } from './aiConcurrency';
+import { CATEGORY_OPTIONS } from './glossaryCategories';
+import { isChineseText } from './thaiUtils';
 
 // MTPE: Google Translate gives a complete, aligned Thai draft; Gemini only edits the prose.
 export interface PolishContext {
@@ -9,21 +11,32 @@ export interface PolishContext {
   glossary?: Array<{ termEn: string; termTh: string; category?: string | null }>;
 }
 
-export function buildPolishPrompt(context?: PolishContext): string {
+export type SourceLang = 'en' | 'zh';
+
+export function buildPolishPrompt(context?: PolishContext, lang: SourceLang = 'en'): string {
+  const zh = lang === 'zh';
   let prompt = `คุณคือบรรณาธิการเกลาสำนวนนิยายแปลภาษาไทยมืออาชีพ
-Input คือ JSON Array ของ object {"en": ต้นฉบับภาษาอังกฤษ, "th": ร่างคำแปลจาก Google Translate} เรียงตามย่อหน้า (ย่อหน้าแรกคือชื่อตอน)
+Input คือ JSON Array ของ object {"${lang}": ต้นฉบับภาษา${zh ? 'จีน' : 'อังกฤษ'}, "th": ร่างคำแปลจาก Google Translate} เรียงตามย่อหน้า (ย่อหน้าแรกคือชื่อตอน)
 
 กฎ:
-1. ยึดความหมายจาก "en" เป็นหลัก แก้จุดที่ร่าง "th" แปลผิดหรือแปลคำต่อคำ
+1. ยึดความหมายจาก "${lang}" เป็นหลัก แก้จุดที่ร่าง "th" แปลผิดหรือแปลคำต่อคำ${zh ? ' (ร่างแปลจากภาษาจีนมักผิดเยอะ ให้แปลใหม่จากต้นฉบับได้เลยถ้าร่างใช้ไม่ได้)' : ''}
 2. เกลา "th" ให้เป็นภาษาวรรณกรรมไทยที่อ่านลื่นไหล เป็นธรรมชาติ ไม่แข็งทื่อ
-3. ใช้สรรพนามให้เข้ากับตัวละครและแนวเรื่อง (เช่น ข้า-เจ้า, ฉัน-นาย, พี่-น้อง) และคงไว้สม่ำเสมอ
-4. แปลงสำนวนหรือสแลงอังกฤษเป็นสำนวนไทยที่ความหมายเทียบเท่า ห้ามแปลตรงตัว
+3. ใช้สรรพนามให้เข้ากับตัวละครและแนวเรื่อง (เช่น ข้า-เจ้า, ฉัน-นาย, พี่-น้อง) และคงไว้สม่ำเสมอ${
+    zh
+      ? `\n   สรรพนามและคำเรียกแบบจีนต้องคงฐานะไว้ เช่น 本座 = ข้า (ผู้มีฐานะสูง), 在下 = ข้าน้อย, 老夫 = ข้าผู้เฒ่า, 师兄/师姐 = ศิษย์พี่, 师弟/师妹 = ศิษย์น้อง, 师父/师尊 = ท่านอาจารย์, 前辈 = ท่านผู้อาวุโส`
+      : ''
+  }
+4. ${zh ? 'แปลงสำนวนจีนและ成语เป็นสำนวนไทยที่ความหมายเทียบเท่า' : 'แปลงสำนวนหรือสแลงอังกฤษเป็นสำนวนไทยที่ความหมายเทียบเท่า'} ห้ามแปลตรงตัว
 5. ห้ามตัด ห้ามสรุป ห้ามรวมหรือแยกย่อหน้า ห้ามเพิ่มเนื้อหาที่ไม่มีในต้นฉบับ
 6. รูปแบบคำตอบ: ต้องตอบกลับเป็น JSON Array ของ String เท่านั้น เช่น:
 ["ข้อความย่อหน้าที่ 1 ที่เกลาแล้ว", "ข้อความย่อหน้าที่ 2 ที่เกลาแล้ว"]
 สำคัญมากเกี่ยวกับเครื่องหมายคำพูด (Quotes): หากในเนื้อหามีย่อหน้าที่มีบทสนทนา ให้ escape เครื่องหมายคำพูดคู่ด้วย \" เสมอ (เช่น \"สวัสดี\") หรือใช้เครื่องหมาย «...» หรือ '...' แทน เพื่อไม่ให้โครงสร้าง JSON เสียหาย
 คำเตือน: ห้ามใส่เครื่องหมายปีกกา {} ในสมาชิกแต่ละตัวเด็ดขาด (ห้ามตอบแบบ [{"ข้อความ"}]) ต้องเป็นข้อความในเครื่องหมายคำพูดคู่เท่านั้น
-7. ชื่อเฉพาะบุคคลและสถานที่ (Character & Place Names) เช่น ชื่อคน ชื่อตระกูล ชื่อเมือง ต้องถอดเสียงเป็นภาษาไทยตามความเหมาะสม ห้ามปล่อยตัวอักษรภาษาอังกฤษค้างไว้ ยกเว้นคำย่อหรือคำศัพท์สากล เช่น HP, MP, Wi-Fi
+7. ${
+    zh
+      ? 'ชื่อเฉพาะบุคคลและสถานที่ (Character & Place Names) ต้องถอดเสียงจีนกลางเป็นภาษาไทย (เช่น 林动 = หลินต้ง, 萧炎 = เซียวเหยียน) ห้ามปล่อยอักษรจีนหรือพินอินภาษาอังกฤษ (เช่น Lin Dong) ค้างไว้ ยกเว้นคำย่อหรือคำศัพท์สากล เช่น HP, MP'
+      : 'ชื่อเฉพาะบุคคลและสถานที่ (Character & Place Names) เช่น ชื่อคน ชื่อตระกูล ชื่อเมือง ต้องถอดเสียงเป็นภาษาไทยตามความเหมาะสม ห้ามปล่อยตัวอักษรภาษาอังกฤษค้างไว้ ยกเว้นคำย่อหรือคำศัพท์สากล เช่น HP, MP, Wi-Fi'
+  }
 จำนวนสมาชิกต้องเท่ากับ input พอดี ห้ามมีข้อความอื่นนอกจาก JSON Array`;
 
   if (context?.novelTitle) {
@@ -33,11 +46,19 @@ Input คือ JSON Array ของ object {"en": ต้นฉบับภา�
     prompt += `\n- แนวเรื่อง: ${context.genre}`;
   }
   if (context?.glossary && context.glossary.length > 0) {
-    prompt += `\n\nตารางคำศัพท์และชื่อเฉพาะที่ต้องยึดตามนี้อย่างเคร่งครัด (ห้ามแปลเป็นคำอื่น):`;
-    for (const g of context.glossary) {
-      prompt += `\n- "${g.termEn}" -> "${g.termTh}"`;
+    prompt += `\n\nตารางคำศัพท์และชื่อเฉพาะที่ต้องยึดตามนี้อย่างเคร่งครัด (ห้ามแปลเป็นคำอื่น) แยกตามหมวด:`;
+    // Group under a Thai category heading so the model knows "Green Grace" is a person, not a phrase.
+    const known = new Set(CATEGORY_OPTIONS.map((c) => c.id));
+    for (const cat of CATEGORY_OPTIONS) {
+      const terms = context.glossary.filter((g) =>
+        cat.id === 'other' ? !known.has(g.category || '') || g.category === 'other' : g.category === cat.id
+      );
+      if (terms.length === 0) continue;
+      prompt += `\n[${cat.labelTh}]`;
+      for (const g of terms) prompt += `\n- "${g.termEn}" -> "${g.termTh}"`;
     }
     prompt += `\nคำไทยจากตารางนี้ถูกใส่ไว้ในร่าง "th" แล้ว ให้คงไว้ตามเดิมทุกตัวอักษร ห้ามถอดเสียงหรือสะกดใหม่`;
+    prompt += `\nคำในตารางเป็นชื่อเฉพาะ ห้ามแปลตามความหมายของคำ แม้ฝั่ง "${lang}" จะดูเป็นคำทั่วไป (เช่น Green Grace ที่เป็นชื่อคน ห้ามแปลเป็น "หญ้าเขียว")`;
   }
 
   return prompt;
@@ -47,6 +68,7 @@ const BATCH_SIZE = 75;
 const OLLAMA_BATCH_SIZE = 10;
 // ponytail: 25 is a guess for mid-size free models; lower it if batches come back misaligned.
 const OPENROUTER_BATCH_SIZE = 25;
+const POLISH_ATTEMPTS = 2; // first try + one retry when the reply's paragraph count is off
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY || '';
@@ -169,22 +191,11 @@ async function callGeminiWithRetry(model: any, prompt: string, maxRetries = 3): 
 }
 
 function matchParagraphs(parsed: string[], draft: string[]): string[] | null {
-  // Exact match
-  if (parsed.length === draft.length) {
-    return parsed.map((p: string, i) => (draft[i].trim() === '' ? draft[i] : p.trim() || draft[i]));
-  }
-
-  // Resilient partial match: if AI returned at least 60% of paragraphs, salvage what we have
-  // and keep draft for remainder. This prevents an entire batch from failing due to ±1-2 count variance.
-  if (parsed.length >= Math.ceil(draft.length * 0.6)) {
-    return draft.map((d, i) => {
-      if (d.trim() === '') return d;
-      const polished = parsed[i];
-      return typeof polished === 'string' && polished.trim() ? polished.trim() : d;
-    });
-  }
-
-  return null;
+  // Exact count only. A short reply usually means the model merged or dropped a paragraph in the
+  // MIDDLE, so mapping by index would shift every later paragraph by one (duplicated/misplaced
+  // text, still marked POLISHED). Rejecting lets polishParagraphs retry, then keep the draft.
+  if (parsed.length !== draft.length) return null;
+  return parsed.map((p: string, i) => (draft[i].trim() === '' ? draft[i] : p.trim() || draft[i]));
 }
 
 function extractParagraphsFallback(text: string): string[] | null {
@@ -314,7 +325,7 @@ export async function polishParagraphs(
   thDraft: string[],
   context?: PolishContext,
   onProgress?: (currentBatch: number, totalBatches: number) => void,
-  opts?: { provider?: string; model?: string }
+  opts?: { provider?: string; model?: string; priority?: boolean }
 ): Promise<{ paragraphs: string[]; failedBatches: number; totalBatches: number; lastError?: string }> {
   const { provider, model } = await resolveProvider(opts);
 
@@ -329,7 +340,8 @@ export async function polishParagraphs(
     });
   }
 
-  const promptHeader = buildPolishPrompt(context);
+  const lang: SourceLang = isChineseText(en) ? 'zh' : 'en';
+  const promptHeader = buildPolishPrompt(context, lang);
   const paragraphs: string[] = [];
   let failedBatches = 0;
   let lastError: string | undefined; // why the most recent failed batch fell back to draft
@@ -337,9 +349,6 @@ export async function polishParagraphs(
     provider === 'ollama' ? OLLAMA_BATCH_SIZE : provider === 'openrouter' ? OPENROUTER_BATCH_SIZE : BATCH_SIZE;
   const totalBatches = Math.ceil(thDraft.length / batchSize);
 
-  // Bound concurrency per provider (GPU slots for ollama, RPM headroom for gemini) across every
-  // caller — manual /retranslate and the background queue alike.
-  await withAiSlot(provider, async () => {
   for (let start = 0; start < thDraft.length; start += batchSize) {
     const batchIndex = Math.floor(start / batchSize) + 1;
     if (onProgress) {
@@ -349,18 +358,25 @@ export async function polishParagraphs(
     }
 
     const draft = thDraft.slice(start, start + batchSize);
-    const pairs = draft.map((th, i) => ({ en: en[start + i] ?? '', th }));
+    const pairs = draft.map((th, i) => ({ [lang]: en[start + i] ?? '', th }));
 
     let polished: string[] | null = null;
+    // A misaligned reply gets one retry (LLM output varies run to run); thrown errors don't —
+    // Gemini already retries internally and an Ollama outage won't fix itself in a second.
+    for (let attempt = 1; attempt <= POLISH_ATTEMPTS && !polished; attempt++) {
     try {
-      let rawText = '';
-      if (provider === 'ollama') {
-        rawText = await callOllama(promptHeader, JSON.stringify(pairs), model);
-      } else if (provider === 'openrouter') {
-        rawText = await callOpenRouter(promptHeader, JSON.stringify(pairs), model);
-      } else {
-        rawText = await callGeminiWithRetry(geminiModel, `${promptHeader}\n\n${JSON.stringify(pairs)}`);
-      }
+      // Bound concurrency per provider (GPU slots for ollama, RPM headroom for gemini) across every
+      // caller. The slot is held per call so a reader's priority request can slip in between batches.
+      const rawText = await withAiSlot(
+        provider,
+        () =>
+          provider === 'ollama'
+            ? callOllama(promptHeader, JSON.stringify(pairs), model)
+            : provider === 'openrouter'
+              ? callOpenRouter(promptHeader, JSON.stringify(pairs), model)
+              : callGeminiWithRetry(geminiModel, `${promptHeader}\n\n${JSON.stringify(pairs)}`),
+        opts?.priority
+      );
 
       polished = parsePolishedBatch(rawText, draft);
       if (!polished) {
@@ -370,7 +386,7 @@ export async function polishParagraphs(
           const parsed = JSON.parse(rawText.trim().replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```$/i, ''));
           parsedLen = Array.isArray(parsed) ? `array[${parsed.length}]` : `${typeof parsed}(keys:${Object.keys(parsed).length})`;
         } catch { parsedLen = 'invalid_json'; }
-        console.warn(`[Polish] batch at ${start} misaligned: expected ${draft.length}, got ${parsedLen}. Raw[0..200]: ${rawText.substring(0, 200)}`);
+        console.warn(`[Polish] batch at ${start} misaligned (attempt ${attempt}/${POLISH_ATTEMPTS}): expected ${draft.length}, got ${parsedLen}. Raw[0..200]: ${rawText.substring(0, 200)}`);
         lastError = `ผลลัพธ์ไม่ตรงรูปแบบ: expected ${draft.length}, got ${parsedLen}`;
       }
     } catch (err: any) {
@@ -380,12 +396,13 @@ export async function polishParagraphs(
       if (err.message?.includes('ไม่สามารถเชื่อมต่อกับ Ollama ได้')) {
         throw err;
       }
+      break;
+    }
     }
 
     if (!polished) failedBatches++;
     paragraphs.push(...(polished ?? draft));
   }
-  });
 
   return { paragraphs, failedBatches, totalBatches, lastError };
 }

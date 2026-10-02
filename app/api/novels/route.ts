@@ -30,6 +30,8 @@ export async function GET(request: Request) {
 
     const whereClause: any = {
       deletedAt: null,
+      // Hidden novels stay reachable by direct link (bookshelf/history), just not listed or searchable.
+      ...(session?.role === 'ADMIN' ? {} : { hiddenAt: null }),
     };
     if (categoryFilter && categoryFilter !== 'ALL' && categoryFilter !== 'all') {
       // Accept one or many categories (comma-separated) so the filter UI can stack tags.
@@ -136,6 +138,7 @@ export async function GET(request: Request) {
       viewCount: n.viewCount || 0,
       likeCount: n.likeCount || 0,
       liked: userLikedSet.has(n.id),
+      hidden: !!n.hiddenAt,
       createdAt: n.createdAt,
       updatedAt: n.updatedAt,
       progress: n.chapters.length > 0 ? userProgressMap[n.chapters[0].id] || 0 : 0,
