@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
+import { alertDialog, confirmDialog } from '@/lib/dialog';
 
 export default function AdminWhitelistPage() {
   const { t, lang } = useLanguage();
@@ -138,7 +139,7 @@ export default function AdminWhitelistPage() {
   function requestRoleChange(email: string, currentRole: string, target: 'USER' | 'ADMIN', note?: string) {
     if (target === currentRole) return;
     if (currentUser?.email && email.toLowerCase() === currentUser.email.toLowerCase() && currentRole === 'ADMIN') {
-      alert('คุณไม่สามารถลดสิทธิ์บัญชีของตนเองได้');
+      alertDialog('คุณไม่สามารถลดสิทธิ์บัญชีของตนเองได้');
       return;
     }
     setPendingRole({ email, note, current: currentRole, target });
@@ -158,10 +159,10 @@ export default function AdminWhitelistPage() {
       if (data.success) {
         await fetchWhitelist();
       } else {
-        alert(data.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์');
+        alertDialog(data.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์');
       }
     } catch (err: any) {
-      alert(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+      alertDialog(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
     } finally {
       setTogglingEmail(null);
       setPendingRole(null);
@@ -170,10 +171,10 @@ export default function AdminWhitelistPage() {
 
   async function handleDeleteWhitelist(id: string, email: string) {
     if (currentUser?.email && email.toLowerCase() === currentUser.email.toLowerCase()) {
-      alert('คุณไม่สามารถลบอีเมลของตนเองออกจาก Whitelist ได้');
+      alertDialog('คุณไม่สามารถลบอีเมลของตนเองออกจาก Whitelist ได้');
       return;
     }
-    if (!confirm(`${t('confirmDeleteWhitelistMsg')} (${email})`)) {
+    if (!await confirmDialog(`${t('confirmDeleteWhitelistMsg')} (${email})`, { confirmLabel: 'ลบ', danger: true })) {
       return;
     }
 
@@ -186,10 +187,10 @@ export default function AdminWhitelistPage() {
       if (data.success) {
         setWhitelist((prev) => prev.filter((item) => item.id !== id));
       } else {
-        alert(data.error || t('deleteWhitelistError'));
+        alertDialog(data.error || t('deleteWhitelistError'));
       }
     } catch (err: any) {
-      alert(err.message || t('deleteWhitelistError'));
+      alertDialog(err.message || t('deleteWhitelistError'));
     } finally {
       setDeletingWhitelistId(null);
     }
@@ -218,7 +219,7 @@ export default function AdminWhitelistPage() {
   }
 
   async function handleRejectRequest(id: string) {
-    if (!confirm('ต้องการปฏิเสธคำขอนี้ใช่หรือไม่?')) return;
+    if (!await confirmDialog('ต้องการปฏิเสธคำขอนี้ใช่หรือไม่?', { confirmLabel: 'ปฏิเสธ', danger: true })) return;
     setProcessingRequestId(id);
     try {
       const res = await fetch('/api/admin/invite-requests', {
@@ -241,7 +242,7 @@ export default function AdminWhitelistPage() {
   }
 
   async function handleDeleteRequest(id: string, email: string) {
-    if (!confirm(`ต้องการลบประวัติคำขอของ ${email} ใช่หรือไม่?`)) return;
+    if (!await confirmDialog(`ต้องการลบประวัติคำขอของ ${email} ใช่หรือไม่?`, { confirmLabel: 'ลบ', danger: true })) return;
     setProcessingRequestId(id);
     try {
       const res = await fetch(`/api/admin/invite-requests?id=${id}`, {

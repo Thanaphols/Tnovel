@@ -37,6 +37,11 @@ export async function POST(
       take: 20, // Scan up to first 20 chapters for fast response
     });
 
+    // Remember what was there so the reply can list exactly the terms this scan added.
+    const before = new Set(
+      (await prisma.novelGlossary.findMany({ where: { novelId }, select: { id: true } })).map((g) => g.id)
+    );
+
     let totalDiscovered = 0;
     for (const ch of chapters) {
       if (!ch.contentEn) continue;
@@ -48,10 +53,16 @@ export async function POST(
     }
 
     const totalCount = await prisma.novelGlossary.count({ where: { novelId } });
+    const discovered = (
+      await prisma.novelGlossary.findMany({ where: { novelId }, include: { aliases: true }, orderBy: { canonicalEn: 'asc' } })
+    )
+      .filter((g) => !before.has(g.id))
+      .map((g) => ({ ...g, termEn: g.canonicalEn, termTh: g.canonicalTh }));
 
     return NextResponse.json({
       success: true,
       discoveredCount: totalDiscovered,
+      discovered,
       totalCount,
       message: totalDiscovered > 0
         ? `สแกนพบคำศัพท์ใหม่ ${totalDiscovered} คำ และบันทึกเข้า Glossary เรียบร้อยแล้ว`

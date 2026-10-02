@@ -38,6 +38,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import GlossaryEditor from '@/components/GlossaryEditor';
 import FandomSelect from '@/components/FandomSelect';
 import TranslationPanel from '@/components/TranslationPanel';
+import { alertDialog } from '@/lib/dialog';
 
 interface ChapterItem {
   id: string;
@@ -1016,7 +1017,7 @@ export default function NovelDetailPage() {
                         setNovel((prev) => (prev ? { ...prev, fandomId: fandomId || null } : prev));
                         setFandomName(fandom?.name ?? null);
                       } catch (err: any) {
-                        alert(err.message || 'บันทึก fandom ไม่สำเร็จ');
+                        alertDialog(err.message || 'บันทึก fandom ไม่สำเร็จ');
                       } finally {
                         setSavingFandom(false);
                       }

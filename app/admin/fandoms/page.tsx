@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Library, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import FandomGlossaryCards from '@/components/FandomGlossaryCards';
+import { alertDialog, confirmDialog } from '@/lib/dialog';
 
 interface Fandom {
   id: string;
@@ -61,14 +62,15 @@ export default function AdminFandomsPage() {
 
   async function handleDelete(f: Fandom) {
     if (
-      !confirm(
-        `ลบ fandom "${f.name}" พร้อมคำศัพท์ ${f.termCount} คำ?\nนิยาย ${f.novelCount} เรื่องจะถูกยกเลิกการผูก fandom (คำศัพท์ของแต่ละเรื่องยังอยู่)`
+      !await confirmDialog(
+        `ลบ fandom "${f.name}" พร้อมคำศัพท์ ${f.termCount} คำ?\nนิยาย ${f.novelCount} เรื่องจะถูกยกเลิกการผูก fandom (คำศัพท์ของแต่ละเรื่องยังอยู่)`,
+        { title: 'ลบ fandom', confirmLabel: 'ลบ', danger: true }
       )
     )
       return;
     const res = await fetch(`/api/admin/fandoms?id=${f.id}`, { method: 'DELETE' });
     const data = await res.json();
-    if (!data.success) return alert(data.error || 'ลบไม่สำเร็จ');
+    if (!data.success) return alertDialog(data.error || 'ลบไม่สำเร็จ');
     if (selectedId === f.id) setSelectedId(null);
     await load();
   }

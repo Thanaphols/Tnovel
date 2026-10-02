@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import { useLanguage } from '@/lib/languageContext';
+import { alertDialog } from '@/lib/dialog';
 
 interface BinItemSelection {
   type: 'novel' | 'chapter';
@@ -235,11 +236,11 @@ export default function AdminRecycleBinPage() {
         delete selectedMap[`${type}:${id}`];
         setSelectedMap({ ...selectedMap });
       } else {
-        alert(data.error || t('restoreError'));
+        alertDialog(data.error || t('restoreError'));
       }
     } catch (err: any) {
       console.error(err);
-      alert(t('connectionError') + (err.message || ''));
+      alertDialog(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
     }
@@ -265,11 +266,11 @@ export default function AdminRecycleBinPage() {
         delete selectedMap[`${actionItem.type}:${actionItem.id}`];
         setSelectedMap({ ...selectedMap });
       } else {
-        alert(data.error || t('permanentDeleteError'));
+        alertDialog(data.error || t('permanentDeleteError'));
       }
     } catch (err: any) {
       console.error(err);
-      alert(t('connectionError') + (err.message || ''));
+      alertDialog(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
       setActionItem(null);
@@ -297,11 +298,11 @@ export default function AdminRecycleBinPage() {
         setChapters((prev) => prev.filter((c) => !restoredChapterIds.has(c.id)));
         setSelectedMap({});
       } else {
-        alert(data.error || t('restoreError'));
+        alertDialog(data.error || t('restoreError'));
       }
     } catch (err: any) {
       console.error(err);
-      alert(t('connectionError') + (err.message || ''));
+      alertDialog(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
     }
@@ -327,11 +328,11 @@ export default function AdminRecycleBinPage() {
         setChapters((prev) => prev.filter((c) => !deletedChapterIds.has(c.id) && !deletedNovelIds.has(c.novelId)));
         setSelectedMap({});
       } else {
-        alert(data.error || t('permanentDeleteError'));
+        alertDialog(data.error || t('permanentDeleteError'));
       }
     } catch (err: any) {
       console.error(err);
-      alert(t('connectionError') + (err.message || ''));
+      alertDialog(t('connectionError') + (err.message || ''));
     } finally {
       setIsProcessingAction(false);
       setIsBatchDeletingModalOpen(false);

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useSocket } from '@/lib/socket';
+import { confirmDialog } from '@/lib/dialog';
 
 export default function AdminReportsPage() {
   const { t, lang } = useLanguage();
@@ -74,7 +75,7 @@ export default function AdminReportsPage() {
   }
 
   async function handleDeleteReport(reportId: string) {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?')) return;
+    if (!await confirmDialog('คุณแน่ใจหรือไม่ว่าต้องการลบรายงานนี้?', { confirmLabel: 'ลบ', danger: true })) return;
     setUpdatingReport(reportId);
     try {
       const res = await fetch('/api/admin/reports', {

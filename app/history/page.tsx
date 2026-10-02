@@ -23,6 +23,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
 import UrlScrapeDrawer from '@/components/UrlScrapeDrawer';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
+import { alertDialog } from '@/lib/dialog';
 
 interface HistoryNovel {
   id: string;
@@ -171,14 +172,14 @@ export default function HistoryPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || t('resumeError'));
+        alertDialog(data.error || t('resumeError'));
       } else {
         setActiveJobId(novel.id);
         fetchHistory();
       }
     } catch (err: any) {
       console.error(err);
-      alert(t('networkError'));
+      alertDialog(t('networkError'));
     } finally {
       setResumingId(null);
     }

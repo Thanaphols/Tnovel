@@ -31,6 +31,7 @@ import {
   ChapterBookmarkItem,
 } from '@/lib/bookshelf';
 import { useLanguage } from '@/lib/languageContext';
+import { confirmDialog } from '@/lib/dialog';
 
 export default function BookshelfPage() {
   const { t, lang } = useLanguage();
@@ -89,7 +90,7 @@ export default function BookshelfPage() {
 
   // Clear all history
   const handleClearAllHistory = async () => {
-    if (!confirm(t('confirmClearHistoryMsg'))) return;
+    if (!await confirmDialog(t('confirmClearHistoryMsg'), { danger: true })) return;
     await clearReadingHistory();
     setHistoryList([]);
     showToast(t('historyClearedToast'));

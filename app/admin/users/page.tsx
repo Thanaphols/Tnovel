@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Users, Shield, RefreshCw, Loader2, Search, UserCheck } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
+import { alertDialog, confirmDialog } from '@/lib/dialog';
 
 export default function AdminUsersPage() {
   const { t, lang } = useLanguage();
@@ -35,12 +36,12 @@ export default function AdminUsersPage() {
 
   async function handleToggleRole(userId: string, currentRole: string, email: string) {
     if (currentUser?.id === userId && currentRole === 'ADMIN') {
-      alert('คุณไม่สามารถลดระดับสิทธิ์บัญชีของตนเองได้');
+      alertDialog('คุณไม่สามารถลดระดับสิทธิ์บัญชีของตนเองได้');
       return;
     }
 
     const newRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
-    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการเปลี่ยนสิทธิ์ของ "${email}" เป็น ${newRole}?`)) {
+    if (!await confirmDialog(`คุณแน่ใจหรือไม่ว่าต้องการเปลี่ยนสิทธิ์ของ "${email}" เป็น ${newRole}?`)) {
       return;
     }
 
@@ -57,7 +58,7 @@ export default function AdminUsersPage() {
           prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
         );
       } else {
-        alert(data.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์');
+        alertDialog(data.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์');
       }
     } catch (err) {
       console.error(err);

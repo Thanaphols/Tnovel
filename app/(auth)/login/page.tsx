@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn, Mail, Lock, BookOpen, ArrowRight, AlertCircle, Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
+import { alertDialog } from '@/lib/dialog';
 
 export default function LoginPage() {
   const { t } = useLanguage();
@@ -104,10 +105,10 @@ export default function LoginPage() {
         setInviteSuccess(true);
         setInviteMessage(data.message || t('inviteRequestSuccessDesc'));
       } else {
-        alert(data.error || 'ไม่สามารถส่งคำขอได้');
+        alertDialog(data.error || 'ไม่สามารถส่งคำขอได้');
       }
     } catch (err: any) {
-      alert(err.message || t('networkError'));
+      alertDialog(err.message || t('networkError'));
     } finally {
       setSendingInvite(false);
     }

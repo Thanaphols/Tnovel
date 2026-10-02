@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { CATEGORY_OPTIONS } from '@/lib/glossaryCategories';
+import { confirmDialog } from '@/lib/dialog';
 
 // Fandom glossary as cards: a top-level term (e.g. Luffy) with an optional picture, expanding to
 // its variants (Monkey D. Luffy, Straw Hat Luffy...) — fics often dodge the canonical name.
@@ -121,8 +122,8 @@ function VariantRow({
   };
   const detach = () =>
     run(() => api(endpoint, 'PUT', { id: term.id, termEn: term.termEn, termTh: term.termTh, category: term.category, parentId: null }));
-  const remove = () => {
-    if (confirm(`ลบคำย่อย "${term.termEn}"?`)) run(() => api(`${endpoint}?glossaryId=${term.id}`, 'DELETE'));
+  const remove = async () => {
+    if (await confirmDialog(`ลบคำย่อย "${term.termEn}"?`, { confirmLabel: 'ลบ', danger: true })) run(() => api(`${endpoint}?glossaryId=${term.id}`, 'DELETE'));
   };
 
   if (editing) {
@@ -226,7 +227,7 @@ function CardPanel({
 
   const removeCard = async () => {
     const extra = variants.length ? ` พร้อมคำย่อย ${variants.length} คำ` : '';
-    if (!confirm(`ลบการ์ด "${card.termEn}"${extra}?`)) return;
+    if (!await confirmDialog(`ลบการ์ด "${card.termEn}"${extra}?`, { confirmLabel: 'ลบ', danger: true })) return;
     if (await run('delete', () => api(`${endpoint}?glossaryId=${card.id}`, 'DELETE'))) onClose();
   };
 

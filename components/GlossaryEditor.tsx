@@ -15,10 +15,12 @@ import {
   Pencil,
   Check,
   RotateCcw,
+  X,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
 import { CATEGORY_OPTIONS } from '@/lib/glossaryCategories';
+import { alertDialog, confirmDialog } from '@/lib/dialog';
 
 interface GlossaryItem {
   id: string;
@@ -46,7 +48,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
 
   async function handlePromote(ids: string[]) {
     if (ids.length === 0) return;
-    if (!confirm(`ย้าย ${ids.length} คำไปใช้ร่วมกันใน fandom "${promoteToFandomName}"?\nคำจะถูกลบออกจากนิยายเรื่องนี้ และทุกเรื่องใน fandom จะใช้คำนี้`)) return;
+    if (!await confirmDialog(`ย้าย ${ids.length} คำไปใช้ร่วมกันใน fandom "${promoteToFandomName}"?\nคำจะถูกลบออกจากนิยายเรื่องนี้ และทุกเรื่องใน fandom จะใช้คำนี้`, { title: 'ย้ายคำไป fandom', confirmLabel: 'ย้าย' })) return;
     setPromoting(true);
     setError(null);
     setSuccess(null);
@@ -81,6 +83,16 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  // Last scan's result: shown in a modal, and its cards stay highlighted in the list.
+  const [scanResult, setScanResult] = useState<GlossaryItem[] | null>(null);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!scanResult) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setScanResult(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [scanResult]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -157,8 +169,9 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
   async function handleApplyAllToChapters() {
     if (!novelId || glossaries.length === 0) return;
     if (
-      !confirm(
-        `ต้องการนำคำศัพท์ทั้งหมด (${glossaries.length} คำ) ไปแทนที่ในเนื้อหาทุกตอนที่แปลแล้วหรือไม่?\nระบบจะสแกนและอัปเดตคำในเนื้อหาทันทีโดยไม่ต้องแปลใหม่`
+      !await confirmDialog(
+        `ต้องการนำคำศัพท์ทั้งหมด (${glossaries.length} คำ) ไปแทนที่ในเนื้อหาทุกตอนที่แปลแล้วหรือไม่?\nระบบจะสแกนและอัปเดตคำในเนื้อหาทันทีโดยไม่ต้องแปลใหม่`,
+        { title: 'แทนที่คำในเนื้อหาทุกตอน', confirmLabel: 'แทนที่' }
       )
     ) {
       return;
@@ -199,8 +212,16 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'สแกนคำศัพท์ไม่สำเร็จ');
       }
-      setSuccess(data.message);
-      await fetchGlossary();
+      // Merge the new terms straight into the list (no reload/spinner), so they appear at once.
+      const found: GlossaryItem[] = data.discovered || [];
+      if (found.length > 0) {
+        setGlossaries((prev) => {
+          const known = new Set(prev.map((g) => g.id));
+          return [...prev, ...found.filter((g) => !known.has(g.id))].sort((a, b) => a.termEn.localeCompare(b.termEn));
+        });
+        setNewIds(new Set(found.map((g) => g.id)));
+      }
+      setScanResult(found);
     } catch (err: any) {
       setError(err.message || 'เกิดข้อผิดพลาดในการสแกนคำศัพท์');
     } finally {
@@ -266,7 +287,7 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
   }
 
   async function handleDelete(glossaryId: string, name: string) {
-    if (!confirm(`คุณต้องการลบคำศัพท์ "${name}" หรือไม่?`)) return;
+    if (!await confirmDialog(`คุณต้องการลบคำศัพท์ "${name}" หรือไม่?`, { title: 'ลบคำศัพท์', confirmLabel: 'ลบ', danger: true })) return;
 
     try {
       const res = await fetch(`${endpoint}?glossaryId=${glossaryId}`, {
@@ -276,10 +297,10 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
       if (data.success) {
         setGlossaries((prev) => prev.filter((g) => g.id !== glossaryId));
       } else {
-        alert(data.error || 'ลบไม่สำเร็จ');
+        alertDialog(data.error || 'ลบไม่สำเร็จ');
       }
     } catch (err: any) {
-      alert('เกิดข้อผิดพลาดในการลบ');
+      alertDialog('เกิดข้อผิดพลาดในการลบ');
     }
   }
 
@@ -305,6 +326,11 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
             <p className="text-xs text-slate-400 mt-0.5">
               กำหนดคำแปลชื่อตัวละครและศัพท์เฉพาะ เพื่อให้ AI ยึดตามนี้อย่างเคร่งครัด
             </p>
+            {promoteToFandomName && (
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                แสดงเฉพาะคำของเรื่องนี้ · คำจาก fandom &quot;{promoteToFandomName}&quot; ใช้แปลด้วยแต่ไม่แสดงที่นี่ (แก้ได้ที่ช่อง Fandom ด้านบน)
+              </p>
+            )}
           </div>
         </div>
 
@@ -556,7 +582,9 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
             return (
               <div
                 key={item.id}
-                className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl hover:border-slate-700 transition-all flex items-start justify-between gap-2 group"
+                className={`p-3 bg-slate-950/80 border rounded-xl hover:border-slate-700 transition-all flex items-start justify-between gap-2 group ${
+                  newIds.has(item.id) ? 'border-amber-400/70 ring-1 ring-amber-400/40' : 'border-slate-800/80'
+                }`}
               >
                 {canPromote && (
                   <input
@@ -572,6 +600,9 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
                     <span className="text-xs font-bold text-slate-100 font-mono">{item.termEn}</span>
                     <span className="text-[10px] text-slate-500">→</span>
                     <span className="text-xs font-semibold text-amber-400">{item.termTh}</span>
+                    {newIds.has(item.id) && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold text-slate-950 bg-amber-400 rounded-md">ใหม่</span>
+                    )}
                   </div>
                   {catInfo && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium text-slate-400 bg-slate-900 rounded-md border border-slate-800">
@@ -617,6 +648,68 @@ export default function GlossaryEditor({ novelId, novelTitle, promoteToFandomNam
               </div>
             );
           })}
+        </div>
+      )}
+
+      {scanResult && (
+        <div
+          onClick={(e) => e.target === e.currentTarget && setScanResult(null)}
+          className="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scan-result-title"
+            className="relative w-full max-w-lg max-h-[85dvh] flex flex-col p-6 bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl space-y-4"
+          >
+            <button
+              type="button"
+              onClick={() => setScanResult(null)}
+              aria-label="ปิด"
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 pr-10">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-400">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 id="scan-result-title" className="text-lg font-bold text-slate-100">
+                  {scanResult.length > 0 ? `พบคำศัพท์ใหม่ ${scanResult.length} คำ` : 'ไม่พบคำศัพท์ใหม่'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {scanResult.length > 0
+                    ? 'เพิ่มเข้า glossary ของเรื่องนี้แล้ว คำแปลมาจาก Google ควรตรวจก่อนใช้'
+                    : 'คำที่เจอมีอยู่ในคลังของเรื่องหรือ fandom ครบแล้ว'}
+                </p>
+              </div>
+            </div>
+            {scanResult.length > 0 && (
+              <ul className="overflow-y-auto overscroll-contain -mx-1 px-1 divide-y divide-slate-800/70 border border-slate-800 rounded-2xl">
+                {scanResult.map((g) => {
+                  const cat = CATEGORY_OPTIONS.find((c) => c.id === g.category);
+                  return (
+                    <li key={g.id} className="flex items-center gap-2 px-3 py-2 text-xs">
+                      <span className="font-mono font-bold text-slate-100">{g.termEn}</span>
+                      <span className="text-slate-500">→</span>
+                      <span className="font-semibold text-amber-400">{g.termTh}</span>
+                      {cat && (
+                        <span className="ml-auto shrink-0 text-[10px] text-slate-400">{lang === 'en' ? cat.labelEn : cat.labelTh}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={() => setScanResult(null)}
+              className="w-full py-2.5 text-sm font-semibold rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors"
+            >
+              ตกลง
+            </button>
+          </div>
         </div>
       )}
     </div>

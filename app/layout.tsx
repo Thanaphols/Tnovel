@@ -3,6 +3,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import BackgroundProgressWidget from '@/components/BackgroundProgressWidget';
 import AccessDeniedModal from '@/components/AccessDeniedModal';
+import DialogHost from '@/components/DialogHost';
 import { LanguageProvider } from '@/lib/languageContext';
 import { ThemeProvider } from '@/lib/themeContext';
 import { AuthProvider } from '@/lib/authContext';
@@ -65,6 +66,7 @@ export default function RootLayout({
               <main className="flex-1 pb-24 md:pb-12">{children}</main>
               <BackgroundProgressWidget />
               <AccessDeniedModal />
+              <DialogHost />
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>

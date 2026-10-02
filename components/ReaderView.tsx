@@ -14,6 +14,7 @@ import { useAppTheme } from '@/lib/themeContext';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
 import { deobfuscateThaiText } from '@/lib/thaiUtils';
+import { alertDialog } from '@/lib/dialog';
 
 interface ReaderViewProps {
   chapter: {
@@ -311,7 +312,7 @@ export default function ReaderView({ chapter }: ReaderViewProps) {
       );
       setShowManualPaste((prev) => ({ ...prev, [chapId]: false }));
     } catch (err: any) {
-      alert(err.message || 'บันทึกไม่สำเร็จ');
+      alertDialog(err.message || 'บันทึกไม่สำเร็จ');
     } finally {
       setIsSubmittingPaste((prev) => ({ ...prev, [chapId]: false }));
     }
