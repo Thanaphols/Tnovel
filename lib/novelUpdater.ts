@@ -48,7 +48,8 @@ export async function checkNovelUpdates(novelId: string): Promise<NovelUpdateRes
 
   const fresh = index.chapters
     .map((c, idx) => ({ ...c, chapterNumber: c.chapterNumber || idx + 1 }))
-    .filter((c) => !knownUrls.has(c.url) && !knownNumbers.has(c.chapterNumber));
+    // add() also dedupes numbers repeated within the scraped index itself
+    .filter((c) => !knownUrls.has(c.url) && !knownNumbers.has(c.chapterNumber) && knownNumbers.add(c.chapterNumber));
 
   if (fresh.length > 0) {
     await prisma.chapter.createMany({

@@ -77,6 +77,12 @@ export function finishJob(job: BatchJob) {
   jobs.delete(job.id);
 }
 
+/** Stop every batch for these novels (deleted/binned): no more scraping into rows that are gone. */
+export function cancelNovelJobs(novelIds: string | string[]) {
+  const ids = new Set(Array.isArray(novelIds) ? novelIds : [novelIds]);
+  for (const job of jobs.values()) if (ids.has(job.novelId)) job.isCancelled = true;
+}
+
 export function jobsOf(userId: string): BatchJob[] {
   return [...jobs.values()].filter((j) => j.initiatorUserId === userId && !j.isCancelled);
 }

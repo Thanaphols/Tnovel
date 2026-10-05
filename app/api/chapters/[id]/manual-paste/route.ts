@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { ChapterStatus, ErrorCode } from '@/lib/enums';
+import { ChapterStatus, ErrorCode, JobType } from '@/lib/enums';
 import { translateWithGlossary } from '@/lib/glossaryService';
 import { enqueueChapterForPolish } from '@/lib/polishQueue';
+import { resetJobForRerun } from '@/lib/jobQueue';
+import { getSession } from '@/lib/auth';
 
 function sanitizeToParagraphs(rawText: string): string[] {
   // Strip HTML tags and script content
@@ -51,13 +53,20 @@ export async function POST(
       );
     }
 
-    const chapter = await prisma.chapter.findUnique({
-      where: { id: chapterId },
+    const chapter = await prisma.chapter.findFirst({
+      where: { id: chapterId, deletedAt: null },
       include: { novel: true },
     });
 
     if (!chapter) {
       return NextResponse.json({ success: false, error: 'ไม่พบบทนิยายนี้' }, { status: 404 });
+    }
+
+    // Readers may fill in a chapter the scraper could not fetch; replacing existing content is admin-only.
+    const session = await getSession();
+    const fillingMissing = chapter.status === ChapterStatus.FETCH_FAILED || chapter.status === ChapterStatus.TOC_ONLY;
+    if (!session || (session.role !== 'ADMIN' && !fillingMissing)) {
+      return NextResponse.json({ success: false, error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่แทนที่เนื้อหาตอนนี้ได้' }, { status: 403 });
     }
 
     const paragraphsEn = sanitizeToParagraphs(rawText);
@@ -85,6 +94,8 @@ export async function POST(
         contentEn: JSON.stringify(paragraphsEn),
         contentThGoogle: JSON.stringify(translatedBody),
         contentTh: JSON.stringify(translatedBody),
+        // Old polish belongs to the old text; readers prefer contentThPolished, so drop it.
+        contentThPolished: null,
         titleTh: finalTitleTh,
         status: ChapterStatus.TRANSLATED_GT,
         sourceHash,
@@ -102,7 +113,8 @@ export async function POST(
       status: updated.status,
     });
 
-    // Enqueue background AI polish
+    // Enqueue background AI polish. A COMPLETED job from the old text would block the claim.
+    await resetJobForRerun(chapterId, JobType.POLISH);
     enqueueChapterForPolish(chapterId);
 
     return NextResponse.json({

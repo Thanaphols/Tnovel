@@ -131,58 +131,64 @@ interface WaitTarget {
   minCount: number;
 }
 
-let sharedBrowser: any = null;
-let scraperProfileDir: string | null = null;
-let browserIdleTimeout: NodeJS.Timeout | null = null;
+// Shared Chrome state lives on global so a dev HMR reload reuses it instead of orphaning a Chrome.
+// No process signal handlers here: puppeteer.launch already closes Chrome on SIGINT/SIGTERM/exit,
+// and our own SIGINT listener used to stop Ctrl+C from exiting the server at all.
+const g = global as any;
+const state: {
+  browser: any;
+  launching: Promise<any> | null;
+  profileDir: string | null;
+  idleTimer: NodeJS.Timeout | null;
+  openPages: number;
+} = g.__scraperBrowser ?? (g.__scraperBrowser = { browser: null, launching: null, profileDir: null, idleTimer: null, openPages: 0 });
 
 function resetBrowserIdleTimer() {
-  if (browserIdleTimeout) clearTimeout(browserIdleTimeout);
-  // Auto-close browser after 2 minutes of inactivity to save RAM
-  browserIdleTimeout = setTimeout(async () => {
-    if (sharedBrowser) {
-      try {
-        await sharedBrowser.close();
-      } catch {}
-      sharedBrowser = null;
-    }
+  if (state.idleTimer) clearTimeout(state.idleTimer);
+  // Auto-close browser after 2 minutes of inactivity to save RAM (never under an open page)
+  state.idleTimer = setTimeout(async () => {
+    if (state.openPages > 0) return resetBrowserIdleTimer();
+    const browser = state.browser;
+    state.browser = null;
+    if (browser) await browser.close().catch(() => {});
   }, 120000);
-}
-
-if (typeof process !== 'undefined') {
-  process.on('exit', () => {
-    if (sharedBrowser) sharedBrowser.close().catch(() => {});
-  });
-  process.on('SIGINT', () => {
-    if (sharedBrowser) sharedBrowser.close().catch(() => {});
-  });
+  state.idleTimer.unref?.();
 }
 
 async function getSharedBrowser() {
   resetBrowserIdleTimer();
 
+  const sharedBrowser = state.browser;
   const isAlive =
     sharedBrowser &&
     (typeof sharedBrowser.isConnected === 'function' ? sharedBrowser.isConnected() : sharedBrowser.connected);
   if (isAlive) {
     return sharedBrowser;
   }
+  // Concurrent callers (two batch lanes + a JIT fetch) share one launch instead of racing two
+  // Chromes onto the same profile directory.
+  state.launching ??= launchBrowser().finally(() => {
+    state.launching = null;
+  });
+  return state.launching;
+}
+
+async function launchBrowser() {
   const candidates = getSystemBrowserExecutablePaths();
   if (candidates.length === 0) {
     throw new Error('ไม่พบ Browser ในเครื่องสำหรับดึงข้อมูลเว็บที่มีระบบป้องกัน');
   }
 
   // Its own profile, so the scraper never collides with or touches the user's real browser data.
-  if (!scraperProfileDir) {
-    scraperProfileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-scraper-'));
-  }
+  state.profileDir ??= fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-scraper-'));
 
   const failures: string[] = [];
   for (const executablePath of candidates) {
     try {
-      sharedBrowser = await puppeteer.launch({
+      state.browser = await puppeteer.launch({
         executablePath,
         headless: 'new' as any,
-        userDataDir: scraperProfileDir,
+        userDataDir: state.profileDir,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -195,7 +201,7 @@ async function getSharedBrowser() {
         ],
         defaultViewport: { width: 1920, height: 1080 },
       });
-      return sharedBrowser;
+      return state.browser;
     } catch (err: any) {
       failures.push(`${executablePath}: ${String(err.message).split('\n')[0]}`);
       console.warn(`[Puppeteer] could not launch ${executablePath}, trying next browser`);
@@ -209,6 +215,7 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
   resetBrowserIdleTimer();
   const browser = await getSharedBrowser();
   const page = await browser.newPage();
+  state.openPages++;
 
   try {
     const rawUA = await browser.userAgent();
@@ -292,16 +299,16 @@ async function fetchHtmlWithPuppeteer(url: string, waitFor?: WaitTarget): Promis
       err.message?.includes('Connection closed');
 
     if (isTargetClosed) {
-      if (sharedBrowser) {
-        sharedBrowser.close().catch(() => {});
-        sharedBrowser = null;
-      }
+      // Only drop the shared browser if it actually died; a single closed tab must not take
+      // down the pages other requests are still using.
+      if (state.browser === browser && !browser.isConnected?.()) state.browser = null;
       throw new Error(
         'การเชื่อมต่อไปยังเว็บต้นทางหลุดหรือหมดเวลา (Connection Timeout / Closed) กรุณาลองใหม่อีกครั้ง หรือใช้ฟังก์ชัน "แปะเนื้อหาเอง"'
       );
     }
     throw err;
   } finally {
+    state.openPages--;
     await page.close().catch(() => {});
   }
 }

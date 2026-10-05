@@ -92,8 +92,10 @@ export async function POST(request: Request) {
       });
     }
 
-    const chapterCount = await prisma.chapter.count({ where: { novelId: novel.id } });
-    const chapterNumber = chapterCount + 1;
+    // Highest number + 1, not count + 1: binned chapters keep their (novelId, chapterNumber) slot
+    // and numbering can have gaps, so count + 1 can collide.
+    const { _max } = await prisma.chapter.aggregate({ where: { novelId: novel.id }, _max: { chapterNumber: true } });
+    const chapterNumber = (_max.chapterNumber ?? 0) + 1;
     const defaultTitle = isThai ? `ตอนที่ ${chapterNumber}` : `Chapter ${chapterNumber}`;
     const cleanChapterTitle = deobfuscateThaiText((chapterTitle || '').trim() || defaultTitle);
 

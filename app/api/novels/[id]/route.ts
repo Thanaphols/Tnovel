@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
+import { cancelNovelJobs } from '@/lib/batchJobs';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -92,6 +93,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
 
     const now = new Date();
+    cancelNovelJobs(id);
 
     // Soft delete Novel
     await prisma.novel.update({

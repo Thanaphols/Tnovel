@@ -1,0 +1,14 @@
+# Keep host-only files out of the image: Windows node_modules (native binaries), secrets,
+# the local SQLite DB and runtime image store.
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+prisma/dev.db*
+*.db
+*.db-journal
+storage
+*.log
+.claude

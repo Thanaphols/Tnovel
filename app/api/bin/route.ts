@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cancelNovelJobs } from '@/lib/batchJobs';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
       });
     } else if (action === 'permanent_delete') {
       if (novelIds.length > 0) {
+        cancelNovelJobs(novelIds);
         // Clean up relations first to prevent any SQLite foreign key constraints
         await prisma.report.deleteMany({
           where: {

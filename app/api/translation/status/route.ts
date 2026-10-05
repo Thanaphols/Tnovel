@@ -11,9 +11,12 @@ export async function GET() {
 
   const batch = jobsOf(session.id)[0];
   const single = (global as any).activeTranslationJob;
+  // Client-driven jobs (retranslate/apply) never clear the flag if the tab closes mid-way;
+  // treat one with no progress for 2 minutes as gone instead of replaying it forever.
+  const singleFresh = single?.updatedAt && Date.now() - Date.parse(single.updatedAt) < 120_000;
   const job = batch
     ? { ...batch.payload, isPaused: batch.isPaused }
-    : single?.isActive && single.initiatorUserId === session.id
+    : single?.isActive && singleFresh && single.initiatorUserId === session.id
       ? single
       : null;
 

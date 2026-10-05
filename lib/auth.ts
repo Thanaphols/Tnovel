@@ -53,7 +53,20 @@ export async function getSession(): Promise<UserSessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('noveltrans_token')?.value;
   if (!token) return null;
-  return await verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+
+  // The token lives 7 days; demotion or account deletion must apply now, so the role comes from
+  // the database, not the token. A DB hiccup falls back to the token rather than logging everyone out.
+  try {
+    const { prisma } = await import('./prisma');
+    const user = await prisma.user.findUnique({ where: { id: payload.id }, select: { role: true, deletedAt: true } });
+    if (!user || user.deletedAt) return null;
+    return { ...payload, role: user.role === 'ADMIN' ? 'ADMIN' : 'USER' };
+  } catch (err) {
+    console.error('[getSession] user lookup failed, using token claims:', err);
+    return payload;
+  }
 }
 
 export function getBaseUrl(request: Request): string {

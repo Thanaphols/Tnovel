@@ -6,7 +6,7 @@
 // ponytail: in-process state, same as batchJobs — correct under the single custom server (server.js).
 
 import { prisma } from './prisma';
-import { jobsOf } from './batchJobs';
+import { cancelNovelJobs } from './batchJobs';
 
 interface ImportRun {
   userId: string;
@@ -46,7 +46,7 @@ export async function rollbackImport(run: ImportRun) {
   const io = g.io;
   if (run.createdNovelId) {
     // Stop the background batch first so it doesn't recreate chapters for a deleted novel.
-    for (const job of jobsOf(run.userId)) if (job.novelId === run.createdNovelId) job.isCancelled = true;
+    cancelNovelJobs(run.createdNovelId);
     await prisma.novel.delete({ where: { id: run.createdNovelId } }).catch(() => {});
     io?.emit('novel:deleted', { id: run.createdNovelId });
   } else {
@@ -55,7 +55,7 @@ export async function rollbackImport(run: ImportRun) {
     }
     if (run.touchedNovel) {
       const { id, totalChapters, translationStatus } = run.touchedNovel;
-      for (const job of jobsOf(run.userId)) if (job.novelId === id) job.isCancelled = true;
+      cancelNovelJobs(id);
       await prisma.novel.update({ where: { id }, data: { totalChapters, translationStatus } }).catch(() => {});
     }
   }

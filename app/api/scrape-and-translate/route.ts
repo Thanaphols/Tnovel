@@ -360,7 +360,8 @@ export async function POST(request: Request) {
             originalUrl: chap.url,
             status: ChapterStatus.TOC_ONLY,
           }))
-          .filter((chap) => !existingChapNumbers.has(chap.chapterNumber));
+          // add() also dedupes numbers repeated within the scraped index itself
+          .filter((chap) => !existingChapNumbers.has(chap.chapterNumber) && existingChapNumbers.add(chap.chapterNumber));
         run?.createdChapterIds.push(...tocChapterData.map((c) => c.id));
 
         // Chunk inserts in batches of 500
@@ -610,14 +611,14 @@ async function processSingleChapter(url: string, session: any, io: any, category
 
   throwIfCancelled(run);
 
-  const currentChapterCount = await prisma.chapter.count({
-    where: { novelId: novel.id, deletedAt: null },
-  });
+  // Highest number + 1 (binned chapters keep their unique slot, numbering can have gaps).
+  const { _max } = await prisma.chapter.aggregate({ where: { novelId: novel.id }, _max: { chapterNumber: true } });
+  const nextChapterNumber = (_max.chapterNumber ?? 0) + 1;
 
   const chapter = await prisma.chapter.create({
     data: {
       novelId: novel.id,
-      chapterNumber: currentChapterCount + 1,
+      chapterNumber: nextChapterNumber,
       titleEn: scrapedData.title,
       titleTh,
       contentEn: JSON.stringify(scrapedData.paragraphs),

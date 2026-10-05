@@ -46,16 +46,28 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   if (fast) return fast;
 
   const enc = new TextEncoder();
+  let beat: NodeJS.Timeout | undefined;
+  // After the client disconnects the stream is cancelled and enqueue/close throw; swallow that.
+  const send = (controller: ReadableStreamDefaultController, text: string) => {
+    try {
+      controller.enqueue(enc.encode(text));
+    } catch {}
+  };
   const stream = new ReadableStream({
     async start(controller) {
-      const beat = setInterval(() => controller.enqueue(enc.encode(' ')), 15_000);
-      controller.enqueue(enc.encode(' '));
+      beat = setInterval(() => send(controller, ' '), 15_000);
+      send(controller, ' ');
       try {
-        controller.enqueue(enc.encode(await (await work).text()));
+        send(controller, await (await work).text());
       } finally {
         clearInterval(beat);
-        controller.close();
+        try {
+          controller.close();
+        } catch {}
       }
+    },
+    cancel() {
+      clearInterval(beat);
     },
   });
   return new Response(stream, {

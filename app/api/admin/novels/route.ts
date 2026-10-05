@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { recordAuditLog } from '@/lib/auditLog';
+import { cancelNovelJobs } from '@/lib/batchJobs';
 
 export async function GET() {
   try {
@@ -45,6 +46,8 @@ export async function POST(request: Request) {
       select: { titleTh: true, titleEn: true },
     });
     const novelTitle = targetNovel?.titleTh || targetNovel?.titleEn || novelId;
+
+    if (action === 'delete_soft' || action === 'delete_permanent') cancelNovelJobs(novelId);
 
     if (action === 'delete_soft') {
       await prisma.novel.update({

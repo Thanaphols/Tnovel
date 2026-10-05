@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Loader2, X, CheckCircle2, ChevronRight, Pause, Play } from 'lucide-react';
+import { Sparkles, Loader2, X, CheckCircle2, ChevronRight, Pause, Play, Minus } from 'lucide-react';
 import { useSocket } from '@/lib/socket';
 import { useLanguage } from '@/lib/languageContext';
 import { useAuth } from '@/lib/authContext';
@@ -152,7 +152,7 @@ export default function BackgroundProgressWidget() {
 
   return (
     <>
-      <div className="fixed bottom-4 left-4 z-40 transition-all duration-300 animate-slide-up">
+      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-4 left-4 z-40 transition-all duration-300 animate-slide-up">
         {minimized ? (
           /* Minimized Icon Button */
           <div className="flex items-center gap-1.5 p-1 bg-slate-900/95 border border-amber-500/40 backdrop-blur-md rounded-full shadow-xl">
@@ -233,9 +233,10 @@ export default function BackgroundProgressWidget() {
                 <button
                   onClick={() => setMinimized(true)}
                   title={t('widgetMinimize')}
-                  className="p-1.5 text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 rounded-lg text-[10px] transition-colors"
+                  aria-label={t('widgetMinimize')}
+                  className="p-1.5 text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 rounded-lg transition-colors"
                 >
-                  {t('widgetMinimize')}
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => {

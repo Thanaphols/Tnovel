@@ -11,7 +11,8 @@ require('@next/env').loadEnvConfig(process.cwd());
 if (isDev) {
   process.env.NODE_ENV = 'development';
 } else if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'development';
+  // `npm start` without NODE_ENV must still serve the production build; dev always passes --dev.
+  process.env.NODE_ENV = 'production';
 }
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -28,12 +29,18 @@ if (rawAppUrl) {
   } catch {}
 }
 
-const hostname = process.env.HOST || process.env.HOSTNAME || parsedHost || 'localhost';
+// Not HOSTNAME: Docker sets it to the container id.
+const hostname = process.env.HOST || parsedHost || 'localhost';
 const port = parseInt(process.env.PORT || parsedPort || '9000', 10);
 const appUrl = rawAppUrl || `http://${hostname}:${port}`;
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
+
+// Log instead of dying on a stray rejection from a background job (polish queue, batch, updater).
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
 
 if (require.main === module) {
   app.prepare().then(() => {
@@ -50,8 +57,9 @@ if (require.main === module) {
 
   const io = new Server(server, {
     path: '/socket.io',
+    // Same-origin only (the app serves its own client); no cross-site socket listeners.
     cors: {
-      origin: '*',
+      origin: rawAppUrl || false,
       methods: ['GET', 'POST'],
     },
   });
@@ -92,5 +100,22 @@ if (require.main === module) {
   server.listen(port, () => {
     console.log(`> Ready on ${appUrl} as ${dev ? 'development' : 'production'}`);
   });
+
+  // Graceful shutdown: `docker stop` sends SIGTERM, Ctrl+C sends SIGINT. Stop taking requests, let
+  // in-flight ones finish briefly, then exit (background timers would otherwise keep us alive).
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return process.exit(1); // second Ctrl+C: exit now
+    shuttingDown = true;
+    console.log(`${signal} received, shutting down...`);
+    io.close();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 8000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}).catch((err) => {
+  console.error('Failed to start Next.js:', err);
+  process.exit(1);
 });
 }

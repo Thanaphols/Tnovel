@@ -25,19 +25,35 @@ export function enqueueChapterForPolish(chapterId: string): void {
   processNextInQueue();
 }
 
+let retryTimer: NodeJS.Timeout | null = null;
+
+/** One pending retry at a time, however many enqueues hit a busy/failed dispatch. */
+function retryLater() {
+  if (retryTimer) return;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    processNextInQueue();
+  }, 3000);
+}
+
 async function processNextInQueue(): Promise<void> {
   if (pendingQueue.length === 0) return;
 
-  const { provider } = await getAISettings();
-  // ponytail: benign — a concurrent call could over-dispatch by ~1 across the await; the governor
-  // still hard-bounds real concurrency, so at worst one extra chapter waits on a slot.
-  if (activeWorkers >= maxConcurrency(provider)) return;
+  try {
+    const { provider } = await getAISettings();
+    // ponytail: benign — a concurrent call could over-dispatch by ~1 across the await; the governor
+    // still hard-bounds real concurrency, so at worst one extra chapter waits on a slot.
+    if (activeWorkers >= maxConcurrency(provider)) return;
 
-  // Priority check: Yield if a manual priority lease lock is currently active
-  const isManualActive = await isPriorityLeaseActive('MANUAL_POLISH_LOCK');
-  if (isManualActive) {
-    // Retry in 3 seconds to yield resources to user-initiated tasks
-    setTimeout(processNextInQueue, 3000);
+    // Priority check: Yield if a manual priority lease lock is currently active
+    if (await isPriorityLeaseActive('MANUAL_POLISH_LOCK')) {
+      retryLater(); // yield resources to user-initiated tasks
+      return;
+    }
+  } catch (err) {
+    // e.g. SQLite "database is locked": the chapter stays queued, try again shortly.
+    console.error('[PolishQueue] dispatch check failed, retrying:', err);
+    retryLater();
     return;
   }
 
