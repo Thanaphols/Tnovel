@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { EntityType, ValidationStatus } from './enums';
 import { translateParagraphsGoogle } from './googleTranslate';
 import {
+  isSentenceStart,
   protectTerms,
   replaceTermsInParagraphs,
   replaceTermsInString,
@@ -312,12 +313,93 @@ export async function saveDiscoveredGlossaryEntities(
   return savedCount;
 }
 
+// Words that open a sentence but never start a name ("Because Kiyoshi", "Both Lee", "Seeing Harry").
+const SENTENCE_OPENERS = new Set([
+  'because', 'both', 'even', 'despite', 'especially', 'for', 'with', 'from', 'unlike', 'since', 'every',
+  'all', 'not', 'did', 'does', 'do', 'your', 'my', 'our', 'their', 'like', 'having', 'seeing', 'knowing',
+  'switching', 'now', 'once', 'eventually', 'whatever', 'among', 'between', 'behind', 'bring', 'ask',
+  'as', 'at', 'by', 'if', 'in', 'into', 'of', 'on', 'onto', 'to', 'up', 'so', 'yet', 'nor', 'only',
+  'just', 'still', 'also', 'maybe', 'perhaps', 'apparently', 'definitely', 'clearly', 'finally',
+  'instead', 'without', 'within', 'during', 'until', 'unless', 'whether', 'though', 'thus', 'besides',
+  'another', 'other', 'each', 'either', 'neither', 'some', 'many', 'most', 'several', 'few', 'such',
+  'never', 'always', 'soon', 'later', 'yes', 'no', 'oh', 'well', 'why', 'how', 'where', 'abandoning',
+  'becoming', 'attend', 'denied', 'thank', 'thanks', 'let', 'get', 'go', 'come', 'tell', 'look',
+  'more', 'under', 'everything', 'can', 'dear', 'whenever', 'while', 'when', 'then', 'what', 'which',
+]);
+
+/** Context for judging capitalized words: lowercase usage and mid-sentence capitals in the source. */
+export interface CapsContext {
+  isCommon: (word: string) => boolean;
+  midSentenceCaps: Set<string>;
+}
+
+export function buildCapsContext(paragraphsEn: string[]): CapsContext {
+  const lowerCount = new Map<string, number>();
+  const capsCount = new Map<string, number>();
+  const midSentenceCaps = new Set<string>();
+  const bump = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) || 0) + 1);
+  for (const text of paragraphsEn) {
+    if (!text) continue;
+    for (const m of text.matchAll(/\b[a-z][a-z']*\b/g)) bump(lowerCount, m[0]);
+    for (const m of text.matchAll(/\b[A-Z][a-z]+\b/g)) {
+      if (isSentenceStart(text, m.index!)) continue;
+      midSentenceCaps.add(m[0]);
+      bump(capsCount, m[0]);
+    }
+  }
+  // Ordinary word = its lowercase form is not rare next to its capitalized uses, so one stray
+  // lowercased "newgate" in a sloppy fic does not demote a name, while "body"/"earth" in prose do.
+  const isCommon = (w: string) => {
+    const lower = lowerCount.get(w.toLowerCase()) || 0;
+    return lower >= 3 && lower > (capsCount.get(w) || 0);
+  };
+  return { isCommon, midSentenceCaps };
+}
+
+/** A capitalized word that is only capitalized because a sentence starts with it. */
+function isSentenceFiller(word: string, ctx: CapsContext): boolean {
+  const lower = word.toLowerCase();
+  if (COMMON_PRONOUNS_AND_STOPWORDS.has(lower) || SENTENCE_OPENERS.has(lower)) return true;
+  return ctx.isCommon(word) && !ctx.midSentenceCaps.has(word);
+}
+
+/**
+ * A stored term that the current rules would not produce: a phrase opened by a filler word
+ * ("Because Kiyoshi", "Even Tenten") or a single ordinary word ("Body", "Earth").
+ */
+export function isJunkTerm(en: string, ctx: CapsContext): boolean {
+  const words = en.trim().split(/\s+/);
+  if (!/^[A-Z][a-z]/.test(words[0])) return false; // not an English capitalized term (CJK, acronyms)
+  const first = words[0].toLowerCase();
+  if (words.length === 1) return COMMON_PRONOUNS_AND_STOPWORDS.has(first) || ctx.isCommon(words[0]);
+  // Phrases: only a clear sentence opener in front ("Even Tenten", "Seeing Ino"), so technique
+  // names that start with an ordinary word ("Water Release", "Earthen Dome") stay.
+  return (
+    COMMON_PRONOUNS_AND_STOPWORDS.has(first) ||
+    SENTENCE_OPENERS.has(first) ||
+    (/ing$/.test(first) && ctx.isCommon(words[0]) && !ctx.midSentenceCaps.has(words[0]))
+  );
+}
+
 /**
  * Extracts potential proper noun entities (characters, locations, etc.) from English text paragraphs.
+ * Capitals are read in context: at a sentence start everything is capitalized, so the first word
+ * of a phrase is dropped when it is an ordinary word there ("Because Kiyoshi" -> "Kiyoshi"), and
+ * single words also used in lowercase ("Earth", "Body") are not names.
  */
 export function extractCandidateEntities(paragraphsEn: string[]): string[] {
   const candidates = new Set<string>();
   const wordFreq = new Map<string, number>();
+  const ctx = buildCapsContext(paragraphsEn);
+  const countWord = (word: string) => {
+    if (
+      word.length < 4 ||
+      COMMON_PRONOUNS_AND_STOPWORDS.has(word.toLowerCase()) ||
+      ALLOWED_ACRONYMS.has(word.toUpperCase()) ||
+      ctx.isCommon(word)
+    ) return;
+    wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+  };
 
   for (const text of paragraphsEn) {
     if (!text) continue;
@@ -326,22 +408,17 @@ export function extractCandidateEntities(paragraphsEn: string[]): string[] {
     const multiPattern = /\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,2})\b/g;
     let match: RegExpExecArray | null;
     while ((match = multiPattern.exec(text)) !== null) {
-      const phrase = match[1].trim();
-      const lower = phrase.toLowerCase();
-      const words = lower.split(' ');
-      if (!words.some((w) => COMMON_PRONOUNS_AND_STOPWORDS.has(w))) {
-        candidates.add(phrase);
-      }
+      let words = match[1].trim().split(/\s+/);
+      if (isSentenceStart(text, match.index) && isSentenceFiller(words[0], ctx)) words = words.slice(1);
+      if (words.some((w) => COMMON_PRONOUNS_AND_STOPWORDS.has(w.toLowerCase()))) continue;
+      if (words.length >= 2) candidates.add(words.join(' '));
+      else if (words.length === 1) countWord(words[0]);
     }
 
     // 2. Single-word capitalized words (mid-sentence, preceded by lowercase or punctuation)
     const midSentencePattern = /(?:[a-z,;:\"\'\“]\s+)([A-Z][a-z]{3,})\b/g;
     while ((match = midSentencePattern.exec(text)) !== null) {
-      const word = match[1].trim();
-      const lower = word.toLowerCase();
-      if (!COMMON_PRONOUNS_AND_STOPWORDS.has(lower) && !ALLOWED_ACRONYMS.has(word.toUpperCase())) {
-        wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
-      }
+      countWord(match[1].trim());
     }
   }
 
@@ -381,7 +458,8 @@ export async function autoDiscoverAndSaveGlossary(
     const transliterated = await translateParagraphsGoogle(toProcess);
 
     const entitiesToSave: NewDiscoveredEntity[] = toProcess.map((en, i) => {
-      const th = transliterated[i]?.trim();
+      // Google sometimes carries sentence punctuation over ("เพราะคิโยชิ.").
+      const th = transliterated[i]?.trim().replace(/[.,!?;:。]+$/, '');
       const isMulti = en.includes(' ');
       let type: EntityType = EntityType.CHARACTER;
       const lower = en.toLowerCase();

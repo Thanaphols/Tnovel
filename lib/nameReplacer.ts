@@ -91,25 +91,50 @@ export function applySafeNameReplacer(
 const PLACEHOLDER = /ZXQ(\d+)/g;
 
 /**
+ * True when text[index] starts a sentence: the paragraph start or right after . ! ? … : (skipping
+ * spaces and opening quotes/brackets). There every word is capitalized, so a capital letter says
+ * nothing about whether it is a name.
+ */
+export function isSentenceStart(text: string, index: number): boolean {
+  let i = index - 1;
+  while (i >= 0 && /[\s"'“‘([]/.test(text[i])) i--;
+  return i < 0 || /[.!?…:]/.test(text[i]);
+}
+
+/** The word also occurs in lowercase somewhere, i.e. it is an ordinary English word ("hand", "earth"). */
+export function usedAsCommonWord(word: string, text: string): boolean {
+  const lower = word.toLowerCase();
+  return lower !== word && new RegExp(`\\b${escapeRegex(lower)}\\b`).test(text);
+}
+
+/**
  * Shields glossary terms from Google Translate. Thai inserted straight into the English gets
  * rewritten by Google ("ดัมเบิลดอร์" -> "ดัมพอร์ตดอร์"), but an opaque token like ZXQ0 passes
  * through untouched, so terms become tokens before Google and are swapped to Thai after.
  * Same safety filter as applySafeNameReplacer (word boundary, case-sensitive, no ambiguous words).
+ * Context: a one-word term that is also an ordinary word in this chapter ("Hand" vs "his hand") is
+ * left for Google at the start of a sentence, where the capital letter doesn't make it a name.
  */
 export function protectTerms(
   paragraphs: string[],
   glossary: GlossaryReplaceItem[]
 ): { protectedText: string[]; restore: (translated: string[]) => string[] } {
-  const terms = selectSafeTerms(glossary).map((t) => ({
-    th: t.canonicalTh.trim(),
-    pattern: termRegex(t.canonicalEn),
-  }));
+  const chapterText = paragraphs.join('\n');
+  const terms = selectSafeTerms(glossary).map((t) => {
+    const en = t.canonicalEn.trim();
+    return {
+      th: t.canonicalTh.trim(),
+      pattern: termRegex(en),
+      ambiguousAtSentenceStart: !en.includes(' ') && usedAsCommonWord(en, chapterText),
+    };
+  });
   const tokens: string[] = []; // token index -> Thai term
 
   const protectedText = paragraphs.map((p) => {
     let out = p;
     for (const t of terms) {
-      out = out.replace(t.pattern, () => {
+      out = out.replace(t.pattern, (match: string, offset: number, whole: string) => {
+        if (t.ambiguousAtSentenceStart && isSentenceStart(whole, offset)) return match;
         let i = tokens.indexOf(t.th);
         if (i === -1) i = tokens.push(t.th) - 1;
         return `ZXQ${i}`;
